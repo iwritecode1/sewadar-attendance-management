@@ -1,0 +1,305 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* RSSB Theme Colors */
+.rssb-primary {
+  @apply bg-blue-600 text-white hover:bg-blue-700;
+}
+
+.rssb-secondary {
+  @apply bg-gray-100 text-gray-800 hover:bg-gray-200;
+}
+
+.rssb-accent {
+  @apply bg-blue-50 text-blue-800;
+}
+
+.rssb-gradient {
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+}
+
+/* Enhanced card styles */
+.enhanced-card {
+  @apply bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200;
+}
+
+.stat-card {
+  @apply enhanced-card p-6 relative overflow-hidden;
+}
+
+.stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #1e40af, #3b82f6);
+}
+
+/* Chart container styles */
+.chart-container {
+  @apply enhanced-card p-6;
+}
+
+/* PWA specific styles */
+@media (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Mobile-first responsive design */
+@media (max-width: 640px) {
+  .mobile-padding {
+    @apply px-4;
+  }
+
+  .mobile-text {
+    @apply text-sm;
+  }
+}
+
+/* Loading animations */
+.loading-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Enhanced form styles */
+.form-section {
+  @apply space-y-6 p-6 enhanced-card;
+}
+
+.form-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
+}
+
+/* Button enhancements */
+.btn-primary {
+  @apply rssb-primary px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md;
+}
+
+.btn-secondary {
+  @apply rssb-secondary px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md;
+}
+
+/* Table enhancements */
+.enhanced-table {
+  @apply w-full border-collapse;
+}
+
+.enhanced-table th {
+  @apply bg-gray-50 text-left p-4 font-semibold text-gray-700 border-b;
+}
+
+.enhanced-table td {
+  @apply p-4 border-b border-gray-100;
+}
+
+.enhanced-table tr:hover {
+  @apply bg-gray-50;
+}
+
+/* Enhanced sticky navigation styles */
+.sticky-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 50;
+}
+
+/* Ensure main content doesn't overlap with fixed sidebar */
+@media (min-width: 1024px) {
+  .main-content-with-sidebar {
+    margin-left: 18rem; /* 72 * 0.25rem = 18rem */
+  }
+}
+
+/* Enhanced user info section */
+.user-info-section {
+  background: linear-gradient(135deg, #eff6ff 0%, #f9fafb 100%);
+  border-top: 1px solid #e5e7eb;
+}
+
+/* Improved form sections */
+.enhanced-form-section {
+  background: linear-gradient(135deg, #fefefe 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* Button hover effects */
+.enhanced-button {
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.enhanced-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Import section styling */
+.import-section {
+  border: 1px solid #dbeafe;
+  background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+}
+
+/* Responsive improvements */
+@media (max-width: 1023px) {
+  .main-content-with-sidebar {
+    margin-left: 0;
+  }
+}
+
+/* Enhanced card animations */
+.enhanced-card {
+  transition: all 0.3s ease;
+}
+
+.enhanced-card:hover {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* File upload area enhancements */
+.file-upload-area {
+  transition: all 0.2s ease;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.file-upload-area:hover {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  transform: translateY(-2px);
+}
+
+/* Mandatory field indicators - subtle styling without color changes */
+.mandatory-field::after {
+  content: " *";
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* Center selection highlight */
+.center-selection-info {
+  background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+  border: 1px solid #bfdbfe;
+}
+
+/* Validation message styling */
+.validation-message {
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.validation-error {
+  color: #dc2626;
+}
+
+.validation-success {
+  color: #059669;
+}
+
+/* Enhanced dropdown styling */
+.sewadar-dropdown {
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  background: white;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.sewadar-dropdown-item {
+  padding: 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.sewadar-dropdown-item:hover {
+  background-color: #f9fafb;
+}
+
+.sewadar-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+/* Selected sewadar styling */
+.selected-sewadar-card {
+  background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+
+/* Temporary sewadar form styling */
+.temp-sewadar-form {
+  background: linear-gradient(135deg, #fefefe 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+}
+
+/* Badge generation preview */
+.badge-preview {
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+
+/* Instructions card styling */
+.instructions-card {
+  background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
+  border: 1px solid #bfdbfe;
+}
