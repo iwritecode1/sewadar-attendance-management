@@ -33,8 +33,7 @@ export async function login(
   username: string,
   password: string,
 ): Promise<{ success: boolean; user?: UserSession; response?: NextResponse }> {
-  const db = await dbConnect()
-  // console.log(db)
+  await dbConnect()
 
   const user = await User.findOne({ username, isActive: true })
 
@@ -76,8 +75,8 @@ export async function login(
   return { success: true, user: session, response }
 }
 
-export async function logout(baseURL: string) {
-  const response = NextResponse.json({ success: true, logout: true });
+export async function logout() {
+  const response = NextResponse.json({ success: true })
 
   response.cookies.set({
     name: "token",
@@ -86,9 +85,8 @@ export async function logout(baseURL: string) {
     path: "/",
     maxAge: 0,
   })
-  
 
-  return response;
+  return response
 }
 
 async function createToken(payload: UserSession): Promise<string> {

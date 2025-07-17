@@ -118,7 +118,6 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      
       <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">

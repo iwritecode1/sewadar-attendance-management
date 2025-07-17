@@ -12,8 +12,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { Upload, Search, Download, FileSpreadsheet, Users, Filter, Eye, X, RefreshCw } from "lucide-react"
+import { Upload, Search, Download, FileSpreadsheet, Users, Filter, Eye, X, RefreshCw, Edit, Trash2 } from "lucide-react"
 import * as XLSX from "xlsx"
+import SewadarDetailModal from "@/components/SewadarDetailModal"
+import EditSewadarModal from "@/components/EditSewadarModal"
 
 export default function SewadarsPage() {
   const { user } = useAuth()
@@ -29,6 +31,8 @@ export default function SewadarsPage() {
   const [showImportForm, setShowImportForm] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
+  const [viewingSewadar, setViewingSewadar] = useState<string | null>(null)
+  const [editingSewadar, setEditingSewadar] = useState<string | null>(null)
 
   // Get unique departments from sewadars
   const departments = [...new Set(sewadars.map((s) => s.department))].sort()
@@ -147,7 +151,34 @@ export default function SewadarsPage() {
       badgeStatus: selectedBadgeStatus !== "all" ? selectedBadgeStatus : undefined,
     })
   }
-  // console.log({pagination})
+
+  const handleDeleteSewadar = async (sewadarId: string) => {
+    if (!confirm("Are you sure you want to delete this sewadar?")) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/sewadars/${sewadarId}`, {
+        method: "DELETE",
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Sewadar deleted successfully",
+        })
+        refreshData()
+      } else {
+        throw new Error("Failed to delete sewadar")
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete sewadar",
+        variant: "destructive",
+      })
+    }
+  }
 
   return (
     <Layout>
@@ -343,7 +374,7 @@ export default function SewadarsPage() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Male</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {pagination.sewadars?.maleCount || sewadars.filter((s) => s.gender === "MALE").length}
+                    {pagination.sewadars.maleCount || sewadars.filter((s) => s.gender === "MALE").length}
                   </p>
                 </div>
                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -359,7 +390,7 @@ export default function SewadarsPage() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Female</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {pagination.sewadars?.femaleCount || sewadars.filter((s) => s.gender === "FEMALE").length}
+                    {pagination.sewadars.femaleCount || sewadars.filter((s) => s.gender === "FEMALE").length}
                   </p>
                 </div>
                 <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center">
@@ -373,13 +404,13 @@ export default function SewadarsPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Temporary</p>
+                  <p className="text-sm font-medium text-gray-600">Permanent</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {sewadars.filter((s) => s.badgeStatus === "TEMPORARY").length}
+                    {sewadars.filter((s) => s.badgeStatus === "PERMANENT").length}
                   </p>
                 </div>
                 <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <span className="text-green-600 font-bold text-sm">T</span>
+                  <span className="text-green-600 font-bold text-sm">P</span>
                 </div>
               </div>
             </CardContent>
@@ -439,9 +470,41 @@ export default function SewadarsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <Eye className="h-4 w-4" />
-                            </Button>
+                            <div className="flex space-x-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
+                                onClick={() => setViewingSewadar(sewadar._id)}
+                                title="View Details"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              {(user?.role === "admin" || user?.role === "coordinator") && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-green-600 hover:text-green-800"
+                                    onClick={() => setEditingSewadar(sewadar._id)}
+                                    title="Edit"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  {user?.role === "admin" && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                                      onClick={() => handleDeleteSewadar(sewadar._id)}
+                                      title="Delete"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -494,6 +557,23 @@ export default function SewadarsPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Modals */}
+        <SewadarDetailModal
+          sewadarId={viewingSewadar}
+          isOpen={!!viewingSewadar}
+          onClose={() => setViewingSewadar(null)}
+        />
+
+        <EditSewadarModal
+          sewadarId={editingSewadar}
+          isOpen={!!editingSewadar}
+          onClose={() => setEditingSewadar(null)}
+          onSuccess={() => {
+            setEditingSewadar(null)
+            refreshData()
+          }}
+        />
       </div>
     </Layout>
   )

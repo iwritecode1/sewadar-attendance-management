@@ -127,23 +127,14 @@ export async function getSewadars(params: {
 
     // Execute query
     const sewadars = await Sewadar.find(query).sort({ name: 1 }).skip(skip).limit(limit)
-  
-    const total = await Sewadar.countDocuments(query)
 
-    query["gender"] = "MALE"
-    const maleCount = await Sewadar.countDocuments(query)
-    
-    query["gender"] = "FEMALE"
-    const femaleCount = await Sewadar.countDocuments(query)
-    
+    const total = await Sewadar.countDocuments(query)
 
     return {
       success: true,
       data: sewadars,
       pagination: {
         total,
-        maleCount,
-        femaleCount,
         page,
         limit,
         pages: Math.ceil(total / limit),

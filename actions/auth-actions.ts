@@ -22,8 +22,8 @@ export async function loginAction(formData: FormData) {
   return { success: false, error: "Invalid username or password" }
 }
 
-// export async function logoutAction() {
-//   await logout()
-//   revalidatePath("/")
-//   redirect("/")
-// }
+export async function logoutAction() {
+  await logout()
+  revalidatePath("/")
+  redirect("/")
+}

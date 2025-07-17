@@ -12,160 +12,165 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
-import { Plus, Users, Shield, Eye, EyeOff, Edit, Trash2, UserCheck, UserX } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { useEffect } from "react"
-
-interface Coordinator {
-  id: string
-  name: string
-  username: string
-  password: string
-  centerId: string
-  centerName: string
-  createdAt: string
-  isActive: boolean
-}
+import EditCoordinatorModal from "@/components/EditCoordinatorModal"
+import {
+  UserPlus,
+  Search,
+  Users,
+  Building2,
+  CheckCircle,
+  XCircle,
+  Edit,
+  Trash2,
+  RefreshCw,
+  Filter,
+  X,
+} from "lucide-react"
 
 export default function CoordinatorsPage() {
   const { user } = useAuth()
-  const { centers } = useData()
+  const {
+    coordinators,
+    centers,
+    createCoordinator,
+    updateCoordinatorStatus,
+    deleteCoordinator,
+    fetchCoordinators,
+    loading,
+  } = useData()
   const { toast } = useToast()
-  const router = useRouter()
 
-  const [coordinators, setCoordinators] = useState<Coordinator[]>([
-    {
-      id: "2",
-      name: "Center Coordinator 1",
-      username: "coord1",
-      password: "coord123",
-      centerId: "5228",
-      centerName: "HISSAR-I",
-      createdAt: "2024-01-01",
-      isActive: true,
-    },
-    {
-      id: "3",
-      name: "Center Coordinator 2",
-      username: "coord2",
-      password: "coord123",
-      centerId: "5229",
-      centerName: "HISSAR-II",
-      createdAt: "2024-01-01",
-      isActive: true,
-    },
-  ])
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [editingCoordinator, setEditingCoordinator] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedCenter, setSelectedCenter] = useState("all")
+  const [selectedStatus, setSelectedStatus] = useState("all")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [newCoordinator, setNewCoordinator] = useState({
     name: "",
     username: "",
     password: "",
     centerId: "",
-    centerName: "",
   })
 
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({})
+  // Filter coordinators based on search and filters
+  const filteredCoordinators = coordinators.filter((coordinator) => {
+    const matchesSearch =
+      coordinator.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      coordinator.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      coordinator.centerName.toLowerCase().includes(searchTerm.toLowerCase())
 
-  useEffect(() => {
-    if (user && user.role !== "admin") {
-      router.push("/attendance")
-    }
-  }, [user, router])
+    const matchesCenter = selectedCenter === "all" || coordinator.centerId === selectedCenter
+    const matchesStatus =
+      selectedStatus === "all" ||
+      (selectedStatus === "active" && coordinator.isActive) ||
+      (selectedStatus === "inactive" && !coordinator.isActive)
 
-  if (!user || user.role !== "admin") {
-    return null
-  }
+    return matchesSearch && matchesCenter && matchesStatus
+  })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleAddCoordinator = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!newCoordinator.name || !newCoordinator.username || !newCoordinator.password || !newCoordinator.centerId) {
+    // Validation
+    if (!newCoordinator.name.trim()) {
       toast({
         title: "Error",
-        description: "Please fill all required fields",
+        description: "Name is required",
         variant: "destructive",
       })
       return
     }
 
-    // Check if username already exists
-    if (coordinators.some((coord) => coord.username === newCoordinator.username)) {
+    if (!newCoordinator.username.trim()) {
       toast({
         title: "Error",
-        description: "Username already exists",
+        description: "Username is required",
         variant: "destructive",
       })
       return
     }
 
-    // Check if center already has a coordinator
-    if (coordinators.some((coord) => coord.centerId === newCoordinator.centerId && coord.isActive)) {
+    if (!newCoordinator.password.trim()) {
       toast({
         title: "Error",
-        description: "This center already has an active coordinator",
+        description: "Password is required",
         variant: "destructive",
       })
       return
     }
 
-    const coordinator: Coordinator = {
-      id: Date.now().toString(),
-      name: newCoordinator.name,
-      username: newCoordinator.username,
-      password: newCoordinator.password,
-      centerId: newCoordinator.centerId,
-      centerName: newCoordinator.centerName,
-      createdAt: new Date().toISOString().split("T")[0],
-      isActive: true,
+    if (!newCoordinator.centerId) {
+      toast({
+        title: "Error",
+        description: "Center is required",
+        variant: "destructive",
+      })
+      return
     }
 
-    setCoordinators([...coordinators, coordinator])
-    setNewCoordinator({ name: "", username: "", password: "", centerId: "", centerName: "" })
-    setShowAddForm(false)
+    setIsSubmitting(true)
+    const success = await createCoordinator(newCoordinator)
+    setIsSubmitting(false)
 
-    toast({
-      title: "Success",
-      description: "Coordinator created successfully",
-    })
+    if (success) {
+      setNewCoordinator({
+        name: "",
+        username: "",
+        password: "",
+        centerId: "",
+      })
+      setShowAddForm(false)
+    }
   }
 
-  const handleCenterChange = (centerId: string) => {
-    const center = centers.find((c) => c.id === centerId)
-    setNewCoordinator((prev) => ({
-      ...prev,
-      centerId,
-      centerName: center?.name || "",
-    }))
+  const handleStatusToggle = async (coordinatorId: string, currentStatus: boolean) => {
+    const success = await updateCoordinatorStatus(coordinatorId, !currentStatus)
+    if (success) {
+      toast({
+        title: "Success",
+        description: `Coordinator ${!currentStatus ? "activated" : "deactivated"} successfully`,
+      })
+    }
   }
 
-  const toggleCoordinatorStatus = (id: string) => {
-    setCoordinators((prev) => prev.map((coord) => (coord.id === id ? { ...coord, isActive: !coord.isActive } : coord)))
-    toast({
-      title: "Success",
-      description: "Coordinator status updated",
-    })
+  const handleDeleteCoordinator = async (coordinatorId: string, coordinatorName: string) => {
+    if (window.confirm(`Are you sure you want to delete coordinator "${coordinatorName}"?`)) {
+      const success = await deleteCoordinator(coordinatorId)
+      if (success) {
+        toast({
+          title: "Success",
+          description: "Coordinator deleted successfully",
+        })
+      }
+    }
   }
 
-  const deleteCoordinator = (id: string) => {
-    setCoordinators((prev) => prev.filter((coord) => coord.id !== id))
-    toast({
-      title: "Success",
-      description: "Coordinator deleted successfully",
-    })
+  const clearFilters = () => {
+    setSearchTerm("")
+    setSelectedCenter("all")
+    setSelectedStatus("all")
   }
 
-  const togglePasswordVisibility = (id: string) => {
-    setShowPasswords((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }))
+  const refreshData = () => {
+    fetchCoordinators()
   }
 
-  const availableCenters = centers.filter(
-    (center) => !coordinators.some((coord) => coord.centerId === center.id && coord.isActive),
-  )
+  // Only show for admin users
+  if (user?.role !== "admin") {
+    return (
+      <Layout>
+        <div className="text-center py-12">
+          <Users className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Restricted</h2>
+          <p className="text-gray-600">Only area coordinators can manage coordinators.</p>
+        </div>
+      </Layout>
+    )
+  }
 
   return (
     <Layout>
@@ -173,21 +178,179 @@ export default function CoordinatorsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Manage Coordinators</h1>
-            <p className="text-gray-600 mt-1">Create and manage center coordinators for {user.area} Area</p>
+            <p className="text-gray-600 mt-1">Manage center coordinators in {user.area} Area</p>
           </div>
-          <Button onClick={() => setShowAddForm(true)} className="rssb-primary mt-4 sm:mt-0">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Coordinator
-          </Button>
+          <div className="flex space-x-2 mt-4 sm:mt-0">
+            <Button onClick={refreshData} variant="outline" disabled={loading.coordinators}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${loading.coordinators ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+            <Button
+              onClick={() => setShowAddForm(!showAddForm)}
+              variant={showAddForm ? "secondary" : "default"}
+              className="rssb-primary"
+            >
+              {showAddForm ? (
+                <>
+                  <X className="mr-2 h-4 w-4" />
+                  Cancel
+                </>
+              ) : (
+                <>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Add Coordinator
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
-        {/* Statistics Cards */}
+        {/* Add Coordinator Form */}
+        {showAddForm && (
+          <Card className="enhanced-card">
+            <CardHeader>
+              <CardTitle>Add New Coordinator</CardTitle>
+              <CardDescription>Create a new coordinator account for a center</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleAddCoordinator} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name">Name *</Label>
+                    <Input
+                      id="name"
+                      value={newCoordinator.name}
+                      onChange={(e) => setNewCoordinator({ ...newCoordinator, name: e.target.value })}
+                      placeholder="Enter coordinator name"
+                      required
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="username">Username *</Label>
+                    <Input
+                      id="username"
+                      value={newCoordinator.username}
+                      onChange={(e) => setNewCoordinator({ ...newCoordinator, username: e.target.value })}
+                      placeholder="Enter username"
+                      required
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="password">Password *</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={newCoordinator.password}
+                      onChange={(e) => setNewCoordinator({ ...newCoordinator, password: e.target.value })}
+                      placeholder="Enter password"
+                      required
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="center">Center *</Label>
+                    <Select
+                      value={newCoordinator.centerId}
+                      onValueChange={(value) => setNewCoordinator({ ...newCoordinator, centerId: value })}
+                    >
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select a center" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {centers.map((center) => (
+                          <SelectItem key={center._id} value={center.code}>
+                            {center.name} ({center.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-2">
+                  <Button type="button" variant="outline" onClick={() => setShowAddForm(false)} disabled={isSubmitting}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isSubmitting} className="rssb-primary">
+                    {isSubmitting ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Create Coordinator
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Filters */}
+        <Card className="enhanced-card">
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search coordinators..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <Select value={selectedCenter} onValueChange={setSelectedCenter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Centers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Centers</SelectItem>
+                  {centers.map((center) => (
+                    <SelectItem key={center._id} value={center.code}>
+                      {center.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button variant="outline" onClick={clearFilters} className="w-full bg-transparent">
+                <Filter className="mr-2 h-4 w-4" />
+                Clear Filters
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="stat-card">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Coordinators</p>
+                  <p className="text-sm text-gray-600">Total Coordinators</p>
                   <p className="text-2xl font-bold text-gray-900">{coordinators.length}</p>
                 </div>
                 <Users className="h-8 w-8 text-blue-600" />
@@ -199,10 +362,10 @@ export default function CoordinatorsPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Active</p>
+                  <p className="text-sm text-gray-600">Active</p>
                   <p className="text-2xl font-bold text-green-600">{coordinators.filter((c) => c.isActive).length}</p>
                 </div>
-                <Shield className="h-8 w-8 text-green-600" />
+                <CheckCircle className="h-8 w-8 text-green-600" />
               </div>
             </CardContent>
           </Card>
@@ -211,12 +374,10 @@ export default function CoordinatorsPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Inactive</p>
+                  <p className="text-sm text-gray-600">Inactive</p>
                   <p className="text-2xl font-bold text-red-600">{coordinators.filter((c) => !c.isActive).length}</p>
                 </div>
-                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                  <span className="text-red-600 font-bold text-sm">!</span>
-                </div>
+                <XCircle className="h-8 w-8 text-red-600" />
               </div>
             </CardContent>
           </Card>
@@ -225,198 +386,124 @@ export default function CoordinatorsPage() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Available Centers</p>
-                  <p className="text-2xl font-bold text-blue-600">{availableCenters.length}</p>
+                  <p className="text-sm text-gray-600">Centers Covered</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {new Set(coordinators.filter((c) => c.isActive).map((c) => c.centerId)).size}
+                  </p>
                 </div>
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 font-bold text-sm">C</span>
-                </div>
+                <Building2 className="h-8 w-8 text-purple-600" />
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Add Coordinator Form */}
-        {showAddForm && (
-          <Card className="enhanced-card">
-            <CardHeader>
-              <CardTitle>Create New Coordinator</CardTitle>
-              <CardDescription>Add a new center coordinator to {user.area} Area</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="form-grid">
-                  <div>
-                    <Label htmlFor="name">Full Name *</Label>
-                    <Input
-                      id="name"
-                      value={newCoordinator.name}
-                      onChange={(e) => setNewCoordinator((prev) => ({ ...prev, name: e.target.value }))}
-                      required
-                      placeholder="Enter full name"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="username">Username *</Label>
-                    <Input
-                      id="username"
-                      value={newCoordinator.username}
-                      onChange={(e) => setNewCoordinator((prev) => ({ ...prev, username: e.target.value }))}
-                      required
-                      placeholder="Enter username"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="password">Password *</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={newCoordinator.password}
-                      onChange={(e) => setNewCoordinator((prev) => ({ ...prev, password: e.target.value }))}
-                      required
-                      placeholder="Enter password"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="center">Center *</Label>
-                    <Select value={newCoordinator.centerId} onValueChange={handleCenterChange}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select center" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableCenters.map((center) => (
-                          <SelectItem key={center.id} value={center.id}>
-                            {center.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="flex space-x-2">
-                  <Button type="submit" className="rssb-primary">
-                    <Shield className="mr-2 h-4 w-4" />
-                    Create Coordinator
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => setShowAddForm(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Coordinators Table */}
         <Card className="enhanced-card">
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <Users className="mr-2 h-5 w-5" />
-              Center Coordinators ({coordinators.length})
-            </CardTitle>
-            <CardDescription>Manage coordinators for {user.area} Area centers</CardDescription>
+            <CardTitle>Coordinators ({filteredCoordinators.length})</CardTitle>
+            <CardDescription>Manage center coordinators and their access</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <Table className="enhanced-table">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Username</TableHead>
-                    <TableHead>Password</TableHead>
-                    <TableHead>Center</TableHead>
-                    <TableHead>Created Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {coordinators.map((coordinator) => (
-                    <TableRow key={coordinator.id}>
-                      <TableCell className="font-medium">{coordinator.name}</TableCell>
-                      <TableCell className="font-mono text-sm">{coordinator.username}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-mono text-sm">
-                            {showPasswords[coordinator.id] ? coordinator.password : "••••••••"}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => togglePasswordVisibility(coordinator.id)}
-                            className="h-6 w-6 p-0"
-                          >
-                            {showPasswords[coordinator.id] ? (
-                              <EyeOff className="h-3 w-3" />
-                            ) : (
-                              <Eye className="h-3 w-3" />
-                            )}
-                          </Button>
-                        </div>
-                      </TableCell>
-                      <TableCell>{coordinator.centerName}</TableCell>
-                      <TableCell>{coordinator.createdAt}</TableCell>
-                      <TableCell>
-                        <Badge variant={coordinator.isActive ? "default" : "secondary"}>
-                          {coordinator.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleCoordinatorStatus(coordinator.id)}
-                            className="h-8 w-8 p-0"
-                            title={coordinator.isActive ? "Deactivate" : "Activate"}
-                          >
-                            {coordinator.isActive ? (
-                              <UserX className="h-4 w-4 text-red-600" />
-                            ) : (
-                              <UserCheck className="h-4 w-4 text-green-600" />
-                            )}
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Edit">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                            onClick={() => deleteCoordinator(coordinator.id)}
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+            {loading.coordinators ? (
+              <div className="flex items-center justify-center py-12">
+                <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+                <span className="ml-2 text-gray-600">Loading coordinators...</span>
+              </div>
+            ) : filteredCoordinators.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Username</TableHead>
+                      <TableHead>Center</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Instructions */}
-        <Card className="enhanced-card bg-blue-50 border-blue-200">
-          <CardHeader>
-            <CardTitle className="text-blue-900">Coordinator Management Guidelines</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm text-blue-800">
-            <p>• Only Area Coordinators can create and manage Center Coordinators</p>
-            <p>• Each center can have only one active coordinator at a time</p>
-            <p>• Coordinators can only manage sewadars and attendance for their assigned center</p>
-            <p>• Username must be unique across the system</p>
-            <p>• Share login credentials securely with the coordinators</p>
-            <p>• Inactive coordinators cannot access the system but their data is preserved</p>
-            <p>• Use the eye icon to view/hide passwords when sharing credentials</p>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredCoordinators.map((coordinator) => (
+                      <TableRow key={coordinator._id}>
+                        <TableCell className="font-medium">{coordinator.name}</TableCell>
+                        <TableCell className="font-mono text-sm">{coordinator.username}</TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{coordinator.centerName}</p>
+                            <p className="text-sm text-gray-500">({coordinator.centerId})</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              checked={coordinator.isActive}
+                              onCheckedChange={() => handleStatusToggle(coordinator._id, coordinator.isActive)}
+                              size="sm"
+                            />
+                            <Badge variant={coordinator.isActive ? "default" : "secondary"}>
+                              {coordinator.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(coordinator.createdAt).toLocaleDateString("en-IN", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end space-x-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingCoordinator(coordinator._id)}
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteCoordinator(coordinator._id, coordinator.name)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Users className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No coordinators found</h3>
+                <p className="text-gray-600 mb-4">
+                  {searchTerm || selectedCenter !== "all" || selectedStatus !== "all"
+                    ? "No coordinators match your current filters."
+                    : "Get started by adding your first coordinator."}
+                </p>
+                {(searchTerm || selectedCenter !== "all" || selectedStatus !== "all") && (
+                  <Button variant="outline" onClick={clearFilters}>
+                    Clear Filters
+                  </Button>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Coordinator Modal */}
+      <EditCoordinatorModal
+        coordinatorId={editingCoordinator}
+        isOpen={!!editingCoordinator}
+        onClose={() => setEditingCoordinator(null)}
+        onSuccess={() => fetchCoordinators()}
+      />
     </Layout>
   )
 }

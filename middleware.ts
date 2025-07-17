@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { jwtVerify } from "jose"
 
-export async function middleware(request: NextRequest, response: NextResponse) {
+export async function middleware(request: NextRequest) {
   // Skip middleware for API routes, static files, and public paths
   if (
     request.nextUrl.pathname.startsWith("/api/") ||
@@ -41,6 +41,7 @@ export async function middleware(request: NextRequest, response: NextResponse) {
       return response
     }
   }
+
   return NextResponse.next()
 }
 

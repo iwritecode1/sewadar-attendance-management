@@ -297,6 +297,10 @@ class ApiClient {
     return this.request("/coordinators", { params })
   }
 
+  async getCoordinator(id: string) {
+    return this.request(`/coordinators/${id}`)
+  }
+
   async createCoordinator(data: {
     name: string
     username: string
@@ -305,6 +309,22 @@ class ApiClient {
   }) {
     return this.request("/coordinators", {
       method: "POST",
+      body: data,
+    })
+  }
+
+  async updateCoordinator(
+    id: string,
+    data: {
+      name: string
+      username: string
+      password?: string
+      centerId: string
+      isActive: boolean
+    },
+  ) {
+    return this.request(`/coordinators/${id}`, {
+      method: "PUT",
       body: data,
     })
   }
@@ -320,6 +340,18 @@ class ApiClient {
     return this.request(`/coordinators/${id}`, {
       method: "DELETE",
     })
+  }
+
+  // Reports APIs
+  async getAttendanceReport(params?: {
+    fromDate?: string
+    toDate?: string
+    centerId?: string
+    sewadarId?: string
+    eventId?: string
+    format?: "json" | "csv"
+  }) {
+    return this.request("/reports/attendance", { params })
   }
 
   // Dashboard APIs
