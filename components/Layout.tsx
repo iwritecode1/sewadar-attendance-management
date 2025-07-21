@@ -54,11 +54,10 @@ export default function Layout({ children }: LayoutProps) {
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center px-3 py-3 rounded-lg text-sm font-medium transition-colors ${
-                  pathname === item.href
+                className={`flex items-center px-3 py-3 rounded-lg text-sm font-medium transition-colors ${pathname === item.href
                     ? "bg-blue-50 text-blue-600 border-l-4 border-blue-600"
                     : "text-gray-600 hover:bg-gray-50"
-                }`}
+                  }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <item.icon className="mr-3 h-5 w-5" />
@@ -83,13 +82,14 @@ export default function Layout({ children }: LayoutProps) {
             <div className="flex flex-col flex-grow bg-white border-r border-gray-200 pt-5 pb-4 overflow-y-auto shadow-sm">
               {/* Logo and branding */}
               <div className="flex items-center flex-shrink-0 px-6 mb-8">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
-                    <span className="text-white font-bold text-xl">R</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded flex items-center justify-center shadow-lg overflow-hidden">
+                    {/* <span className="text-white font-bold text-xl">R</span> */}
+                    <img src="/icon-192x192.png" alt="Logo" className="w-12 h-12" />
                   </div>
                   <div>
-                    <h1 className="text-xl font-bold text-gray-900">RSSB</h1>
-                    <p className="text-sm text-gray-600">Sewadar Attendance Management</p>
+                    <h1 className="font-bold text-gray-900">Sewadar Attendance Management</h1>
+                    {/* <p className="text-sm text-gray-600">Sewadar Attendance Management</p> */}
                   </div>
                 </div>
               </div>
@@ -101,11 +101,10 @@ export default function Layout({ children }: LayoutProps) {
                     <Link
                       key={item.name}
                       href={item.href}
-                      className={`group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
-                        pathname === item.href
+                      className={`group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${pathname === item.href
                           ? "bg-blue-50 text-blue-600 shadow-sm border-l-4 border-blue-600"
                           : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                      }`}
+                        }`}
                     >
                       <item.icon
                         className={`mr-3 h-5 w-5 ${pathname === item.href ? "text-blue-600" : "text-gray-400"}`}
@@ -131,18 +130,17 @@ export default function Layout({ children }: LayoutProps) {
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
+                        <p className="text-sm font-semibold text-gray-900 truncate pl-2">{user.name}</p>
                         <div className="flex items-center space-x-2">
                           <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                              user.role === "admin" ? "bg-purple-100 text-purple-800" : "bg-green-100 text-green-800"
-                            }`}
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${user.role === "admin" ? "bg-purple-100 text-purple-800" : "bg-green-100 text-green-800"
+                              }`}
                           >
                             {user.role === "admin" ? "Area Coordinator" : "Center Coordinator"}
                           </span>
                         </div>
-                        {user.centerName && <p className="text-xs text-gray-600 truncate mt-1">{user.centerName}</p>}
-                        <p className="text-xs text-blue-600 font-medium">{user.area} Area</p>
+                        {user.centerName && <p className="text-xs text-gray-600 truncate mt-1 pl-2">{user.centerName}</p>}
+                        <p className="text-xs text-blue-600 font-medium pl-2">AREA {user.area}</p>
                       </div>
                     </div>
                     <Button

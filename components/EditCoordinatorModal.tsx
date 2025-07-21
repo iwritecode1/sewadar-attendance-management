@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { apiClient } from "@/lib/api-client"
 import { useToast } from "@/hooks/use-toast"
 import { useData } from "@/contexts/DataContext"
-import { X, Save, RefreshCw } from "lucide-react"
+import { Save, RefreshCw } from "lucide-react"
 import type { Coordinator } from "@/contexts/DataContext"
 
 interface EditCoordinatorModalProps {
@@ -159,13 +159,13 @@ export default function EditCoordinatorModal({ coordinatorId, isOpen, onClose, o
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto w-[95vw] md:w-full p-4 md:p-6">
+        <DialogHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <DialogTitle>Edit Coordinator</DialogTitle>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
+            <DialogTitle className="text-lg md:text-xl">
+              <span className="hidden md:inline">Edit Coordinator</span>
+              <span className="md:hidden">Edit</span>
+            </DialogTitle>
           </div>
         </DialogHeader>
 
@@ -238,7 +238,28 @@ export default function EditCoordinatorModal({ coordinatorId, isOpen, onClose, o
               <Label htmlFor="isActive">Active Status</Label>
             </div>
 
-            <div className="flex justify-end space-x-2 pt-4">
+            {/* Mobile - Stacked Buttons */}
+            <div className="block md:hidden space-y-3 pt-4">
+              <Button type="submit" disabled={saving} className="w-full">
+                {saving ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Update Coordinator
+                  </>
+                )}
+              </Button>
+              <Button type="button" variant="outline" onClick={onClose} disabled={saving} className="w-full">
+                Cancel
+              </Button>
+            </div>
+
+            {/* Desktop - Side by Side Buttons */}
+            <div className="hidden md:flex justify-end space-x-2 pt-4">
               <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
                 Cancel
               </Button>

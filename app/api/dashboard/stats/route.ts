@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     // Calculate total attendance
     const attendanceRecords = await AttendanceRecord.find({ areaCode: session.areaCode })
     const totalAttendance = attendanceRecords.reduce(
-      (sum, record) => sum + record.sewadars.length + record.tempSewadars.length,
+      (sum, record) => sum + record.sewadars.length,
       0,
     )
 
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
               input: "$attendance",
               initialValue: 0,
               in: {
-                $add: ["$$value", { $size: "$$this.sewadars" }, { $size: "$$this.tempSewadars" }],
+                $add: ["$$value", { $size: "$$this.sewadars" }],
               },
             },
           },
@@ -86,11 +86,60 @@ export async function GET(request: NextRequest) {
       { $sort: { count: -1 } },
     ])
 
-    // Get recent events
-    const recentEvents = await SewaEvent.find({ areaCode: session.areaCode })
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .populate("createdBy", "name")
+    // Get recent events with total sewadars count
+    const recentEventsData = await SewaEvent.aggregate([
+      { $match: { areaCode: session.areaCode } },
+      { $sort: { createdAt: -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: "users",
+          localField: "createdBy",
+          foreignField: "_id",
+          as: "createdBy"
+        }
+      },
+      {
+        $lookup: {
+          from: "attendancerecords",
+          localField: "_id",
+          foreignField: "eventId",
+          as: "attendanceRecords"
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          place: 1,
+          department: 1,
+          fromDate: 1,
+          toDate: 1,
+          createdAt: 1,
+          createdBy: { $arrayElemAt: ["$createdBy.name", 0] },
+          totalSewadars: {
+            $reduce: {
+              input: "$attendanceRecords",
+              initialValue: 0,
+              in: {
+                $add: ["$$value", { $size: "$$this.sewadars" }]
+              }
+            }
+          }
+        }
+      }
+    ])
+
+    const recentEvents = recentEventsData.map(event => ({
+      _id: event._id,
+      place: event.place,
+      department: event.department,
+      fromDate: event.fromDate,
+      toDate: event.toDate,
+      createdBy: {
+        name: event.createdBy
+      },
+      totalSewadars: event.totalSewadars
+    }))
 
     // Get attendance trends (last N days)
     const startDate = new Date()

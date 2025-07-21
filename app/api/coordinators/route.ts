@@ -68,20 +68,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if center already has an active coordinator
-    const existingCoordinator = await User.findOne({
-      role: "coordinator",
-      centerId: coordinatorData.centerId,
-      isActive: true,
-    })
+    // const existingCoordinator = await User.findOne({
+    //   role: "coordinator",
+    //   centerId: coordinatorData.centerId,
+    //   isActive: true,
+    // })
 
-    if (existingCoordinator) {
-      return NextResponse.json(
-        {
-          error: "This center already has an active coordinator",
-        },
-        { status: 409 },
-      )
-    }
+    // if (existingCoordinator) {
+    //   return NextResponse.json(
+    //     {
+    //       error: "This center already has an active coordinator",
+    //     },
+    //     { status: 409 },
+    //   )
+    // }
 
     // Create coordinator
     const coordinator = await User.create({

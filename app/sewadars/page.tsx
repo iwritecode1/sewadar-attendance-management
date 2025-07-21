@@ -11,11 +11,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
-import { Upload, Search, Download, FileSpreadsheet, Users, Filter, Eye, X, RefreshCw, Edit, Trash2 } from "lucide-react"
+import { Upload, Search, Download, FileSpreadsheet, Users, Filter, Eye, X, RefreshCw, Edit, Trash2, MoreHorizontal } from "lucide-react"
 import * as XLSX from "xlsx"
 import SewadarDetailModal from "@/components/SewadarDetailModal"
 import EditSewadarModal from "@/components/EditSewadarModal"
+import { DEPARTMENTS } from "@/lib/constants"
 
 export default function SewadarsPage() {
   const { user } = useAuth()
@@ -33,6 +35,7 @@ export default function SewadarsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [viewingSewadar, setViewingSewadar] = useState<string | null>(null)
   const [editingSewadar, setEditingSewadar] = useState<string | null>(null)
+  const [showFilters, setShowFilters] = useState(false)
 
   // Get unique departments from sewadars
   const departments = [...new Set(sewadars.map((s) => s.department))].sort()
@@ -182,24 +185,51 @@ export default function SewadarsPage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-4 md:space-y-6 px-2 md:px-0">
+        <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Manage Sewadars</h1>
-            <p className="text-gray-600 mt-1">
-              {user?.role === "admin" ? `All sewadars in ${user.area} Area` : `Sewadars from ${user?.centerName}`}
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Manage Sewadars</h1>
+            <p className="text-gray-600 mt-1 text-sm md:text-base">
+              {user?.role === "admin" ? `All Sewadars in ${user.area} Area` : `Sewadars from ${user?.centerName}`}
             </p>
           </div>
-          <div className="flex space-x-2 mt-4 sm:mt-0">
-            <Button onClick={refreshData} variant="outline" disabled={loading.sewadars}>
+          {/* Mobile - More Actions Dropdown */}
+          <div className="block md:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full">
+                  <MoreHorizontal className="mr-2 h-4 w-4" />
+                  More Actions
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={refreshData} disabled={loading.sewadars}>
+                  <RefreshCw className={`mr-2 h-4 w-4 ${loading.sewadars ? "animate-spin" : ""}`} />
+                  Refresh Data
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={downloadSampleExcel}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download Sample
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportSewadars} disabled={sewadars.length === 0}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  Export Data
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Desktop - Individual Buttons */}
+          <div className="hidden md:flex space-x-2">
+            <Button onClick={refreshData} variant="outline" disabled={loading.sewadars} className="text-sm">
               <RefreshCw className={`mr-2 h-4 w-4 ${loading.sewadars ? "animate-spin" : ""}`} />
               Refresh
             </Button>
-            <Button onClick={downloadSampleExcel} variant="outline">
+            <Button onClick={downloadSampleExcel} variant="outline" className="text-sm">
               <Download className="mr-2 h-4 w-4" />
               Sample Excel
             </Button>
-            <Button onClick={exportSewadars} variant="outline" disabled={sewadars.length === 0}>
+            <Button onClick={exportSewadars} variant="outline" disabled={sewadars.length === 0} className="text-sm">
               <FileSpreadsheet className="mr-2 h-4 w-4" />
               Export
             </Button>
@@ -210,32 +240,39 @@ export default function SewadarsPage() {
         {user?.role === "admin" && (
           <Card className="enhanced-card">
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
                 <div>
-                  <CardTitle className="flex items-center">
-                    <Upload className="mr-2 h-5 w-5" />
+                  <CardTitle className="flex items-center text-base md:text-lg">
+                    <Upload className="mr-2 h-4 w-4 md:h-5 md:w-5" />
                     Import Sewadars
                   </CardTitle>
-                  <CardDescription>Import sewadars from Excel file (.xlsx or .xls)</CardDescription>
+                  <CardDescription className="text-sm">
+                    Import Sewadars from Excel file (.xlsx or .xls)
+                  </CardDescription>
                 </div>
-                <Button
-                  onClick={() => setShowImportForm(!showImportForm)}
-                  variant={showImportForm ? "secondary" : "default"}
-                  className="rssb-primary"
-                  disabled={isImporting}
-                >
-                  {showImportForm ? (
-                    <>
-                      <X className="mr-2 h-4 w-4" />
-                      Close Import
-                    </>
-                  ) : (
-                    <>
-                      <FileSpreadsheet className="mr-2 h-4 w-4" />
-                      Import Sewadar Details
-                    </>
-                  )}
-                </Button>
+                <div className="w-full md:w-auto">
+                  <Button
+                    onClick={() => setShowImportForm(!showImportForm)}
+                    variant={showImportForm ? "secondary" : "default"}
+                    className="w-full md:w-auto rssb-primary text-sm hover:bg-blue-700 active:bg-blue-800"
+                    disabled={isImporting}
+                    size="sm"
+                  >
+                    {showImportForm ? (
+                      <>
+                        <X className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                        <span className="hidden md:inline">Close Import</span>
+                        <span className="md:hidden">Close</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileSpreadsheet className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                        <span className="hidden md:inline">Import Sewadars</span>
+                        <span className="md:hidden">Import</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </CardHeader>
 
@@ -280,12 +317,99 @@ export default function SewadarsPage() {
         {/* Filters and Search */}
         <Card className="enhanced-card">
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+            {/* Mobile Layout - Search with Filter Toggle */}
+            <div className="block md:hidden space-y-4">
+              <div className="flex space-x-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search by Name, Father's Name or Badge Number"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="px-3"
+                >
+                  <Filter className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Collapsible Filters */}
+              {showFilters && (
+                <div className="space-y-3 pt-2 border-t">
+                  {user?.role === "admin" && (
+                    <Select value={selectedCenter} onValueChange={setSelectedCenter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Centers" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Centers</SelectItem>
+                        {centers.map((center) => (
+                          <SelectItem key={center._id} value={center.code}>
+                            {center.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+
+                  <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Departments" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Departments</SelectItem>
+                      {DEPARTMENTS.map((dept) => (
+                        <SelectItem key={dept} value={dept}>
+                          {dept}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={selectedGender} onValueChange={setSelectedGender}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Genders" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Genders</SelectItem>
+                      <SelectItem value="MALE">Male</SelectItem>
+                      <SelectItem value="FEMALE">Female</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={selectedBadgeStatus} onValueChange={setSelectedBadgeStatus}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="PERMANENT">Permanent</SelectItem>
+                      <SelectItem value="OPEN">Open</SelectItem>
+                      <SelectItem value="TEMPORARY">Temporary</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Button variant="outline" onClick={clearFilters} className="w-full bg-transparent">
+                    <Filter className="mr-2 h-4 w-4" />
+                    Clear Filters
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Layout - All Filters Visible */}
+            <div className="hidden md:grid grid-cols-2 lg:grid-cols-6 gap-4">
               <div className="lg:col-span-2">
                 <div className="relative">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
-                    placeholder="Search by name, badge number, or father's name..."
+                    placeholder="Search by Name, Father's Name or Badge Number"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -315,7 +439,7 @@ export default function SewadarsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Departments</SelectItem>
-                  {departments.map((dept) => (
+                  {DEPARTMENTS.map((dept) => (
                     <SelectItem key={dept} value={dept}>
                       {dept}
                     </SelectItem>
@@ -355,7 +479,58 @@ export default function SewadarsPage() {
         </Card>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Mobile - Single Combined Card */}
+        <div className="block md:hidden">
+          <Card className="stat-card">
+            <CardContent className="py-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="text-center space-y-2">
+                  <div className="flex items-center justify-center space-x-2">
+                    <Users className="h-5 w-5 text-blue-600" />
+                    <span className="text-sm font-medium text-gray-600">Total</span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">{pagination.sewadars?.total || sewadars.length}</p>
+                </div>
+                <div className="text-center space-y-2">
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600 font-bold text-xs">M</span>
+                    </div>
+                    <span className="text-sm font-medium text-gray-600">Male</span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {pagination.sewadars?.maleCount || sewadars.filter((s) => s.gender === "MALE").length}
+                  </p>
+                </div>
+                <div className="text-center space-y-2">
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="w-5 h-5 bg-pink-100 rounded-full flex items-center justify-center">
+                      <span className="text-pink-600 font-bold text-xs">F</span>
+                    </div>
+                    <span className="text-sm font-medium text-gray-600">Female</span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {pagination.sewadars?.femaleCount || sewadars.filter((s) => s.gender === "FEMALE").length}
+                  </p>
+                </div>
+                <div className="text-center space-y-2">
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center">
+                      <span className="text-green-600 font-bold text-xs">P</span>
+                    </div>
+                    <span className="text-sm font-medium text-gray-600">Permanent</span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {pagination.sewadars?.permanentCount || sewadars.filter((s) => s.badgeStatus === "PERMANENT").length}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Desktop - Individual Cards */}
+        <div className="hidden md:grid grid-cols-4 gap-4">
           <Card className="stat-card">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -374,7 +549,7 @@ export default function SewadarsPage() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Male</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {pagination.sewadars.maleCount || sewadars.filter((s) => s.gender === "MALE").length}
+                    {pagination.sewadars?.maleCount || sewadars.filter((s) => s.gender === "MALE").length}
                   </p>
                 </div>
                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -390,7 +565,7 @@ export default function SewadarsPage() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Female</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {pagination.sewadars.femaleCount || sewadars.filter((s) => s.gender === "FEMALE").length}
+                    {pagination.sewadars?.femaleCount || sewadars.filter((s) => s.gender === "FEMALE").length}
                   </p>
                 </div>
                 <div className="w-8 h-8 bg-pink-100 rounded-full flex items-center justify-center">
@@ -406,7 +581,7 @@ export default function SewadarsPage() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Permanent</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {sewadars.filter((s) => s.badgeStatus === "PERMANENT").length}
+                    {pagination.sewadars?.permanentCount || sewadars.filter((s) => s.badgeStatus === "PERMANENT").length}
                   </p>
                 </div>
                 <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
@@ -435,7 +610,81 @@ export default function SewadarsPage() {
               </div>
             ) : (
               <>
-                <div className="overflow-x-auto">
+                {/* Mobile Card Layout - Essential Info Only */}
+                <div className="block md:hidden space-y-3">
+                  {sewadars.map((sewadar, index) => (
+                    <div 
+                      key={sewadar._id} 
+                      className={`p-4 border rounded-lg ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-gray-900 text-sm truncate">
+                            {sewadar.name}
+                          </h4>
+                          <p className="text-xs text-gray-600 truncate mt-1">
+                            {sewadar.fatherHusbandName}
+                          </p>
+                        </div>
+                        <div className="ml-3 flex-shrink-0">
+                          <code className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">
+                            {sewadar.badgeNumber}
+                          </code>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Badge variant={sewadar.gender === "MALE" ? "default" : "secondary"} className="text-xs">
+                            {sewadar.gender}
+                          </Badge>
+                          <Badge variant={sewadar.badgeStatus === "PERMANENT" ? "default" : "outline"} className="text-xs">
+                            {sewadar.badgeStatus}
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex space-x-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-blue-600 hover:text-blue-800"
+                            onClick={() => setViewingSewadar(sewadar._id)}
+                            title="View Details"
+                          >
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                          {(user?.role === "admin" || user?.role === "coordinator") && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-green-600 hover:text-green-800"
+                                onClick={() => setEditingSewadar(sewadar._id)}
+                                title="Edit"
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                              {user?.role === "admin" && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 text-red-600 hover:text-red-800"
+                                  onClick={() => handleDeleteSewadar(sewadar._id)}
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table Layout - Full Information */}
+                <div className="hidden md:block overflow-x-auto">
                   <Table className="enhanced-table">
                     <TableHeader>
                       <TableRow>
@@ -451,8 +700,11 @@ export default function SewadarsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {sewadars.map((sewadar) => (
-                        <TableRow key={sewadar._id}>
+                      {sewadars.map((sewadar, index) => (
+                        <TableRow
+                          key={sewadar._id}
+                          className={index % 2 === 0 ? "bg-white" : "bg-gray-100"}
+                        >
                           <TableCell className="font-mono text-sm font-medium">{sewadar.badgeNumber}</TableCell>
                           <TableCell className="font-medium">{sewadar.name}</TableCell>
                           <TableCell>{sewadar.fatherHusbandName}</TableCell>
@@ -514,42 +766,62 @@ export default function SewadarsPage() {
 
                 {/* Pagination */}
                 {pagination.sewadars && pagination.sewadars.pages > 1 && (
-                  <div className="flex items-center justify-between mt-6">
-                    <div className="text-sm text-gray-600">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between mt-6 space-y-4 md:space-y-0">
+                    <div className="text-xs md:text-sm text-gray-600 text-center md:text-left">
                       Showing {(pagination.sewadars.page - 1) * pagination.sewadars.limit + 1} to{" "}
                       {Math.min(pagination.sewadars.page * pagination.sewadars.limit, pagination.sewadars.total)} of{" "}
                       {pagination.sewadars.total} results
                     </div>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(pagination.sewadars.page - 1)}
-                        disabled={pagination.sewadars.page <= 1}
-                      >
-                        Previous
-                      </Button>
-                      {Array.from({ length: Math.min(5, pagination.sewadars.pages) }, (_, i) => {
-                        const page = i + 1
-                        return (
-                          <Button
-                            key={page}
-                            variant={page === pagination.sewadars.page ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => handlePageChange(page)}
-                          >
-                            {page}
-                          </Button>
-                        )
-                      })}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(pagination.sewadars.page + 1)}
-                        disabled={pagination.sewadars.page >= pagination.sewadars.pages}
-                      >
-                        Next
-                      </Button>
+                    <div className="flex justify-center md:justify-end">
+                      <div className="flex space-x-1 md:space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(pagination.sewadars.page - 1)}
+                          disabled={pagination.sewadars.page <= 1}
+                          className="text-xs md:text-sm px-2 md:px-3"
+                        >
+                          <span className="hidden md:inline">Previous</span>
+                          <span className="md:hidden">Prev</span>
+                        </Button>
+                        {Array.from({ length: Math.min(3, pagination.sewadars.pages) }, (_, i) => {
+                          const page = i + 1
+                          return (
+                            <Button
+                              key={page}
+                              variant={page === pagination.sewadars.page ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => handlePageChange(page)}
+                              className="text-xs md:text-sm px-2 md:px-3 min-w-[32px] md:min-w-[40px]"
+                            >
+                              {page}
+                            </Button>
+                          )
+                        })}
+                        {pagination.sewadars.pages > 3 && (
+                          <>
+                            <span className="flex items-center text-gray-400 px-1">...</span>
+                            <Button
+                              variant={pagination.sewadars.pages === pagination.sewadars.page ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => handlePageChange(pagination.sewadars.pages)}
+                              className="text-xs md:text-sm px-2 md:px-3 min-w-[32px] md:min-w-[40px]"
+                            >
+                              {pagination.sewadars.pages}
+                            </Button>
+                          </>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(pagination.sewadars.page + 1)}
+                          disabled={pagination.sewadars.page >= pagination.sewadars.pages}
+                          className="text-xs md:text-sm px-2 md:px-3"
+                        >
+                          <span className="hidden md:inline">Next</span>
+                          <span className="md:hidden">Next</span>
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}

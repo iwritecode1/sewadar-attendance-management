@@ -46,14 +46,15 @@ export default function LoginForm() {
       <div className="w-full max-w-md">
         {/* Logo and branding */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-xl mx-auto mb-4">
-            <span className="text-white font-bold text-3xl">R</span>
+          <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-xl mx-auto mb-4 overflow-hidden">
+            <img src="/icon-192x192.png" alt="Logo" className="w-20 h-20" />
+            {/* <span className="text-white font-bold text-3xl">R</span> */}
           </div>
           <h1 className="text-3xl font-bold text-gray-900">RSSB</h1>
           <p className="text-gray-600 mt-2">Sewadar Attendance Management</p>
         </div>
 
-        <Card className="enhanced-card shadow-xl">
+        <Card className="enhanced-card shadow-2xl">
           <CardHeader className="text-center pb-6">
             <CardTitle className="text-2xl font-bold text-gray-900">Welcome Back</CardTitle>
             <CardDescription className="text-gray-600">Sign in to your account to continue</CardDescription>
@@ -119,19 +120,6 @@ export default function LoginForm() {
               </Button>
             </form>
 
-            <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm font-medium text-gray-700 mb-3">Demo Credentials:</p>
-              <div className="space-y-2 text-sm text-gray-600">
-                <div className="flex justify-between">
-                  <span className="font-medium">Admin:</span>
-                  <span className="font-mono">admin / admin123</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Coordinator:</span>
-                  <span className="font-mono">coord1 / coord123</span>
-                </div>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>

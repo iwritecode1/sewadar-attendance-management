@@ -21,62 +21,36 @@ interface RequestOptions {
 class ApiClient {
   private baseUrl = "/api"
 
-  private async request<T>(endpoint: string, options: RequestOptions = {}): Promise<ApiResponse<T>> {
-    const { method = "GET", body, headers = {}, params } = options
-
-    // Build URL with query parameters
-    let url = `${this.baseUrl}${endpoint}`
-    if (params) {
-      const searchParams = new URLSearchParams()
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== "") {
-          searchParams.append(key, value.toString())
-        }
-      })
-      const queryString = searchParams.toString()
-      if (queryString) {
-        url += `?${queryString}`
-      }
-    }
-
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+    const url = `${this.baseUrl}${endpoint}`
     const config: RequestInit = {
-      method,
       headers: {
         "Content-Type": "application/json",
-        ...headers,
+        ...options.headers,
       },
-      credentials: "include", // Include cookies for authentication
-    }
-
-    if (body) {
-      if (body instanceof FormData) {
-        // Remove Content-Type header for FormData to let browser set it with boundary
-        delete config.headers!["Content-Type"]
-        config.body = body
-      } else {
-        config.body = JSON.stringify(body)
-      }
+      ...options,
     }
 
     try {
       const response = await fetch(url, config)
+
+      // Handle CSV responses
+      const contentType = response.headers.get("content-type")
+      if (contentType && contentType.includes("text/csv")) {
+        const csvText = await response.text()
+        return { success: true, data: csvText }
+      }
+
       const data = await response.json()
 
       if (!response.ok) {
-        return {
-          success: false,
-          error: data.error || `HTTP ${response.status}`,
-          details: data.details,
-        }
+        throw new Error(data.error || `HTTP error! status: ${response.status}`)
       }
 
       return data
     } catch (error) {
-      console.error("API request failed:", error)
-      return {
-        success: false,
-        error: "Network error or server unavailable",
-      }
+      console.error(`API request failed: ${endpoint}`, error)
+      throw error
     }
   }
 
@@ -84,7 +58,7 @@ class ApiClient {
   async login(credentials: { username: string; password: string }) {
     return this.request("/auth/login", {
       method: "POST",
-      body: credentials,
+      body: JSON.stringify(credentials),
     })
   }
 
@@ -109,7 +83,15 @@ class ApiClient {
     page?: number
     limit?: number
   }) {
-    return this.request("/sewadars", { params })
+    const searchParams = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, value.toString())
+        }
+      })
+    }
+    return this.request(`/sewadars?${searchParams.toString()}`)
   }
 
   async getSewadar(id: string) {
@@ -119,14 +101,14 @@ class ApiClient {
   async createSewadar(data: any) {
     return this.request("/sewadars", {
       method: "POST",
-      body: data,
+      body: JSON.stringify(data),
     })
   }
 
   async updateSewadar(id: string, data: any) {
     return this.request(`/sewadars/${id}`, {
       method: "PUT",
-      body: data,
+      body: JSON.stringify(data),
     })
   }
 
@@ -140,9 +122,15 @@ class ApiClient {
     const formData = new FormData()
     formData.append("file", file)
 
-    return this.request("/sewadars/import", {
+    return fetch(`${this.baseUrl}/sewadars/import`, {
       method: "POST",
       body: formData,
+    }).then(async (response) => {
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || "Import failed")
+      }
+      return data
     })
   }
 
@@ -155,7 +143,15 @@ class ApiClient {
     page?: number
     limit?: number
   }) {
-    return this.request("/attendance", { params })
+    const searchParams = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, value.toString())
+        }
+      })
+    }
+    return this.request(`/attendance?${searchParams.toString()}`)
   }
 
   async getAttendanceRecord(id: string) {
@@ -181,9 +177,15 @@ class ApiClient {
 
     data.nominalRollImages.forEach((file) => formData.append("nominalRollImages[]", file))
 
-    return this.request("/attendance", {
+    return fetch(`${this.baseUrl}/attendance`, {
       method: "POST",
       body: formData,
+    }).then(async (response) => {
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create attendance")
+      }
+      return data
     })
   }
 
@@ -219,7 +221,15 @@ class ApiClient {
     page?: number
     limit?: number
   }) {
-    return this.request("/events", { params })
+    const searchParams = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, value.toString())
+        }
+      })
+    }
+    return this.request(`/events?${searchParams.toString()}`)
   }
 
   async getEvent(id: string) {
@@ -234,14 +244,14 @@ class ApiClient {
   }) {
     return this.request("/events", {
       method: "POST",
-      body: data,
+      body: JSON.stringify(data),
     })
   }
 
   async updateEvent(id: string, data: any) {
     return this.request(`/events/${id}`, {
       method: "PUT",
-      body: data,
+      body: JSON.stringify(data),
     })
   }
 
@@ -257,7 +267,15 @@ class ApiClient {
     page?: number
     limit?: number
   }) {
-    return this.request("/centers", { params })
+    const searchParams = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, value.toString())
+        }
+      })
+    }
+    return this.request(`/centers?${searchParams.toString()}`)
   }
 
   async getCenter(id: string) {
@@ -270,14 +288,14 @@ class ApiClient {
   }) {
     return this.request("/centers", {
       method: "POST",
-      body: data,
+      body: JSON.stringify(data),
     })
   }
 
   async updateCenter(id: string, data: { name: string }) {
     return this.request(`/centers/${id}`, {
       method: "PUT",
-      body: data,
+      body: JSON.stringify(data),
     })
   }
 
@@ -294,7 +312,15 @@ class ApiClient {
     page?: number
     limit?: number
   }) {
-    return this.request("/coordinators", { params })
+    const searchParams = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          searchParams.append(key, value.toString())
+        }
+      })
+    }
+    return this.request(`/coordinators?${searchParams.toString()}`)
   }
 
   async getCoordinator(id: string) {
@@ -309,7 +335,7 @@ class ApiClient {
   }) {
     return this.request("/coordinators", {
       method: "POST",
-      body: data,
+      body: JSON.stringify(data),
     })
   }
 
@@ -325,14 +351,14 @@ class ApiClient {
   ) {
     return this.request(`/coordinators/${id}`, {
       method: "PUT",
-      body: data,
+      body: JSON.stringify(data),
     })
   }
 
   async updateCoordinatorStatus(id: string, isActive: boolean) {
     return this.request(`/coordinators/${id}/status`, {
       method: "PUT",
-      body: { isActive },
+      body: JSON.stringify({ isActive }),
     })
   }
 
@@ -343,21 +369,54 @@ class ApiClient {
   }
 
   // Reports APIs
-  async getAttendanceReport(params?: {
-    fromDate?: string
-    toDate?: string
-    centerId?: string
+  async getAttendanceReport(params: {
     sewadarId?: string
     eventId?: string
+    centerId?: string
+    fromDate?: string
+    toDate?: string
     format?: "json" | "csv"
   }) {
-    return this.request("/reports/attendance", { params })
+    const searchParams = new URLSearchParams()
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        searchParams.append(key, value.toString())
+      }
+    })
+
+    const headers: Record<string, string> = {}
+    if (params.format === "csv") {
+      headers["Accept"] = "text/csv"
+    }
+
+    return this.request(`/reports/attendance?${searchParams.toString()}`, {
+      headers,
+    })
   }
 
   // Dashboard APIs
-  async getDashboardStats(days?: number) {
-    return this.request("/dashboard/stats", {
-      params: days ? { days: days.toString() } : undefined,
+  async getDashboardStats() {
+    return this.request("/dashboard/stats")
+  }
+
+  // Places and Departments (for dropdowns)
+  async getPlaces() {
+    return this.request("/events").then((response) => {
+      if (response.success && response.data) {
+        const places = [...new Set(response.data.map((event: any) => event.place))]
+        return { success: true, data: places }
+      }
+      return { success: false, data: [] }
+    })
+  }
+
+  async getDepartments() {
+    return this.request("/events").then((response) => {
+      if (response.success && response.data) {
+        const departments = [...new Set(response.data.map((event: any) => event.department))]
+        return { success: true, data: departments }
+      }
+      return { success: false, data: [] }
     })
   }
 }

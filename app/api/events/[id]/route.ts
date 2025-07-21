@@ -39,7 +39,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       .populate("sewadars", "name badgeNumber")
 
     const totalAttendance = attendanceRecords.reduce(
-      (sum, record) => sum + record.sewadars.length + record.tempSewadars.length,
+      (sum, record) => sum + record.sewadars.length,
       0,
     )
 

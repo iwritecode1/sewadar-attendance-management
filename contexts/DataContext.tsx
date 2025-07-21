@@ -172,6 +172,7 @@ interface DataContextType {
 
   // Utility functions
   getSewadarsForCenter: (centerId: string) => Sewadar[]
+  fetchSewadarsForCenter: (centerId: string) => Promise<void>
   getAttendanceForSewadar: (sewadarId: string) => AttendanceRecord[]
   addPlace: (place: string) => void
   addDepartment: (department: string) => void
@@ -222,10 +223,56 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const handleApiResponse = useCallback(
     (response: any, successMessage?: string, errorMessage?: string) => {
       if (response.success) {
-        if (successMessage) {
+        // Handle success with potential temp sewadar information
+        if (response.tempSewadarInfo && response.tempSewadarInfo.length > 0) {
+          // Show main success message
+          toast({
+            title: "Attendance Submitted",
+            description: response.message || "Attendance submitted successfully",
+            variant: "default",
+          })
+
+          // Show detailed temp sewadar information in a separate toast
+          setTimeout(() => {
+            toast({
+              title: "Temporary Sewadar Details",
+              description: response.tempSewadarInfo.join("; "),
+              variant: "default",
+              duration: 10000, // Longer duration for detailed info
+            })
+          }, 1500)
+
+          // Show warnings if any
+          if (response.warnings && response.warnings.length > 0) {
+            setTimeout(() => {
+              toast({
+                title: "Processing Errors",
+                description: response.warnings.join("; "),
+                variant: "destructive",
+                duration: 8000,
+              })
+            }, 3000)
+          }
+        } else if (response.warnings && response.warnings.length > 0) {
+          // Show warning toast for other types of warnings
+          toast({
+            title: "Partial Success",
+            description: response.message || "Some items were processed with warnings",
+            variant: "default",
+          })
+          // Show detailed warnings in a separate toast
+          setTimeout(() => {
+            toast({
+              title: "Processing Warnings",
+              description: response.warnings.join("; "),
+              variant: "destructive",
+              duration: 8000,
+            })
+          }, 1000)
+        } else if (successMessage || response.message) {
           toast({
             title: "Success",
-            description: successMessage,
+            description: response.message || successMessage,
           })
         }
         return true
@@ -245,7 +292,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const fetchSewadars = useCallback(async (params?: any) => {
     setLoading((prev) => ({ ...prev, sewadars: true }))
     try {
-      const response = await apiClient.getSewadars(params)
+      // For coordinators and when fetching all sewadars, use high limit to get all records
+      const fetchParams = {
+        limit: 10000, // High limit to get all sewadars
+        ...params
+      }
+      const response = await apiClient.getSewadars(fetchParams)
       if (response.success && response.data) {
         setSewadars(response.data)
         setPagination((prev) => ({ ...prev, sewadars: response.pagination }))
@@ -416,10 +468,30 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const success = handleApiResponse(response, "Attendance submitted successfully")
       if (success) {
         await fetchAttendance()
+        // Refresh sewadars to include newly created temporary sewadars
+        if (data.centerId) {
+          // Fetch sewadars for the specific center
+          setLoading((prev) => ({ ...prev, sewadars: true }))
+          try {
+            const sewadarResponse = await apiClient.getSewadars({ centerId: data.centerId, limit: 10000 })
+            if (sewadarResponse.success && sewadarResponse.data) {
+              setSewadars((prev) => {
+                const filtered = prev.filter((s) => s.centerId !== data.centerId)
+                return [...filtered, ...sewadarResponse.data]
+              })
+            }
+          } catch (error) {
+            console.error("Failed to refresh sewadars:", error)
+          } finally {
+            setLoading((prev) => ({ ...prev, sewadars: false }))
+          }
+        } else {
+          await fetchSewadars()
+        }
       }
       return success
     },
-    [handleApiResponse, fetchAttendance],
+    [handleApiResponse, fetchAttendance, fetchSewadars],
   )
 
   const updateAttendance = useCallback(
@@ -520,6 +592,31 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [handleApiResponse, fetchCoordinators],
   )
 
+  // Function to fetch sewadars for a specific center
+  const fetchSewadarsForCenter = useCallback(async (centerId: string) => {
+    if (!centerId) return
+
+    setLoading((prev) => ({ ...prev, sewadars: true }))
+    try {
+      // Fetch all sewadars for the center by setting a high limit
+      const response = await apiClient.getSewadars({ centerId, limit: 10000 })
+      if (response.success && response.data) {
+        // Update sewadars array by replacing sewadars from this center
+        setSewadars((prev) => {
+          // Remove existing sewadars from this center
+          const filtered = prev.filter((s) => s.centerId !== centerId)
+          // Add new sewadars from this center
+          return [...filtered, ...response.data]
+        })
+        setPagination((prev) => ({ ...prev, sewadars: response.pagination }))
+      }
+    } catch (error) {
+      console.error("Failed to fetch sewadars for center:", error)
+    } finally {
+      setLoading((prev) => ({ ...prev, sewadars: false }))
+    }
+  }, [])
+
   // Utility functions
   const getSewadarsForCenter = useCallback(
     (centerId: string) => {
@@ -566,7 +663,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   // Initial data fetch
   useEffect(() => {
-    if(!user) return;
+    if (!user) return;
     refreshAll()
   }, [user]);
 
@@ -617,6 +714,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         // Utility functions
         getSewadarsForCenter,
+        fetchSewadarsForCenter,
         getAttendanceForSewadar,
         addPlace,
         addDepartment,

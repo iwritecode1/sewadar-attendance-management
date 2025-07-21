@@ -40,8 +40,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create event
-    const event = await SewaEvent.create(eventData)
+    // Check for duplicate events (same place, department, and dates after trimming)
+    const existingEvent = await SewaEvent.findOne({
+      place: eventData.place.trim(),
+      department: eventData.department.trim(),
+      fromDate: eventData.fromDate,
+      toDate: eventData.toDate,
+      areaCode: session.areaCode,
+    })
+
+    if (existingEvent) {
+      return NextResponse.json(
+        {
+          error: "Duplicate event",
+          message: `An event with the same place "${eventData.place.trim()}", department "${eventData.department.trim()}", and dates already exists.`,
+        },
+        { status: 409 },
+      )
+    }
+
+    // Create event with trimmed values
+    const event = await SewaEvent.create({
+      ...eventData,
+      place: eventData.place.trim(),
+      department: eventData.department.trim(),
+    })
 
     // Log activity
     await logActivity({
@@ -131,7 +154,7 @@ export async function GET(request: NextRequest) {
           const attendanceRecords = await AttendanceRecord.find({ eventId: event._id })
 
           const totalAttendance = attendanceRecords.reduce(
-            (sum, record) => sum + record.sewadars.length + record.tempSewadars.length,
+            (sum, record) => sum + record.sewadars.length,
             0,
           )
 

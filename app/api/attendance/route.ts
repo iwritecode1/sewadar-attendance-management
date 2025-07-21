@@ -87,6 +87,88 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Process temp sewadars - create new ones or use existing ones
+    const processedTempSewadarIds: string[] = []
+    const existingSewadarMessages: string[] = []
+    const newSewadarMessages: string[] = []
+    const errorMessages: string[] = []
+
+    if (attendanceData.tempSewadars.length > 0) {
+      for (const tempSewadar of attendanceData.tempSewadars) {
+        try {
+          // Check for existing sewadar by name and father name (case insensitive)
+          const existingSewadar = await Sewadar.findOne({
+            centerId: attendanceData.centerId,
+            name: { $regex: new RegExp(`^${tempSewadar.name.trim()}$`, 'i') },
+            fatherHusbandName: { $regex: new RegExp(`^${tempSewadar.fatherName.trim()}$`, 'i') }
+          })
+
+          if (existingSewadar) {
+            // Use existing sewadar for attendance
+            processedTempSewadarIds.push(existingSewadar._id.toString())
+            existingSewadarMessages.push(`${tempSewadar.name} (Father: ${tempSewadar.fatherName}) - Found existing record with badge ${existingSewadar.badgeNumber}`)
+          } else {
+            // Create new temp sewadar
+            // Generate progressive badge number for this center and gender
+            const genderPrefix = tempSewadar.gender === "MALE" ? "GA" : "LA"
+            const badgePattern = `T${attendanceData.centerId}${genderPrefix}`
+
+            // Find the highest existing badge number for this center and gender
+            const existingBadges = await Sewadar.find({
+              centerId: attendanceData.centerId,
+              badgeNumber: { $regex: new RegExp(`^${badgePattern}\\d{4}$`) }
+            }).sort({ badgeNumber: -1 }).limit(1)
+
+            let nextNumber = 1
+            if (existingBadges.length > 0) {
+              const lastBadge = existingBadges[0].badgeNumber
+              const lastNumber = parseInt(lastBadge.slice(-4))
+              nextNumber = lastNumber + 1
+            }
+
+            const tempBadgeNumber = `${badgePattern}${String(nextNumber).padStart(4, "0")}`
+
+            // Create actual sewadar record
+            const newSewadar = await Sewadar.create({
+              badgeNumber: tempBadgeNumber,
+              name: tempSewadar.name.trim(),
+              fatherHusbandName: tempSewadar.fatherName.trim(),
+              dob: "", // Empty for temp sewadars
+              gender: tempSewadar.gender,
+              badgeStatus: "TEMPORARY",
+              zone: center.area, // Use center's area as zone
+              area: center.area,
+              areaCode: center.areaCode,
+              center: center.name,
+              centerId: attendanceData.centerId,
+              department: "General", // Default department for temp sewadars
+              contactNo: tempSewadar.phone || "",
+              emergencyContact: "",
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            })
+
+            processedTempSewadarIds.push(newSewadar._id.toString())
+            newSewadarMessages.push(`${tempSewadar.name} (Father: ${tempSewadar.fatherName}) - Created new record with badge ${tempBadgeNumber}`)
+          }
+        } catch (error) {
+          console.error("Error processing temp sewadar:", error)
+          errorMessages.push(`Failed to process ${tempSewadar.name}: ${error.message}`)
+        }
+      }
+    }
+
+    // If ALL temp sewadars failed and no regular sewadars selected, return error
+    if (errorMessages.length > 0 && processedTempSewadarIds.length === 0 && attendanceData.sewadarIds.length === 0) {
+      return NextResponse.json(
+        {
+          error: "No sewadars could be processed for attendance",
+          details: errorMessages,
+        },
+        { status: 400 }
+      )
+    }
+
     // Upload nominal roll images
     let imageUrls: string[] = []
     if (attendanceData.nominalRollImages.length > 0) {
@@ -109,14 +191,20 @@ export async function POST(request: NextRequest) {
       centerId: attendanceData.centerId,
     })
 
-    if (existingAttendance) {
-      return NextResponse.json(
-        {
-          error: "Attendance already submitted for this event and center",
-        },
-        { status: 409 },
-      )
-    }
+    // if (existingAttendance) {
+    //   return NextResponse.json(
+    //     {
+    //       error: "Attendance already submitted for this event and center",
+    //     },
+    //     { status: 409 },
+    //   )
+    // }
+
+    // Combine regular sewadars with processed temp sewadars (new + existing)
+    const allSewadarIds = [
+      ...attendanceData.sewadarIds.map((id) => new mongoose.Types.ObjectId(id)),
+      ...processedTempSewadarIds.map((id) => new mongoose.Types.ObjectId(id))
+    ]
 
     // Create attendance record
     const attendance = await AttendanceRecord.create({
@@ -125,8 +213,8 @@ export async function POST(request: NextRequest) {
       centerName: attendanceData.centerName,
       area: session.area,
       areaCode: session.areaCode,
-      sewadars: attendanceData.sewadarIds.map((id) => new mongoose.Types.ObjectId(id)),
-      tempSewadars: attendanceData.tempSewadars,
+      sewadars: allSewadarIds,
+      tempSewadars: [], // Empty since we're now storing temp sewadars as actual sewadars
       nominalRollImages: imageUrls,
       submittedBy: new mongoose.Types.ObjectId(session.id),
       submittedAt: new Date(),
@@ -145,13 +233,36 @@ export async function POST(request: NextRequest) {
       .populate("eventId", "place department fromDate toDate")
       .populate("submittedBy", "name")
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: populatedAttendance,
-      },
-      { status: 201 },
-    )
+    // Prepare response with information about processed temp sewadars
+    const response: any = {
+      success: true,
+      data: populatedAttendance,
+    }
+
+    // Add information about temp sewadar processing
+    if (existingSewadarMessages.length > 0 || newSewadarMessages.length > 0 || errorMessages.length > 0) {
+      const allMessages = [...existingSewadarMessages, ...newSewadarMessages]
+
+      if (allMessages.length > 0) {
+        response.tempSewadarInfo = allMessages
+
+        let message = "Attendance submitted successfully."
+        if (existingSewadarMessages.length > 0) {
+          message += ` ${existingSewadarMessages.length} existing sewadar(s) were included.`
+        }
+        if (newSewadarMessages.length > 0) {
+          message += ` ${newSewadarMessages.length} new temporary sewadar(s) were created.`
+        }
+        if (errorMessages.length > 0) {
+          message += ` ${errorMessages.length} sewadar(s) could not be processed.`
+          response.warnings = errorMessages
+        }
+
+        response.message = message
+      }
+    }
+
+    return NextResponse.json(response, { status: 201 })
   } catch (error) {
     console.error("Create attendance error:", error)
     return NextResponse.json(

@@ -100,10 +100,10 @@ export function validateAttendanceData(data: any): ValidationResult {
     })
   }
 
-  // Validate nominal roll images are provided
-  if (!data.nominalRollImages || (Array.isArray(data.nominalRollImages) && data.nominalRollImages.length === 0)) {
-    errors.push("Nominal roll images are required")
-  }
+  // Nominal roll images are now optional
+  // if (!data.nominalRollImages || (Array.isArray(data.nominalRollImages) && data.nominalRollImages.length === 0)) {
+  //   errors.push("Nominal roll images are required")
+  // }
 
   return {
     isValid: errors.length === 0,

@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
 import EditCoordinatorModal from "@/components/EditCoordinatorModal"
+import { formatDate } from "@/lib/date-utils"
 import {
   UserPlus,
   Search,
@@ -113,17 +114,21 @@ export default function CoordinatorsPage() {
     }
 
     setIsSubmitting(true)
-    const success = await createCoordinator(newCoordinator)
-    setIsSubmitting(false)
-
-    if (success) {
-      setNewCoordinator({
-        name: "",
-        username: "",
-        password: "",
-        centerId: "",
-      })
-      setShowAddForm(false)
+    try {
+      const success = await createCoordinator(newCoordinator)
+      if (success) {
+        setNewCoordinator({
+          name: "",
+          username: "",
+          password: "",
+          centerId: "",
+        })
+        setShowAddForm(false)
+      }
+    } catch (error) {
+      console.error("Error creating coordinator:", error)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -175,30 +180,38 @@ export default function CoordinatorsPage() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between px-2 md:px-0">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Manage Coordinators</h1>
-            <p className="text-gray-600 mt-1">Manage center coordinators in {user.area} Area</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Manage Coordinators</h1>
+            <p className="text-gray-600 mt-1 text-sm md:text-base">Manage center coordinators in {user.area} Area</p>
           </div>
-          <div className="flex space-x-2 mt-4 sm:mt-0">
-            <Button onClick={refreshData} variant="outline" disabled={loading.coordinators}>
-              <RefreshCw className={`mr-2 h-4 w-4 ${loading.coordinators ? "animate-spin" : ""}`} />
-              Refresh
+          <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+            <Button 
+              onClick={refreshData} 
+              variant="outline" 
+              disabled={loading.coordinators}
+              className="w-full md:w-auto text-sm"
+            >
+              <RefreshCw className={`mr-2 h-3 w-3 md:h-4 md:w-4 ${loading.coordinators ? "animate-spin" : ""}`} />
+              <span className="hidden md:inline">Refresh</span>
+              <span className="md:hidden">Refresh Data</span>
             </Button>
             <Button
               onClick={() => setShowAddForm(!showAddForm)}
               variant={showAddForm ? "secondary" : "default"}
-              className="rssb-primary"
+              className="w-full md:w-auto rssb-primary text-sm hover:bg-blue-700 active:bg-blue-800"
             >
               {showAddForm ? (
                 <>
-                  <X className="mr-2 h-4 w-4" />
-                  Cancel
+                  <X className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                  <span className="hidden md:inline">Cancel</span>
+                  <span className="md:hidden">Close Form</span>
                 </>
               ) : (
                 <>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Add Coordinator
+                  <UserPlus className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                  <span className="hidden md:inline">Add Coordinator</span>
+                  <span className="md:hidden">Add New</span>
                 </>
               )}
             </Button>
@@ -295,57 +308,49 @@ export default function CoordinatorsPage() {
           </Card>
         )}
 
-        {/* Filters */}
-        <Card className="enhanced-card">
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Search coordinators..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
+        {/* Statistics */}
+        {/* Mobile - Single Combined Card */}
+        <div className="block md:hidden">
+          <Card className="stat-card">
+            <CardContent className="py-4 px-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center space-y-2">
+                  <div className="flex items-center justify-center space-x-2">
+                    <Users className="h-5 w-5 text-blue-600" />
+                    <span className="text-sm font-medium text-gray-600">Total</span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">{coordinators.length}</p>
+                </div>
+                <div className="text-center space-y-2">
+                  <div className="flex items-center justify-center space-x-2">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <span className="text-sm font-medium text-gray-600">Active</span>
+                  </div>
+                  <p className="text-2xl font-bold text-green-600">{coordinators.filter((c) => c.isActive).length}</p>
+                </div>
+                <div className="text-center space-y-2">
+                  <div className="flex items-center justify-center space-x-2">
+                    <XCircle className="h-5 w-5 text-red-600" />
+                    <span className="text-sm font-medium text-gray-600">Inactive</span>
+                  </div>
+                  <p className="text-2xl font-bold text-red-600">{coordinators.filter((c) => !c.isActive).length}</p>
+                </div>
+                <div className="text-center space-y-2">
+                  <div className="flex items-center justify-center space-x-2">
+                    <Building2 className="h-5 w-5 text-purple-600" />
+                    <span className="text-sm font-medium text-gray-600">Centers</span>
+                  </div>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {new Set(coordinators.filter((c) => c.isActive).map((c) => c.centerId)).size}
+                  </p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </div>
 
-              <Select value={selectedCenter} onValueChange={setSelectedCenter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Centers" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Centers</SelectItem>
-                  {centers.map((center) => (
-                    <SelectItem key={center._id} value={center.code}>
-                      {center.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Button variant="outline" onClick={clearFilters} className="w-full bg-transparent">
-                <Filter className="mr-2 h-4 w-4" />
-                Clear Filters
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Desktop - Individual Cards */}
+        <div className="hidden md:grid grid-cols-4 gap-4">
           <Card className="stat-card">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -397,6 +402,55 @@ export default function CoordinatorsPage() {
           </Card>
         </div>
 
+        {/* Filters */}
+        <Card className="enhanced-card">
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search coordinators..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <Select value={selectedCenter} onValueChange={setSelectedCenter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Centers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Centers</SelectItem>
+                  {centers.map((center) => (
+                    <SelectItem key={center._id} value={center.code}>
+                      {center.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button variant="outline" onClick={clearFilters} className="w-full bg-transparent">
+                <Filter className="mr-2 h-4 w-4" />
+                Clear Filters
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Coordinators Table */}
         <Card className="enhanced-card">
           <CardHeader>
@@ -410,7 +464,77 @@ export default function CoordinatorsPage() {
                 <span className="ml-2 text-gray-600">Loading coordinators...</span>
               </div>
             ) : filteredCoordinators.length > 0 ? (
-              <div className="overflow-x-auto">
+              <>
+              {/* Mobile Card Layout */}
+              <div className="block md:hidden space-y-4">
+                {filteredCoordinators.map((coordinator, index) => (
+                  <div 
+                    key={coordinator._id} 
+                    className={`p-4 border rounded-lg ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-900 text-base truncate">
+                          {coordinator.name}
+                        </h3>
+                        <p className="text-sm text-gray-600 font-mono">
+                          {coordinator.username}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2 ml-3">
+                        <Switch
+                          checked={coordinator.isActive}
+                          onCheckedChange={() => handleStatusToggle(coordinator._id, coordinator.isActive)}
+                          size="sm"
+                        />
+                        <Badge 
+                          variant={coordinator.isActive ? "default" : "secondary"}
+                          className="text-xs"
+                        >
+                          {coordinator.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    <div className="mb-3 p-2 bg-blue-50 rounded">
+                      <div className="text-xs text-blue-600 font-medium mb-1">Center</div>
+                      <div className="text-sm text-blue-900 font-medium">
+                        {coordinator.centerName}
+                      </div>
+                      <div className="text-xs text-blue-700">
+                        ({coordinator.centerId})
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-gray-500">
+                        Created: {formatDate(coordinator.createdAt)}
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingCoordinator(coordinator._id)}
+                          className="text-blue-600 hover:text-blue-800 h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteCoordinator(coordinator._id, coordinator.name)}
+                          className="text-red-600 hover:text-red-800 h-8 w-8 p-0"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table Layout */}
+              <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -423,8 +547,11 @@ export default function CoordinatorsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredCoordinators.map((coordinator) => (
-                      <TableRow key={coordinator._id}>
+                    {filteredCoordinators.map((coordinator, index) => (
+                      <TableRow 
+                        key={coordinator._id}
+                        className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                      >
                         <TableCell className="font-medium">{coordinator.name}</TableCell>
                         <TableCell className="font-mono text-sm">{coordinator.username}</TableCell>
                         <TableCell>
@@ -446,11 +573,7 @@ export default function CoordinatorsPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {new Date(coordinator.createdAt).toLocaleDateString("en-IN", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })}
+                          {formatDate(coordinator.createdAt)}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end space-x-1">
@@ -477,6 +600,7 @@ export default function CoordinatorsPage() {
                   </TableBody>
                 </Table>
               </div>
+              </>
             ) : (
               <div className="text-center py-12">
                 <Users className="mx-auto h-12 w-12 text-gray-300 mb-4" />

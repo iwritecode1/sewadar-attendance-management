@@ -138,7 +138,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       {
         $set: {
           sewadars: updateData.sewadarIds.map((id) => new mongoose.Types.ObjectId(id)),
-          tempSewadars: updateData.tempSewadars,
+          tempSewadars: [], // Empty since temp sewadars are now actual sewadars
           nominalRollImages: imageUrls,
           updatedAt: new Date(),
           updatedBy: new mongoose.Types.ObjectId(session.id),

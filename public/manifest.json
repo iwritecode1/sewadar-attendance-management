@@ -1,6 +1,6 @@
 {
-  "name": "RSSB Sewadar Attendance Management",
-  "short_name": "RSSB Sewadar",
+  "name": "Sewadar Attendance Management",
+  "short_name": "RSSB",
   "description": "Sewadar Attendance Management System for RSSB Areas",
   "start_url": "/",
   "display": "standalone",

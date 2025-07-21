@@ -138,23 +138,23 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
 
       // Check if center already has an active coordinator
-      if (updateData.isActive) {
-        const existingCoordinator = await User.findOne({
-          role: "coordinator",
-          centerId: updateData.centerId,
-          isActive: true,
-          _id: { $ne: params.id },
-        })
+      // if (updateData.isActive) {
+      //   const existingCoordinator = await User.findOne({
+      //     role: "coordinator",
+      //     centerId: updateData.centerId,
+      //     isActive: true,
+      //     _id: { $ne: params.id },
+      //   })
 
-        if (existingCoordinator) {
-          return NextResponse.json(
-            {
-              error: "This center already has an active coordinator",
-            },
-            { status: 409 },
-          )
-        }
-      }
+      //   if (existingCoordinator) {
+      //     return NextResponse.json(
+      //       {
+      //         error: "This center already has an active coordinator",
+      //       },
+      //       { status: 409 },
+      //     )
+      //   }
+      // }
 
       updateData.centerName = center.name
     }

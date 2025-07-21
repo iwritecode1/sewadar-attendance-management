@@ -3,11 +3,14 @@
 import { useAuth } from "@/contexts/AuthContext"
 import Layout from "@/components/Layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, Calendar, Building, TrendingUp, BarChart3, PieChart, Activity, RefreshCw } from "lucide-react"
+import { Users, Calendar, Building, TrendingUp, BarChart3, PieChart, Activity, RefreshCw, Eye } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { apiClient } from "@/lib/api-client"
+import EventDetailsModal from "@/components/EventDetailsModal"
+import { formatDate } from "@/lib/date-utils"
 
 interface DashboardStats {
   overview: {
@@ -38,6 +41,7 @@ interface DashboardStats {
     createdBy: {
       name: string
     }
+    totalSewadars: number
   }>
   attendanceTrends: Array<{
     date: string
@@ -58,6 +62,9 @@ export default function Dashboard() {
   const router = useRouter()
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+  const [selectedEventName, setSelectedEventName] = useState<string>("")
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false)
 
   useEffect(() => {
     if (user && user.role !== "admin") {
@@ -116,6 +123,18 @@ export default function Dashboard() {
 
   const { overview, centerStats, departmentStats, recentEvents, genderStats } = dashboardStats
 
+  const handleEventClick = (eventId: string, eventName: string) => {
+    setSelectedEventId(eventId)
+    setSelectedEventName(eventName)
+    setIsEventModalOpen(true)
+  }
+
+  const handleCloseEventModal = () => {
+    setIsEventModalOpen(false)
+    setSelectedEventId(null)
+    setSelectedEventName("")
+  }
+
   return (
     <Layout>
       <div className="space-y-8">
@@ -123,7 +142,7 @@ export default function Dashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-600 mt-1">RSSB {user.area} Area - Overview & Analytics</p>
+            <p className="text-gray-600 mt-1"> Overview & Analytics</p>
           </div>
           <div className="mt-4 sm:mt-0">
             <Button onClick={fetchDashboardStats} variant="outline" disabled={loading}>
@@ -134,7 +153,62 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        {/* Mobile - Combined Stats Cards */}
+        <div className="block lg:hidden space-y-4">
+          {/* First Row - Centers, Sewadars, Events */}
+          <Card className="stat-card">
+            <CardContent className="py-4 px-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="text-center space-y-1">
+                  <div className="flex items-center justify-center space-x-1">
+                    <Building className="h-4 w-4 text-blue-600" />
+                    <span className="text-xs font-medium text-gray-600">Centers</span>
+                  </div>
+                  <p className="text-xl font-bold text-gray-900">{overview.centerCount}</p>
+                </div>
+                <div className="text-center space-y-1">
+                  <div className="flex items-center justify-center space-x-1">
+                    <Users className="h-4 w-4 text-green-600" />
+                    <span className="text-xs font-medium text-gray-600">Sewadars</span>
+                  </div>
+                  <p className="text-xl font-bold text-gray-900">{overview.sewadarCount}</p>
+                </div>
+                <div className="text-center space-y-1">
+                  <div className="flex items-center justify-center space-x-1">
+                    <Calendar className="h-4 w-4 text-purple-600" />
+                    <span className="text-xs font-medium text-gray-600">Events</span>
+                  </div>
+                  <p className="text-xl font-bold text-gray-900">{overview.eventCount}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Second Row - Coordinators, Attendance */}
+          <Card className="stat-card">
+            <CardContent className="py-4 px-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center space-y-2">
+                  <div className="flex items-center justify-center space-x-2">
+                    <Activity className="h-5 w-5 text-indigo-600" />
+                    <span className="text-sm font-medium text-gray-600">Coordinators</span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">{overview.coordinatorCount}</p>
+                </div>
+                <div className="text-center space-y-2">
+                  <div className="flex items-center justify-center space-x-2">
+                    <TrendingUp className="h-5 w-5 text-orange-600" />
+                    <span className="text-sm font-medium text-gray-600">Attendance</span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">{overview.totalAttendance}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Desktop - Individual Cards */}
+        <div className="hidden lg:grid grid-cols-5 gap-6">
           <Card className="stat-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">Total Centers</CardTitle>
@@ -142,7 +216,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-gray-900">{overview.centerCount}</div>
-              <p className="text-xs text-gray-500 mt-1">Active centers in {user.area}</p>
+              <p className="text-xs text-gray-500 mt-1">Active in {user.area}</p>
             </CardContent>
           </Card>
 
@@ -153,7 +227,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-gray-900">{overview.sewadarCount}</div>
-              <p className="text-xs text-gray-500 mt-1">Registered volunteers</p>
+              <p className="text-xs text-gray-500 mt-1">Registered</p>
             </CardContent>
           </Card>
 
@@ -164,7 +238,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-gray-900">{overview.eventCount}</div>
-              <p className="text-xs text-gray-500 mt-1">Sewa events organized</p>
+              <p className="text-xs text-gray-500 mt-1">Sewa events</p>
             </CardContent>
           </Card>
 
@@ -175,7 +249,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-gray-900">{overview.coordinatorCount}</div>
-              <p className="text-xs text-gray-500 mt-1">Active coordinators</p>
+              <p className="text-xs text-gray-500 mt-1">Active</p>
             </CardContent>
           </Card>
 
@@ -186,7 +260,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-gray-900">{overview.totalAttendance}</div>
-              <p className="text-xs text-gray-500 mt-1">Attendance records</p>
+              <p className="text-xs text-gray-500 mt-1">Records</p>
             </CardContent>
           </Card>
         </div>
@@ -292,21 +366,87 @@ export default function Dashboard() {
               {recentEvents.map((event) => (
                 <div
                   key={event._id}
-                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-blue-300 transition-colors cursor-pointer"
+                  onClick={() => handleEventClick(event._id, `${event.place} - ${event.department}`)}
                 >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <Calendar className="h-6 w-6 text-blue-600" />
+                  {/* Mobile Layout (default) */}
+                  <div className="block md:hidden">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Calendar className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-medium text-gray-900 text-sm truncate">{event.place}</h3>
+                          <p className="text-sm text-gray-600 truncate">{event.department}</p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex-shrink-0 ml-2"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEventClick(event._id, `${event.place} - ${event.department}`)
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <div>
-                      <h3 className="font-medium text-gray-900">{event.place}</h3>
-                      <p className="text-sm text-gray-600">{event.department}</p>
-                      <p className="text-xs text-gray-500">Created by {event.createdBy.name}</p>
+                    
+                    <div className="grid grid-cols-2 gap-3 mb-2">
+                      <div className="bg-gray-50 rounded-lg p-2">
+                        <div className="flex items-center justify-center mb-1">
+                          <Users className="h-3 w-3 text-blue-600 mr-1" />
+                          <span className="text-sm font-medium text-gray-900">{event.totalSewadars}</span>
+                        </div>
+                        <p className="text-xs text-gray-500 text-center">Sewadars</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-2">
+                        <p className="text-sm font-medium text-gray-900 text-center">{formatDate(event.fromDate)}</p>
+                        <p className="text-xs text-gray-500 text-center">to {formatDate(event.toDate)}</p>
+                      </div>
                     </div>
+                    
+                    <p className="text-xs text-gray-500">Created by {event.createdBy.name}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-900">{event.fromDate}</p>
-                    <p className="text-sm text-gray-600">to {event.toDate}</p>
+
+                  {/* Desktop Layout */}
+                  <div className="hidden md:flex md:items-center md:justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <Calendar className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-gray-900">{event.place}</h3>
+                        <p className="text-sm text-gray-600">{event.department}</p>
+                        <p className="text-xs text-gray-500">Created by {event.createdBy.name}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="text-center">
+                        <Badge variant="secondary" className="mb-1">
+                          <Users className="h-3 w-3 mr-1" />
+                          {event.totalSewadars} Sewadars
+                        </Badge>
+                        <p className="text-xs text-gray-500">Total Participants</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-900">{formatDate(event.fromDate)}</p>
+                        <p className="text-sm text-gray-600">to {formatDate(event.toDate)}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-2"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEventClick(event._id, `${event.place} - ${event.department}`)
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -314,6 +454,14 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Event Details Modal */}
+      <EventDetailsModal
+        isOpen={isEventModalOpen}
+        onClose={handleCloseEventModal}
+        eventId={selectedEventId}
+        eventName={selectedEventName}
+      />
     </Layout>
   )
 }

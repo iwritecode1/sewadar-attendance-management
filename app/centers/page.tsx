@@ -5,18 +5,34 @@ import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
 import Layout from "@/components/Layout"
+import EditCenterModal from "@/components/EditCenterModal"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+
 import { useToast } from "@/hooks/use-toast"
+import { formatDate } from "@/lib/date-utils"
 import { Plus, Building2, Users, Calendar, Edit, Trash2, RefreshCw } from "lucide-react"
 import { useRouter } from "next/navigation"
 
+interface Center {
+  _id: string
+  name: string
+  code: string
+  area: string
+  areaCode: string
+  createdAt: string
+  stats?: {
+    sewadarCount: number
+    attendanceCount: number
+    coordinatorCount: number
+  }
+}
+
 export default function CentersPage() {
   const { user } = useAuth()
-  const { centers, createCenter, updateCenter, deleteCenter, fetchCenters, loading } = useData()
+  const { centers, createCenter, deleteCenter, fetchCenters, loading } = useData()
   const { toast } = useToast()
   const router = useRouter()
 
@@ -26,6 +42,7 @@ export default function CentersPage() {
   })
   const [showAddForm, setShowAddForm] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [editingCenter, setEditingCenter] = useState<Center | null>(null)
 
   useEffect(() => {
     if (user && user.role !== "admin") {
@@ -55,13 +72,27 @@ export default function CentersPage() {
       return
     }
 
-    setIsSubmitting(true)
-    const success = await createCenter(newCenter)
-    setIsSubmitting(false)
+    // Validate center code format
+    if (!/^\d{4}$/.test(newCenter.code)) {
+      toast({
+        title: "Error",
+        description: "Center code must be a 4-digit number",
+        variant: "destructive",
+      })
+      return
+    }
 
-    if (success) {
-      setNewCenter({ name: "", code: "" })
-      setShowAddForm(false)
+    setIsSubmitting(true)
+    try {
+      const success = await createCenter(newCenter)
+      if (success) {
+        setNewCenter({ name: "", code: "" })
+        setShowAddForm(false)
+      }
+    } catch (error) {
+      console.error("Error creating center:", error)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -71,6 +102,15 @@ export default function CentersPage() {
     }
   }
 
+  const handleEditCenter = (center: Center) => {
+    setEditingCenter(center)
+  }
+
+  const handleUpdateCenter = () => {
+    // Update the center in the local state
+    fetchCenters({ includeStats: true })
+  }
+
   const refreshData = () => {
     fetchCenters({ includeStats: true })
   }
@@ -78,19 +118,29 @@ export default function CentersPage() {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between px-2 md:px-0">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Manage Centers</h1>
-            <p className="text-gray-600 mt-1">Create and manage centers in {user.area} Area</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Manage Centers</h1>
+            <p className="text-gray-600 mt-1 text-sm md:text-base">Create and manage centers in {user.area} Area</p>
           </div>
-          <div className="flex space-x-2 mt-4 sm:mt-0">
-            <Button onClick={refreshData} variant="outline" disabled={loading.centers}>
-              <RefreshCw className={`mr-2 h-4 w-4 ${loading.centers ? "animate-spin" : ""}`} />
-              Refresh
+          <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+            <Button
+              onClick={refreshData}
+              variant="outline"
+              disabled={loading.centers}
+              className="w-full md:w-auto text-sm"
+            >
+              <RefreshCw className={`mr-2 h-3 w-3 md:h-4 md:w-4 ${loading.centers ? "animate-spin" : ""}`} />
+              <span className="hidden md:inline">Refresh</span>
+              <span className="md:hidden">Refresh Data</span>
             </Button>
-            <Button onClick={() => setShowAddForm(true)} className="rssb-primary">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Center
+            <Button
+              onClick={() => setShowAddForm(true)}
+              className="w-full md:w-auto rssb-primary text-sm hover:bg-blue-700 active:bg-blue-800"
+            >
+              <Plus className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+              <span className="hidden md:inline">Add Center</span>
+              <span className="md:hidden">Add New</span>
             </Button>
           </div>
         </div>
@@ -125,6 +175,8 @@ export default function CentersPage() {
                       onChange={(e) => setNewCenter((prev) => ({ ...prev, code: e.target.value }))}
                       required
                       placeholder="e.g., 5231"
+                      pattern="\d{4}"
+                      maxLength={4}
                       className="mt-1"
                       disabled={isSubmitting}
                     />
@@ -159,7 +211,12 @@ export default function CentersPage() {
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">{center.name}</CardTitle>
                     <div className="flex space-x-1">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => handleEditCenter(center)}
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
@@ -199,7 +256,7 @@ export default function CentersPage() {
                     </div>
                   </div>
                   <div className="mt-4 pt-3 border-t">
-                    <p className="text-xs text-gray-500">Created: {new Date(center.createdAt).toLocaleDateString()}</p>
+                    <p className="text-xs text-gray-500">Created: {formatDate(center.createdAt)}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -208,7 +265,7 @@ export default function CentersPage() {
         )}
 
         {/* Centers Table */}
-        <Card className="enhanced-card">
+        {/* <Card className="enhanced-card">
           <CardHeader>
             <CardTitle className="flex items-center">
               <Building2 className="mr-2 h-5 w-5" />
@@ -240,10 +297,15 @@ export default function CentersPage() {
                       <TableCell className="font-semibold text-blue-600">
                         {center.stats?.coordinatorCount || 0}
                       </TableCell>
-                      <TableCell>{new Date(center.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell>{formatDate(center.createdAt)}</TableCell>
                       <TableCell>
                         <div className="flex space-x-1">
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleEditCenter(center)}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
@@ -262,7 +324,7 @@ export default function CentersPage() {
               </Table>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Instructions */}
         <Card className="enhanced-card bg-blue-50 border-blue-200">
@@ -271,13 +333,22 @@ export default function CentersPage() {
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-blue-800">
             <p>• Each center must have a unique 4-digit code (e.g., 5228, 5229, 5230)</p>
-            <p>• Center codes are used in badge number generation (e.g., HI5228GA0001)</p>
-            <p>• Center names should follow the format: AREA-NUMBER (e.g., HISSAR-I, HISSAR-II)</p>
+            <p>• Center codes are used to identify center specific sewadars. (e.g., HI5228GA0001)</p>
             <p>• Only Area Coordinators can create and manage centers</p>
             <p>• Centers can be assigned to coordinators after creation</p>
             <p>• Deleting a center will affect all associated sewadars and attendance records</p>
           </CardContent>
         </Card>
+
+        {/* Edit Center Modal */}
+        {editingCenter && (
+          <EditCenterModal
+            center={editingCenter}
+            isOpen={!!editingCenter}
+            onClose={() => setEditingCenter(null)}
+            onUpdate={handleUpdateCenter}
+          />
+        )}
       </div>
     </Layout>
   )

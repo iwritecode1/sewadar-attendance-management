@@ -1,311 +1,765 @@
 "use client"
 
-import { useState } from "react"
+import type React from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
+import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
 import Layout from "@/components/Layout"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Search, User, Calendar, MapPin, Clock, Phone } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { Search, User, Calendar, Download, RefreshCw, FileText, X } from "lucide-react"
+import { apiClient } from "@/lib/api-client"
+import { DEPARTMENTS } from "@/lib/constants"
+import { formatDate } from "@/lib/date-utils"
 
-export default function LookupPage() {
-  const { sewadars, events, attendance } = useData()
+interface Sewadar {
+  _id: string
+  badgeNumber: string
+  name: string
+  fatherHusbandName: string
+  gender: "MALE" | "FEMALE"
+  badgeStatus: "PERMANENT" | "TEMPORARY"
+  centerId: string
+  center: string
+  department: string
+  contactNo?: string
+  dob?: string
+  createdAt: string
+}
+
+interface AttendanceRecord {
+  _id: string
+  eventId: {
+    _id: string
+    place: string
+    department: string
+    fromDate: string
+    toDate: string
+  }
+  centerId: string
+  centerName: string
+  submittedAt: string
+  submittedBy: {
+    _id: string
+    name: string
+  }
+}
+
+interface SearchSuggestion {
+  type: "center" | "department"
+  value: string
+  label: string
+  count: number
+}
+
+export default function SewadarLookupPage() {
+  const { user } = useAuth()
+  const { centers, sewadars } = useData()
+  const { toast } = useToast()
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedSewadar, setSelectedSewadar] = useState<string | null>(null)
+  const [searchResults, setSearchResults] = useState<Sewadar[]>([])
+  const [selectedSewadar, setSelectedSewadar] = useState<Sewadar | null>(null)
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [isLoadingAttendance, setIsLoadingAttendance] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([])
+  const [recentSearches, setRecentSearches] = useState<string[]>([])
 
-  const filteredSewadars = sewadars.filter(
-    (sewadar) =>
-      sewadar.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sewadar.badgeNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sewadar.fatherHusbandName.toLowerCase().includes(searchTerm.toLowerCase()),
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    (() => {
+      let timeoutId: NodeJS.Timeout
+      return (searchValue: string) => {
+        clearTimeout(timeoutId)
+        timeoutId = setTimeout(() => {
+          if (searchValue.trim().length >= 2) {
+            handleSearch(searchValue)
+          } else if (searchValue.trim().length === 0) {
+            // Clear results when search is empty
+            setSearchResults([])
+            setSelectedSewadar(null)
+            setAttendanceRecords([])
+          }
+        }, 500) // 500ms delay
+      }
+    })(),
+    [centers] // Dependencies for the search function
   )
 
-  const getSewadarAttendance = (sewadarId: string) => {
-    return attendance.filter((record) => record.sewadars.includes(sewadarId))
+  // Load recent searches and generate suggestions
+  useEffect(() => {
+    const saved = localStorage.getItem("sewadar-lookup-recent-searches")
+    if (saved) {
+      try {
+        setRecentSearches(JSON.parse(saved))
+      } catch (error) {
+        console.error("Error loading recent searches:", error)
+      }
+    }
+    generateSearchSuggestions()
+  }, [centers, sewadars])
+
+  // Generate search suggestions based on centers and departments
+  const generateSearchSuggestions = () => {
+    const suggestions: SearchSuggestion[] = []
+
+    // Add center suggestions with counts
+    centers.forEach((center) => {
+      const centerSewadarCount = sewadars.filter(s => s.centerId === center._id).length
+      if (centerSewadarCount > 0) {
+        suggestions.push({
+          type: "center",
+          value: center.name,
+          label: `Center: ${center.name}`,
+          count: centerSewadarCount,
+        })
+      }
+    })
+
+    // Add department suggestions with counts
+    const departmentCounts: Record<string, number> = {}
+    sewadars.forEach((sewadar) => {
+      if (sewadar.department) {
+        departmentCounts[sewadar.department] = (departmentCounts[sewadar.department] || 0) + 1
+      }
+    })
+
+    Object.entries(departmentCounts)
+      .sort(([, a], [, b]) => b - a)
+      .forEach(([dept, count]) => {
+        suggestions.push({
+          type: "department",
+          value: dept,
+          label: `Department: ${dept}`,
+          count,
+        })
+      })
+
+    setSearchSuggestions(suggestions)
   }
 
-  const getEventDetails = (eventId: string) => {
-    return events.find((event) => event.id === eventId)
+  // Save search term to recent searches
+  const saveToRecentSearches = (term: string) => {
+    const updated = [term, ...recentSearches.filter((s) => s !== term)].slice(0, 5)
+    setRecentSearches(updated)
+    localStorage.setItem("sewadar-lookup-recent-searches", JSON.stringify(updated))
   }
 
-  const calculateDays = (fromDate: string, toDate: string) => {
-    const from = new Date(fromDate)
-    const to = new Date(toDate)
-    const diffTime = Math.abs(to.getTime() - from.getTime())
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
+  // Search sewadars
+  const handleSearch = async (searchValue?: string) => {
+    const term = searchValue || searchTerm
+    if (!term.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a search term",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsSearching(true)
+    setShowSuggestions(false)
+
+    try {
+      // Determine search parameters based on the search term
+      let searchParams: any = {}
+
+      // Check if it's a center search
+      const centerMatch = centers.find(c =>
+        c.name.toLowerCase().includes(term.toLowerCase()) ||
+        term.toLowerCase().includes(c.name.toLowerCase())
+      )
+
+      // Check if it's a department search
+      const departmentMatch = DEPARTMENTS.find(d =>
+        d.toLowerCase().includes(term.toLowerCase()) ||
+        term.toLowerCase().includes(d.toLowerCase())
+      )
+
+      if (centerMatch) {
+        searchParams.centerId = centerMatch.code
+      } else if (departmentMatch) {
+        searchParams.department = departmentMatch
+      } else {
+        // General search by name, badge number, or father/husband name
+        searchParams.search = term
+      }
+
+      const response = await apiClient.getSewadars({
+        ...searchParams,
+        limit: 10000,
+      })
+
+      if (response.success) {
+        setSearchResults(response.data || [])
+        saveToRecentSearches(term)
+
+        if (response.data?.length === 0) {
+          toast({
+            title: "No Results",
+            description: "No sewadars found matching your search",
+          })
+        } else {
+          toast({
+            title: "Search Complete",
+            description: `Found ${response.data?.length} sewadar(s)`,
+          })
+        }
+      } else {
+        throw new Error(response.error || "Search failed")
+      }
+    } catch (error: any) {
+      console.error("Search error:", error)
+      toast({
+        title: "Search Failed",
+        description: error.message || "Failed to search sewadars",
+        variant: "destructive",
+      })
+      setSearchResults([])
+    } finally {
+      setIsSearching(false)
+    }
   }
 
-  const selectedSewadarData = selectedSewadar ? sewadars.find((s) => s.id === selectedSewadar) : null
-  const sewadarAttendance = selectedSewadar ? getSewadarAttendance(selectedSewadar) : []
+  // Clear search
+  const handleClearSearch = () => {
+    setSearchTerm("")
+    setSearchResults([])
+    setSelectedSewadar(null)
+    setAttendanceRecords([])
+    setShowSuggestions(false)
+    searchInputRef.current?.focus()
+  }
+
+  // Handle suggestion click
+  const handleSuggestionClick = (suggestion: SearchSuggestion) => {
+    setSearchTerm(suggestion.value)
+    setShowSuggestions(false)
+    handleSearch(suggestion.value)
+  }
+
+  // Select sewadar and fetch attendance
+  const handleSelectSewadar = async (sewadar: Sewadar) => {
+    setSelectedSewadar(sewadar)
+    setIsLoadingAttendance(true)
+
+    try {
+      const response = await apiClient.getAttendanceReport({
+        sewadarId: sewadar._id,
+        format: "json",
+      })
+
+      if (response.success) {
+        setAttendanceRecords(response.data?.records || [])
+        toast({
+          title: "Attendance Loaded",
+          description: `Found ${response.data?.records?.length || 0} attendance record(s)`,
+        })
+      } else {
+        throw new Error(response.error || "Failed to fetch attendance")
+      }
+    } catch (error: any) {
+      console.error("Attendance fetch error:", error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch attendance records",
+        variant: "destructive",
+      })
+      setAttendanceRecords([])
+    } finally {
+      setIsLoadingAttendance(false)
+    }
+  }
+
+  // Export attendance as CSV
+  const handleExportAttendance = async () => {
+    if (!selectedSewadar) return
+
+    setIsExporting(true)
+    try {
+      const response = await apiClient.getAttendanceReport({
+        sewadarId: selectedSewadar._id,
+        format: "csv",
+      })
+
+      if (response.success && response.data) {
+        const blob = new Blob([response.data], { type: "text/csv" })
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement("a")
+        link.href = url
+        link.download = `${selectedSewadar.badgeNumber}_attendance_report.csv`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
+
+        toast({
+          title: "Export Successful",
+          description: "Attendance report downloaded successfully",
+        })
+      } else {
+        throw new Error(response.error || "Export failed")
+      }
+    } catch (error: any) {
+      console.error("Export error:", error)
+      toast({
+        title: "Export Failed",
+        description: error.message || "Failed to export attendance report",
+        variant: "destructive",
+      })
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  // Handle Enter key in search
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSearch()
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false)
+    }
+  }
+
+  // Handle input focus
+  const handleInputFocus = () => {
+    if (searchSuggestions.length > 0 && !searchTerm) {
+      setShowSuggestions(true)
+    }
+  }
+
+  // Handle input blur (with delay to allow suggestion clicks)
+  const handleInputBlur = () => {
+    setTimeout(() => setShowSuggestions(false), 200)
+  }
+
+  // Filter suggestions based on search term
+  const filteredSuggestions = searchTerm
+    ? searchSuggestions.filter((suggestion) =>
+      suggestion.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      suggestion.value.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    : searchSuggestions.slice(0, 10) // Show top 10 when no search term
+
+  // Calculate attendance statistics
+  const attendanceStats = selectedSewadar
+    ? {
+      totalEvents: attendanceRecords.length,
+      totalDays: attendanceRecords.reduce((sum, record) => {
+        if (!record.eventId?.fromDate || !record.eventId?.toDate) return sum
+        const fromDate = new Date(record.eventId.fromDate)
+        const toDate = new Date(record.eventId.toDate)
+        const diffTime = Math.abs(toDate.getTime() - fromDate.getTime())
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
+        return sum + diffDays
+      }, 0),
+      departments: [...new Set(attendanceRecords.map((record) => record.eventId?.department).filter(Boolean))],
+      places: [...new Set(attendanceRecords.map((record) => record.eventId?.place).filter(Boolean))],
+    }
+    : null
 
   return (
     <Layout>
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Sewadar Lookup</h1>
-          <p className="text-gray-600 mt-1">Search and view sewadar attendance history</p>
+          <p className="text-gray-600 mt-1">Search and view sewadar attendance records</p>
         </div>
 
-        {/* Search */}
+        {/* Search Section */}
         <Card className="enhanced-card">
-          <CardContent className="pt-6">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Search className="mr-2 h-5 w-5" />
+              Search Sewadars
+            </CardTitle>
+            <CardDescription>Search by Badge Number, Name, Father/Husband Name, Department or Center.</CardDescription>
+          </CardHeader>
+          <CardContent>
             <div className="relative">
-              <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-              <Input
-                placeholder="Search by name, badge number, or father's name..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-12 h-12 text-lg"
-              />
+              <div className="flex space-x-2">
+                <div className="flex-1 relative">
+                  <Input
+                    ref={searchInputRef}
+                    id="search"
+                    placeholder="Enter Badge Number, Name, Father/Husband Name, Department or Center"
+                    value={searchTerm}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      setSearchTerm(value)
+                      // Clear selected sewadar and attendance when search term changes
+                      setSelectedSewadar(null)
+                      setAttendanceRecords([])
+
+                      // Trigger debounced search
+                      debouncedSearch(value)
+
+                      if (value.length > 0) {
+                        setShowSuggestions(true)
+                      } else {
+                        setShowSuggestions(false)
+                      }
+                    }}
+                    onKeyPress={handleKeyPress}
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
+                    className="w-full pr-10"
+                  />
+                  {searchTerm && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                      onClick={handleClearSearch}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <Button 
+                  onClick={() => handleSearch()} 
+                  disabled={isSearching} 
+                  className="hidden md:flex rssb-primary"
+                >
+                  {isSearching ? (
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="mr-2 h-4 w-4" />
+                  )}
+                  {isSearching ? "Searching..." : "Search"}
+                </Button>
+              </div>
+
+              {/* Search Suggestions */}
+              {showSuggestions && filteredSuggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-80 overflow-y-auto">
+                  <div className="p-3">
+                    <div className="text-xs font-medium text-gray-500 mb-3">
+                      ✨ Search Suggestions
+                    </div>
+                    <div className="space-y-1">
+                      {filteredSuggestions.map((suggestion, index) => (
+                        <button
+                          key={index}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded-md flex items-center justify-between group"
+                          onClick={() => handleSuggestionClick(suggestion)}
+                        >
+                          <div className="flex items-center">
+                            <span className="text-gray-600">{suggestion.label}</span>
+                          </div>
+                          <span className="text-xs text-gray-400 group-hover:text-gray-600">
+                            {suggestion.count}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Recent searches section */}
+                    {recentSearches.length > 0 && !searchTerm && (
+                      <div className="mt-4 pt-3 border-t border-gray-100">
+                        <div className="text-xs font-medium text-gray-500 mb-2">
+                          Or try one of your recent searches:
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {recentSearches.slice(0, 3).map((search, index) => (
+                            <button
+                              key={index}
+                              className="px-3 py-1 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-full transition-colors"
+                              onClick={() => {
+                                setSearchTerm(search)
+                                setShowSuggestions(false)
+                                handleSearch(search)
+                              }}
+                            >
+                              {search}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
         {/* Search Results */}
-        {searchTerm && (
+        {searchResults.length > 0 && (
           <Card className="enhanced-card">
             <CardHeader>
-              <CardTitle>Search Results ({filteredSewadars.length})</CardTitle>
-              <CardDescription>Click on a sewadar to view detailed information</CardDescription>
+              <CardTitle className="flex items-center justify-between">
+                <span>Search Results ({searchResults.length})</span>
+                <Button variant="outline" size="sm" onClick={handleClearSearch}>
+                  <X className="mr-2 h-4 w-4" />
+                  Clear Results
+                </Button>
+              </CardTitle>
+              <CardDescription>Click on a sewadar to view their attendance records</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
-                {filteredSewadars.map((sewadar) => (
-                  <div
-                    key={sewadar.id}
-                    className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md ${
-                      selectedSewadar === sewadar.id ? "bg-blue-50 border-blue-300 shadow-md" : "hover:bg-gray-50"
+              {/* Mobile Card Layout - Only Badge Number, Name, Father/Husband Name */}
+              <div className="block md:hidden space-y-3">
+                {searchResults.map((sewadar, index) => (
+                  <div 
+                    key={sewadar._id} 
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                      selectedSewadar?._id === sewadar._id 
+                        ? "bg-blue-50 border-blue-200" 
+                        : index % 2 === 0 
+                          ? "bg-white hover:bg-gray-50" 
+                          : "bg-gray-50 hover:bg-gray-100"
                     }`}
-                    onClick={() => setSelectedSewadar(sewadar.id)}
+                    onClick={() => handleSelectSewadar(sewadar)}
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900">{sewadar.name}</h3>
-                        <p className="text-sm text-gray-600 font-mono">{sewadar.badgeNumber}</p>
-                        <p className="text-sm text-gray-500">{sewadar.fatherHusbandName}</p>
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-gray-900 text-sm truncate">
+                          {sewadar.name}
+                        </h4>
+                        <p className="text-xs text-gray-600 truncate mt-1">
+                          {sewadar.fatherHusbandName}
+                        </p>
                       </div>
-                      <div className="text-right">
-                        <Badge variant={sewadar.gender === "MALE" ? "default" : "secondary"}>{sewadar.gender}</Badge>
+                      <div className="ml-3 flex-shrink-0">
+                        <code className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">
+                          {sewadar.badgeNumber}
+                        </code>
                       </div>
                     </div>
-                    <div className="mt-3 flex items-center justify-between text-sm">
-                      <span className="text-gray-600">{sewadar.center}</span>
-                      <span className="text-blue-600 font-medium">{sewadar.department}</span>
-                    </div>
+                    {selectedSewadar?._id === sewadar._id && (
+                      <div className="mt-2 pt-2 border-t border-blue-200">
+                        <span className="text-xs text-blue-600 font-medium">✓ Selected</span>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-              {filteredSewadars.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <Search className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-                  <p>No sewadars found matching your search</p>
-                </div>
-              )}
+              
+              {/* Desktop Table Layout - Full Information */}
+              <div className="hidden md:block overflow-x-auto">
+                <Table className="enhanced-table">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Badge Number</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Father/Husband</TableHead>
+                      <TableHead>Gender</TableHead>
+                      <TableHead>Center</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {searchResults.map((sewadar, index) => (
+                      <TableRow 
+                        key={sewadar._id} 
+                        className={selectedSewadar?._id === sewadar._id ? "bg-blue-50" : index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                      >
+                        <TableCell className="font-mono text-sm">{sewadar.badgeNumber}</TableCell>
+                        <TableCell className="font-medium">{sewadar.name}</TableCell>
+                        <TableCell>{sewadar.fatherHusbandName}</TableCell>
+                        <TableCell>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              sewadar.gender === "MALE" ? "bg-blue-100 text-blue-800" : "bg-pink-100 text-pink-800"
+                            }`}
+                          >
+                            {sewadar.gender}
+                          </span>
+                        </TableCell>
+                        <TableCell>{sewadar.center}</TableCell>
+                        <TableCell>{sewadar.department}</TableCell>
+                        <TableCell>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              sewadar.badgeStatus === "PERMANENT"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}
+                          >
+                            {sewadar.badgeStatus}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant={selectedSewadar?._id === sewadar._id ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleSelectSewadar(sewadar)}
+                            disabled={isLoadingAttendance}
+                          >
+                            <User className="mr-1 h-3 w-3" />
+                            {selectedSewadar?._id === sewadar._id ? "Selected" : "View"}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Selected Sewadar Details */}
-        {selectedSewadarData && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Sewadar Info */}
-            <Card className="enhanced-card lg:col-span-1">
+        {/* Selected Sewadar Details and Attendance */}
+        {selectedSewadar && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Sewadar Information */}
+            <Card className="enhanced-card">
               <CardHeader>
-                <CardTitle className="flex items-center">
-                  <User className="mr-2 h-5 w-5" />
-                  Sewadar Details
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center">
+                    <User className="mr-2 h-5 w-5" />
+                    Sewadar Details
+                  </span>
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedSewadar(null)}>
+                    <X className="h-4 w-4" />
+                  </Button>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="text-center pb-4 border-b">
-                  <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <span className="text-white font-bold text-2xl">
-                      {selectedSewadarData.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .substring(0, 2)}
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900">{selectedSewadarData.name}</h3>
-                  <p className="text-gray-600 font-mono text-sm">{selectedSewadarData.badgeNumber}</p>
-                </div>
-
-                <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600">Father/Husband Name</p>
-                    <p className="font-medium">{selectedSewadarData.fatherHusbandName}</p>
+                    <div className="text-sm font-medium text-gray-500">Badge Number</div>
+                    <div className="font-mono text-sm mt-1">{selectedSewadar.badgeNumber}</div>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Gender</p>
-                      <Badge variant={selectedSewadarData.gender === "MALE" ? "default" : "secondary"}>
-                        {selectedSewadarData.gender}
-                      </Badge>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">DOB</p>
-                      <p className="font-medium">{selectedSewadarData.dob}</p>
+                  <div>
+                    <div className="text-sm font-medium text-gray-500">Badge Status</div>
+                    <div className="mt-1">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${selectedSewadar.badgeStatus === "PERMANENT"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-yellow-100 text-yellow-800"
+                          }`}
+                      >
+                        {selectedSewadar.badgeStatus}
+                      </span>
                     </div>
                   </div>
-
-                  <div>
-                    <p className="text-sm text-gray-600">Center</p>
-                    <p className="font-medium">{selectedSewadarData.center}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-600">Department</p>
-                    <Badge variant="outline">{selectedSewadarData.department}</Badge>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-600 flex items-center">
-                      <Phone className="mr-1 h-4 w-4" />
-                      Contact
-                    </p>
-                    <p className="font-medium">{selectedSewadarData.contactNo}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-600">Emergency Contact</p>
-                    <p className="font-medium">{selectedSewadarData.emergencyContact}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-600">Badge Status</p>
-                    <Badge variant={selectedSewadarData.badgeStatus === "PERMANENT" ? "default" : "outline"}>
-                      {selectedSewadarData.badgeStatus}
-                    </Badge>
-                  </div>
                 </div>
+
+                <div>
+                  <div className="text-sm font-medium text-gray-500">Name</div>
+                  <div className="font-medium mt-1">{selectedSewadar.name}</div>
+                </div>
+
+                <div>
+                  <div className="text-sm font-medium text-gray-500">Father/Husband Name</div>
+                  <div className="mt-1">{selectedSewadar.fatherHusbandName}</div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-sm font-medium text-gray-500">Gender</div>
+                    <div className="mt-1">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${selectedSewadar.gender === "MALE" ? "bg-blue-100 text-blue-800" : "bg-pink-100 text-pink-800"
+                          }`}
+                      >
+                        {selectedSewadar.gender}
+                      </span>
+                    </div>
+                  </div>
+                  {selectedSewadar.contactNo && (
+                    <div>
+                      <div className="text-sm font-medium text-gray-500">Contact</div>
+                      <div className="font-mono text-sm mt-1">{selectedSewadar.contactNo}</div>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <div className="text-sm font-medium text-gray-500">Center</div>
+                  <div className="mt-1">{selectedSewadar.center}</div>
+                </div>
+
+                <div>
+                  <div className="text-sm font-medium text-gray-500">Department</div>
+                  <div className="mt-1">{selectedSewadar.department}</div>
+                </div>
+
+                {attendanceStats && (
+                  <div className="pt-4 border-t">
+                    <div className="text-sm font-medium text-gray-500 mb-3">Attendance Summary</div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center p-3 bg-blue-50 rounded-lg">
+                        <div className="text-2xl font-bold text-blue-600">{attendanceStats.totalEvents}</div>
+                        <div className="text-sm text-blue-800">Events</div>
+                      </div>
+                      <div className="text-center p-3 bg-green-50 rounded-lg">
+                        <div className="text-2xl font-bold text-green-600">{attendanceStats.totalDays}</div>
+                        <div className="text-sm text-green-800">Days</div>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={handleExportAttendance}
+                      disabled={isExporting}
+                      className="w-full mt-4 rssb-primary"
+                    >
+                      {isExporting ? (
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="mr-2 h-4 w-4" />
+                      )}
+                      {isExporting ? "Exporting..." : "Export CSV"}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Attendance Summary and History */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Attendance Summary */}
-              <Card className="enhanced-card">
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Calendar className="mr-2 h-5 w-5" />
-                    Attendance Summary
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="text-center p-6 bg-blue-50 rounded-lg">
-                      <div className="text-3xl font-bold text-blue-600">{sewadarAttendance.length}</div>
-                      <p className="text-gray-600 mt-1">Total Events</p>
-                    </div>
-                    <div className="text-center p-6 bg-green-50 rounded-lg">
-                      <div className="text-3xl font-bold text-green-600">
-                        {sewadarAttendance.reduce((total, record) => {
-                          const event = getEventDetails(record.eventId)
-                          return total + (event ? calculateDays(event.fromDate, event.toDate) : 0)
-                        }, 0)}
-                      </div>
-                      <p className="text-gray-600 mt-1">Total Days</p>
-                    </div>
-                    <div className="text-center p-6 bg-purple-50 rounded-lg">
-                      <div className="text-3xl font-bold text-purple-600">
-                        {
-                          new Set(
-                            sewadarAttendance.map((record) => {
-                              const event = getEventDetails(record.eventId)
-                              return event?.department
-                            }),
-                          ).size
-                        }
-                      </div>
-                      <p className="text-gray-600 mt-1">Departments</p>
-                    </div>
+            {/* Attendance Records */}
+            <Card className="enhanced-card">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Calendar className="mr-2 h-5 w-5" />
+                  Attendance Records
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoadingAttendance ? (
+                  <div className="flex items-center justify-center py-12">
+                    <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
+                    <span className="ml-2 text-gray-600">Loading attendance...</span>
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Attendance History */}
-              {sewadarAttendance.length > 0 ? (
-                <Card className="enhanced-card">
-                  <CardHeader>
-                    <CardTitle>Attendance History</CardTitle>
-                    <CardDescription>Events attended by {selectedSewadarData.name}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="overflow-x-auto">
-                      <Table className="enhanced-table">
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Event Place</TableHead>
-                            <TableHead>Department</TableHead>
-                            <TableHead>From Date</TableHead>
-                            <TableHead>To Date</TableHead>
-                            <TableHead>Days</TableHead>
-                            <TableHead>Status</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {sewadarAttendance.map((record) => {
-                            const event = getEventDetails(record.eventId)
-                            if (!event) return null
-
-                            const days = calculateDays(event.fromDate, event.toDate)
-
-                            return (
-                              <TableRow key={record.id}>
-                                <TableCell className="font-medium">
-                                  <div className="flex items-center">
-                                    <MapPin className="mr-2 h-4 w-4 text-gray-400" />
-                                    {event.place}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant="outline">{event.department}</Badge>
-                                </TableCell>
-                                <TableCell>{event.fromDate}</TableCell>
-                                <TableCell>{event.toDate}</TableCell>
-                                <TableCell>
-                                  <div className="flex items-center">
-                                    <Clock className="mr-1 h-4 w-4 text-gray-400" />
-                                    {days}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge className="bg-green-100 text-green-800">Attended</Badge>
-                                </TableCell>
-                              </TableRow>
-                            )
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card className="enhanced-card">
-                  <CardContent className="text-center py-12">
-                    <Calendar className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Attendance Records</h3>
-                    <p className="text-gray-600">{selectedSewadarData.name} has not attended any events yet.</p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+                ) : attendanceRecords.length > 0 ? (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {attendanceRecords.map((record) => (
+                      <div key={record._id} className="p-3 border rounded-lg hover:bg-gray-50">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-medium text-sm">{record.eventId?.place || 'N/A'}</h4>
+                          <span className="text-xs text-gray-500">
+                            {record.eventId?.fromDate ? formatDate(record.eventId.fromDate) : 'Invalid Date'}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-600 mb-1">{record.eventId?.department || 'N/A'}</div>
+                        <div className="text-xs text-gray-500">
+                          {record.eventId?.fromDate ? formatDate(record.eventId.fromDate) : 'Invalid Date'} -{" "}
+                          {record.eventId?.toDate ? formatDate(record.eventId.toDate) : 'Invalid Date'}
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          Recorded by {record.submittedBy?.name || 'Unknown'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-gray-500">
+                    <FileText className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                    <p>No attendance records found</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        )}
-
-        {!searchTerm && !selectedSewadar && (
-          <Card className="enhanced-card">
-            <CardContent className="text-center py-12">
-              <Search className="mx-auto h-16 w-16 text-gray-300 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Search for Sewadars</h3>
-              <p className="text-gray-600">
-                Use the search box above to find sewadars by name, badge number, or father's name.
-              </p>
-            </CardContent>
-          </Card>
         )}
       </div>
     </Layout>

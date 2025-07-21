@@ -193,7 +193,10 @@ export async function GET(request: NextRequest) {
       maleCount = 0
     }
 
-    
+    let permanentCount;
+    if(!query["badgeStatus"] || query["badgeStatus"] === "PERMANENT"){
+      permanentCount = await Sewadar.countDocuments({...query, badgeStatus: "PERMANENT" })
+    }
 
     let sewadarsWithStats = sewadars
 
@@ -222,6 +225,7 @@ export async function GET(request: NextRequest) {
         total,
         maleCount,
         femaleCount,
+        permanentCount,
         page,
         limit,
         pages: Math.ceil(total / limit),

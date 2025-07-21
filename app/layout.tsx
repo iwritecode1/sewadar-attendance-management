@@ -10,7 +10,7 @@ import ErrorBoundary from "@/components/ErrorBoundary"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "RSSB Sewadar Attendance Management",
+  title: "Sewadar Attendance Management",
   description: "Sewadar Attendance Management System for RSSB Areas",
   manifest: "/manifest.json",
 };
