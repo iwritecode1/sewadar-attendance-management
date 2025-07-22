@@ -39,7 +39,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     // Get attendance history
     const attendanceRecords = await AttendanceRecord.find({
-      sewadars: sewadar._id,
+      sewadars: { $in: [sewadar._id] },
     })
       .populate("eventId", "place department fromDate toDate")
       .sort({ submittedAt: -1 })
@@ -191,7 +191,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
 
     // Check for dependencies
     const attendanceCount = await AttendanceRecord.countDocuments({
-      sewadars: sewadar._id,
+      sewadars: { $in: [sewadar._id] },
     })
 
     if (attendanceCount > 0) {

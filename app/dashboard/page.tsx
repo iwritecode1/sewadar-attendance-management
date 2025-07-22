@@ -137,24 +137,25 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="space-y-8">
+      <div className="space-y-4 md:space-y-8 px-0 md:px-0">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 md:px-0">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-600 mt-1"> Overview & Analytics</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-gray-600 mt-1 text-sm md:text-base">Overview & Analytics</p>
           </div>
           <div className="mt-4 sm:mt-0">
-            <Button onClick={fetchDashboardStats} variant="outline" disabled={loading}>
+            <Button onClick={fetchDashboardStats} variant="outline" disabled={loading} className="w-full sm:w-auto">
               <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              Refresh
+              <span className="hidden sm:inline">Refresh</span>
+              <span className="sm:hidden">Refresh Data</span>
             </Button>
           </div>
         </div>
 
         {/* Stats Cards */}
         {/* Mobile - Combined Stats Cards */}
-        <div className="block lg:hidden space-y-4">
+        <div className="block lg:hidden space-y-4 px-4 md:px-0">
           {/* First Row - Centers, Sewadars, Events */}
           <Card className="stat-card">
             <CardContent className="py-4 px-4">
@@ -266,29 +267,33 @@ export default function Dashboard() {
         </div>
 
         {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 px-4 md:px-0">
           {/* Center Performance Chart */}
           <Card className="chart-container">
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <BarChart3 className="mr-2 h-5 w-5 text-blue-600" />
-                Center Performance
+              <CardTitle className="flex items-center text-base md:text-lg">
+                <BarChart3 className="mr-2 h-4 w-4 md:h-5 md:w-5 text-blue-600" />
+                <span className="hidden md:inline">Center Performance</span>
+                <span className="md:hidden">Centers</span>
               </CardTitle>
-              <CardDescription>Attendance statistics by center</CardDescription>
+              <CardDescription className="text-sm">
+                <span className="hidden md:inline">Attendance statistics by center</span>
+                <span className="md:hidden">Attendance by center</span>
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 {centerStats.map((center) => (
-                  <div key={center._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h3 className="font-medium text-gray-900">{center.name}</h3>
-                      <p className="text-sm text-gray-600">
+                  <div key={center._id} className="flex items-center justify-between p-3 md:p-4 bg-gray-50 rounded-lg">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-medium text-gray-900 text-sm md:text-base truncate">{center.name}</h3>
+                      <p className="text-xs md:text-sm text-gray-600">
                         {center.sewadarCount} sewadars • {center.eventCount} events
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-blue-600">{center.attendanceCount}</p>
-                      <p className="text-sm text-gray-600">Total attendance</p>
+                    <div className="text-right ml-3">
+                      <p className="text-xl md:text-2xl font-bold text-blue-600">{center.attendanceCount}</p>
+                      <p className="text-xs md:text-sm text-gray-600">Total attendance</p>
                     </div>
                   </div>
                 ))}
@@ -299,11 +304,15 @@ export default function Dashboard() {
           {/* Department Distribution */}
           <Card className="chart-container">
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <PieChart className="mr-2 h-5 w-5 text-green-600" />
-                Department Distribution
+              <CardTitle className="flex items-center text-base md:text-lg">
+                <PieChart className="mr-2 h-4 w-4 md:h-5 md:w-5 text-green-600" />
+                <span className="hidden md:inline">Department Distribution</span>
+                <span className="md:hidden">Departments</span>
               </CardTitle>
-              <CardDescription>Sewadars by department</CardDescription>
+              <CardDescription className="text-sm">
+                <span className="hidden md:inline">Sewadars by department</span>
+                <span className="md:hidden">Sewadar distribution</span>
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -311,18 +320,18 @@ export default function Dashboard() {
                   .sort((a, b) => b.count - a.count)
                   .map((dept) => (
                     <div key={dept.department} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
-                        <span className="text-sm font-medium text-gray-700">{dept.department}</span>
+                      <div className="flex items-center space-x-2 md:space-x-3 min-w-0 flex-1">
+                        <div className="w-3 h-3 bg-blue-600 rounded-full flex-shrink-0"></div>
+                        <span className="text-sm font-medium text-gray-700 truncate">{dept.department}</span>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-20 bg-gray-200 rounded-full h-2">
+                      <div className="flex items-center space-x-2 ml-2">
+                        <div className="w-16 md:w-20 bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-blue-600 h-2 rounded-full"
                             style={{ width: `${(dept.count / overview.sewadarCount) * 100}%` }}
                           ></div>
                         </div>
-                        <span className="text-sm font-bold text-gray-900 w-8 text-right">{dept.count}</span>
+                        <span className="text-sm font-bold text-gray-900 w-6 md:w-8 text-right">{dept.count}</span>
                       </div>
                     </div>
                   ))}
@@ -332,19 +341,19 @@ export default function Dashboard() {
         </div>
 
         {/* Gender Distribution */}
-        <Card className="enhanced-card">
+        <Card className="enhanced-card mx-4 md:mx-0">
           <CardHeader>
-            <CardTitle>Gender Distribution</CardTitle>
-            <CardDescription>Breakdown of sewadars by gender</CardDescription>
+            <CardTitle className="text-base md:text-lg">Gender Distribution</CardTitle>
+            <CardDescription className="text-sm">Breakdown of sewadars by gender</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               {genderStats.map((gender) => (
                 <div
                   key={gender.gender}
-                  className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl"
+                  className="text-center p-4 md:p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl"
                 >
-                  <div className="text-4xl font-bold text-blue-600 mb-2">{gender.count}</div>
+                  <div className="text-3xl md:text-4xl font-bold text-blue-600 mb-2">{gender.count}</div>
                   <p className="text-gray-700 font-medium">{gender.gender}</p>
                   <p className="text-sm text-gray-600 mt-1">
                     {((gender.count / overview.sewadarCount) * 100).toFixed(1)}% of total
@@ -356,10 +365,10 @@ export default function Dashboard() {
         </Card>
 
         {/* Recent Events */}
-        <Card className="enhanced-card">
+        <Card className="enhanced-card mx-4 md:mx-0">
           <CardHeader>
-            <CardTitle>Recent Events</CardTitle>
-            <CardDescription>Latest sewa events organized</CardDescription>
+            <CardTitle className="text-base md:text-lg">Recent Events</CardTitle>
+            <CardDescription className="text-sm">Latest sewa events organized</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">

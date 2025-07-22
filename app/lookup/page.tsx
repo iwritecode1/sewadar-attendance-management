@@ -10,7 +10,10 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
-import { Search, User, Calendar, Download, RefreshCw, FileText, X } from "lucide-react"
+import { Search, User, Calendar, Download, RefreshCw, FileText, X, Filter, BarChart3, FileSpreadsheet } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import SewadarAttendanceModal from "@/components/SewadarAttendanceModal"
+import * as XLSX from "xlsx"
 import { apiClient } from "@/lib/api-client"
 import { DEPARTMENTS } from "@/lib/constants"
 import { formatDate } from "@/lib/date-utils"
@@ -57,7 +60,7 @@ interface SearchSuggestion {
 
 export default function SewadarLookupPage() {
   const { user } = useAuth()
-  const { centers, sewadars } = useData()
+  const { centers, sewadars, attendance } = useData()
   const { toast } = useToast()
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -71,6 +74,39 @@ export default function SewadarLookupPage() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([])
   const [recentSearches, setRecentSearches] = useState<string[]>([])
+
+  // Attendance filter states
+  const [showAttendanceFilters, setShowAttendanceFilters] = useState(false)
+  const [attendanceFilterCenter, setAttendanceFilterCenter] = useState("all")
+  const [attendanceFilterOperator, setAttendanceFilterOperator] = useState("less_than")
+  const [attendanceFilterCount, setAttendanceFilterCount] = useState("")
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(20) // 20 results per page
+  const [totalResults, setTotalResults] = useState(0)
+
+  // Calculate pagination
+  const totalPages = Math.ceil(searchResults.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedResults = searchResults.slice(startIndex, endIndex)
+
+  // Reset pagination when search results change
+  useEffect(() => {
+    setCurrentPage(1)
+    setTotalResults(searchResults.length)
+  }, [searchResults])
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    // Scroll to top of results
+    const resultsElement = document.getElementById('search-results')
+    if (resultsElement) {
+      resultsElement.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
 
   // Debounced search function
   const debouncedSearch = useCallback(
@@ -245,37 +281,183 @@ export default function SewadarLookupPage() {
     handleSearch(suggestion.value)
   }
 
-  // Select sewadar and fetch attendance
-  const handleSelectSewadar = async (sewadar: Sewadar) => {
-    setSelectedSewadar(sewadar)
-    setIsLoadingAttendance(true)
+  // Calculate attendance count for a sewadar in a specific center or all centers
+  // This should return the total number of DAYS attended, not just number of events
+  const getSewadarAttendanceCount = (sewadarId: string, centerId?: string) => {
+    const matchingRecords = attendance.filter(record => {
+      // Check if this attendance record includes the sewadar
+      let hasSewadar = false
 
-    try {
-      const response = await apiClient.getAttendanceReport({
-        sewadarId: sewadar._id,
-        format: "json",
-      })
-
-      if (response.success) {
-        setAttendanceRecords(response.data?.records || [])
-        toast({
-          title: "Attendance Loaded",
-          description: `Found ${response.data?.records?.length || 0} attendance record(s)`,
-        })
-      } else {
-        throw new Error(response.error || "Failed to fetch attendance")
+      // Check regular sewadars (array of sewadar IDs)
+      if (record.sewadars && Array.isArray(record.sewadars)) {
+        hasSewadar = record.sewadars.includes(sewadarId)
       }
-    } catch (error: any) {
-      console.error("Attendance fetch error:", error)
+
+      // Check temporary sewadars
+      if (!hasSewadar && record.tempSewadars && Array.isArray(record.tempSewadars)) {
+        hasSewadar = record.tempSewadars.some((ts: any) =>
+          ts.id === sewadarId || ts._id === sewadarId
+        )
+      }
+
+      if (!hasSewadar) return false
+
+      // If specific center is requested, filter by center
+      if (centerId && centerId !== "all") {
+        // Find the center object to get all possible matching values
+        const targetCenter = centers.find(c => c.code === centerId)
+        if (!targetCenter) return false
+
+        // Debug center matching for first few records
+        if (!window.centerMatchDebugCount) {
+          window.centerMatchDebugCount = 0
+        }
+
+        if (window.centerMatchDebugCount < 5) {
+          console.log('=== Center Match Debug ===')
+          console.log('Target center ID:', centerId)
+          console.log('Target center object:', targetCenter)
+          console.log('Record center data:', {
+            centerId: record.centerId,
+            centerCode: record.centerCode,
+            centerName: record.centerName,
+            fullRecord: record
+          })
+          console.log('All centers:', centers.map(c => ({ _id: c._id, code: c.code, name: c.name })))
+          window.centerMatchDebugCount++
+        }
+
+        // Try multiple matching approaches based on different possible formats
+        const centerMatch =
+          record.centerId === centerId ||                    // Match by code
+          record.centerId === targetCenter._id ||            // Match by _id
+          record.centerCode === centerId ||                  // Match by centerCode field
+          record.centerName === targetCenter.name ||         // Match by name
+          record.centerName === targetCenter.code ||         // Match centerName to code
+          // Also try case-insensitive matching
+          record.centerName?.toLowerCase() === targetCenter.name?.toLowerCase() ||
+          record.centerName?.toLowerCase() === targetCenter.code?.toLowerCase()
+
+        if (window.centerMatchDebugCount <= 3) {
+          console.log('Center match result:', centerMatch)
+        }
+
+        return centerMatch
+      }
+
+      return true
+    })
+
+    // Calculate total days instead of just counting records
+    return matchingRecords.reduce((totalDays, record) => {
+      if (!record.eventId?.fromDate || !record.eventId?.toDate) return totalDays
+
+      const fromDate = new Date(record.eventId.fromDate)
+      const toDate = new Date(record.eventId.toDate)
+      const diffTime = Math.abs(toDate.getTime() - fromDate.getTime())
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1 // +1 to include both start and end dates
+
+      return totalDays + diffDays
+    }, 0)
+  }
+
+  // Handle attendance filter
+  const handleAttendanceFilter = async () => {
+    if (!attendanceFilterCount) {
       toast({
         title: "Error",
-        description: error.message || "Failed to fetch attendance records",
+        description: "Please enter an attendance count",
         variant: "destructive",
       })
-      setAttendanceRecords([])
-    } finally {
-      setIsLoadingAttendance(false)
+      return
     }
+
+    setIsSearching(true)
+    setShowSuggestions(false)
+
+    try {
+      const targetCount = parseInt(attendanceFilterCount)
+      const targetCenterId = attendanceFilterCenter !== "all" ? attendanceFilterCenter : undefined
+
+      // Filter sewadars based on attendance count
+      const filteredSewadars = sewadars.filter(sewadar => {
+        // If filtering by specific center, only include sewadars from that center
+        if (targetCenterId && targetCenterId !== "all") {
+          const targetCenter = centers.find(c => c.code === targetCenterId)
+          if (!targetCenter) return false
+
+          // Check if sewadar belongs to the target center
+          const sewadarBelongsToCenter =
+            sewadar.centerId === targetCenterId ||
+            sewadar.centerId === targetCenter._id ||
+            sewadar.center === targetCenter.name ||
+            sewadar.center === targetCenter.code
+
+          if (!sewadarBelongsToCenter) return false
+        }
+
+        const attendanceCount = getSewadarAttendanceCount(sewadar._id, targetCenterId)
+
+        switch (attendanceFilterOperator) {
+          case "less_than":
+            return attendanceCount < targetCount
+          case "less_than_equal":
+            return attendanceCount <= targetCount
+          case "equal":
+            return attendanceCount === targetCount
+          case "greater_than_equal":
+            return attendanceCount >= targetCount
+          case "greater_than":
+            return attendanceCount > targetCount
+          default:
+            return false
+        }
+      })
+
+      setSearchResults(filteredSewadars)
+
+      // Clear search term since this is a filter operation
+      setSearchTerm("")
+
+      if (filteredSewadars.length === 0) {
+        toast({
+          title: "No Results",
+          description: "No sewadars found matching your attendance criteria",
+        })
+      } else {
+        const centerName = attendanceFilterCenter === "all"
+          ? "all centers"
+          : centers.find(c => c.code === attendanceFilterCenter)?.name || "selected center"
+
+        const operatorText = {
+          less_than: "less than",
+          less_than_equal: "less than or equal to",
+          equal: "equal to",
+          greater_than_equal: "greater than or equal to",
+          greater_than: "greater than"
+        }[attendanceFilterOperator]
+
+        toast({
+          title: "Filter Applied",
+          description: `Found ${filteredSewadars.length} sewadar(s) with ${operatorText} ${attendanceFilterCount} attendance(s) in ${centerName}`,
+        })
+      }
+    } catch (error: any) {
+      console.error("Filter error:", error)
+      toast({
+        title: "Filter Failed",
+        description: error.message || "Failed to filter sewadars by attendance",
+        variant: "destructive",
+      })
+      setSearchResults([])
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  // Select sewadar - now just opens the modal
+  const handleSelectSewadar = (sewadar: Sewadar) => {
+    setSelectedSewadar(sewadar)
   }
 
   // Export attendance as CSV
@@ -312,6 +494,69 @@ export default function SewadarLookupPage() {
       toast({
         title: "Export Failed",
         description: error.message || "Failed to export attendance report",
+        variant: "destructive",
+      })
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  // Export search results as Excel
+  const handleExportSearchResults = () => {
+    if (searchResults.length === 0) {
+      toast({
+        title: "No Data",
+        description: "No search results to export",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsExporting(true)
+    try {
+      // Prepare data for export
+      const exportData = searchResults.map((sewadar) => {
+        const attendanceCount = getSewadarAttendanceCount(sewadar._id)
+        return {
+          "Badge Number": sewadar.badgeNumber,
+          "Name": sewadar.name,
+          "Father/Husband Name": sewadar.fatherHusbandName,
+          "Contact": sewadar.contactNo || "N/A",
+          "Center": sewadar.center,
+          "Attendance Count (Days)": attendanceCount,
+        }
+      })
+
+      // Create Excel file
+      const ws = XLSX.utils.json_to_sheet(exportData)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, "Sewadar Results")
+
+      // Generate filename based on search criteria
+      let filename = "sewadar_lookup_results"
+      if (searchTerm) {
+        filename += `_${searchTerm.replace(/[^a-zA-Z0-9]/g, "_")}`
+      }
+      if (attendanceFilterCount) {
+        const centerName = attendanceFilterCenter === "all"
+          ? "all_centers"
+          : centers.find(c => c.code === attendanceFilterCenter)?.name?.replace(/[^a-zA-Z0-9]/g, "_") || "center"
+        filename += `_${attendanceFilterOperator}_${attendanceFilterCount}_${centerName}`
+      }
+      filename += `_${new Date().toISOString().split("T")[0]}.xlsx`
+
+      // Download file
+      XLSX.writeFile(wb, filename)
+
+      toast({
+        title: "Export Successful",
+        description: `Exported ${exportData.length} sewadar records to Excel`,
+      })
+    } catch (error: any) {
+      console.error("Export error:", error)
+      toast({
+        title: "Export Failed",
+        description: "Failed to export search results",
         variant: "destructive",
       })
     } finally {
@@ -367,20 +612,20 @@ export default function SewadarLookupPage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Sewadar Lookup</h1>
-          <p className="text-gray-600 mt-1">Search and view sewadar attendance records</p>
+      <div className="space-y-4 md:space-y-6 px-2 md:px-0">
+        <div className="px-2 md:px-0">
+          <h1 className="text-xl md:text-3xl font-bold text-gray-900">Sewadar Lookup</h1>
+          <p className="text-gray-600 mt-1 text-sm md:text-base">Search and view sewadar attendance records</p>
         </div>
 
         {/* Search Section */}
         <Card className="enhanced-card">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Search className="mr-2 h-5 w-5" />
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center text-base md:text-lg">
+              <Search className="mr-2 h-4 w-4 md:h-5 md:w-5" />
               Search Sewadars
             </CardTitle>
-            <CardDescription>Search by Badge Number, Name, Father/Husband Name, Department or Center.</CardDescription>
+            <CardDescription className="text-sm">Search by Badge Number, Name, Father/Husband Name, Department or Center.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="relative">
@@ -423,9 +668,9 @@ export default function SewadarLookupPage() {
                     </Button>
                   )}
                 </div>
-                <Button 
-                  onClick={() => handleSearch()} 
-                  disabled={isSearching} 
+                <Button
+                  onClick={() => handleSearch()}
+                  disabled={isSearching}
                   className="hidden md:flex rssb-primary"
                 >
                   {isSearching ? (
@@ -491,32 +736,196 @@ export default function SewadarLookupPage() {
           </CardContent>
         </Card>
 
+        {/* Attendance Filters */}
+        <Card className="enhanced-card">
+          <CardHeader className="pb-4">
+            <div className="flex flex-col space-y-3 md:space-y-0 md:flex-row md:items-center md:justify-between">
+              <div>
+                <CardTitle className="flex items-center text-base md:text-lg">
+                  <BarChart3 className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+                  Attendance Filters
+                </CardTitle>
+                <CardDescription className="text-sm">Find sewadars based on their attendance count for specific centers</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAttendanceFilters(!showAttendanceFilters)}
+                className="w-full md:w-auto"
+              >
+                <Filter className="mr-2 h-4 w-4" />
+                {showAttendanceFilters ? "Hide Filters" : "Show Filters"}
+              </Button>
+            </div>
+          </CardHeader>
+          {showAttendanceFilters && (
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Center
+                  </label>
+                  <Select value={attendanceFilterCenter} onValueChange={setAttendanceFilterCenter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select center" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Centers</SelectItem>
+                      {centers.map((center) => (
+                        <SelectItem key={center._id} value={center.code}>
+                          {center.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Condition
+                  </label>
+                  <Select value={attendanceFilterOperator} onValueChange={setAttendanceFilterOperator}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="less_than">Less than</SelectItem>
+                      <SelectItem value="less_than_equal">Less than or equal to</SelectItem>
+                      <SelectItem value="equal">Equal to</SelectItem>
+                      <SelectItem value="greater_than_equal">Greater than or equal to</SelectItem>
+                      <SelectItem value="greater_than">Greater than</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Attendance Count
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="Enter count"
+                    value={attendanceFilterCount}
+                    onChange={(e) => setAttendanceFilterCount(e.target.value)}
+                  />
+                </div>
+
+                <div className="flex items-end">
+                  <Button
+                    onClick={handleAttendanceFilter}
+                    disabled={!attendanceFilterCount || isSearching}
+                    className="w-full rssb-primary text-sm"
+                  >
+                    {isSearching ? (
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <BarChart3 className="mr-2 h-4 w-4" />
+                    )}
+                    <span className="hidden sm:inline">{isSearching ? "Filtering..." : "Apply Filter"}</span>
+                    <span className="sm:hidden">{isSearching ? "..." : "Apply"}</span>
+                  </Button>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4">
+                <h4 className="font-medium text-blue-900 mb-2 text-sm md:text-base">Filter Examples:</h4>
+                <ul className="text-xs md:text-sm text-blue-800 space-y-1">
+                  <li>• Find sewadars with less than 5 attendances in HISAR-I center</li>
+                  <li>• Find sewadars with exactly 0 attendances across all centers</li>
+                  <li>• Find sewadars with more than 10 attendances in a specific center</li>
+                </ul>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
         {/* Search Results */}
         {searchResults.length > 0 && (
-          <Card className="enhanced-card">
+          <Card className="enhanced-card mx-4 md:mx-0" id="search-results">
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Search Results ({searchResults.length})</span>
-                <Button variant="outline" size="sm" onClick={handleClearSearch}>
-                  <X className="mr-2 h-4 w-4" />
-                  Clear Results
-                </Button>
-              </CardTitle>
-              <CardDescription>Click on a sewadar to view their attendance records</CardDescription>
+              {/* Mobile Layout */}
+              <div className="block md:hidden">
+                <CardTitle className="text-lg font-semibold mb-3">
+                  Search Results ({searchResults.length})
+                </CardTitle>
+                <div className="flex space-x-2 mb-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportSearchResults}
+                    disabled={isExporting}
+                    className="flex-1 rssb-primary"
+                  >
+                    {isExporting ? (
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    )}
+                    {isExporting ? "..." : "Export"}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleClearSearch} className="flex-1">
+                    <X className="mr-2 h-4 w-4" />
+                    Clear
+                  </Button>
+                </div>
+                <CardDescription className="text-sm text-gray-600">
+                  Click on a sewadar to view their attendance records.
+                  {totalPages > 1 && (
+                    <span className="block mt-1 font-medium">
+                      Showing {startIndex + 1}-{Math.min(endIndex, searchResults.length)} of {searchResults.length} results
+                    </span>
+                  )}
+                </CardDescription>
+              </div>
+
+              {/* Desktop Layout */}
+              <div className="hidden md:block">
+                <CardTitle className="flex items-center justify-between text-lg">
+                  <span>Search Results ({searchResults.length})</span>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleExportSearchResults}
+                      disabled={isExporting}
+                      className="rssb-primary"
+                    >
+                      {isExporting ? (
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <FileSpreadsheet className="mr-2 h-4 w-4" />
+                      )}
+                      {isExporting ? "Exporting..." : "Export Excel"}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleClearSearch}>
+                      <X className="mr-2 h-4 w-4" />
+                      Clear Results
+                    </Button>
+                  </div>
+                </CardTitle>
+                <CardDescription className="text-sm mt-2">
+                  Click on a sewadar to view their attendance records. Export results to Excel with attendance counts.
+                  {totalPages > 1 && (
+                    <span className="block mt-1">
+                      Showing {startIndex + 1}-{Math.min(endIndex, searchResults.length)} of {searchResults.length} results
+                    </span>
+                  )}
+                </CardDescription>
+              </div>
             </CardHeader>
             <CardContent>
               {/* Mobile Card Layout - Only Badge Number, Name, Father/Husband Name */}
               <div className="block md:hidden space-y-3">
-                {searchResults.map((sewadar, index) => (
-                  <div 
-                    key={sewadar._id} 
-                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                      selectedSewadar?._id === sewadar._id 
-                        ? "bg-blue-50 border-blue-200" 
-                        : index % 2 === 0 
-                          ? "bg-white hover:bg-gray-50" 
-                          : "bg-gray-50 hover:bg-gray-100"
-                    }`}
+                {paginatedResults.map((sewadar, index) => (
+                  <div
+                    key={sewadar._id}
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedSewadar?._id === sewadar._id
+                      ? "bg-blue-50 border-blue-200"
+                      : index % 2 === 0
+                        ? "bg-white hover:bg-gray-50"
+                        : "bg-gray-50 hover:bg-gray-100"
+                      }`}
                     onClick={() => handleSelectSewadar(sewadar)}
                   >
                     <div className="flex items-start justify-between mb-2">
@@ -542,7 +951,7 @@ export default function SewadarLookupPage() {
                   </div>
                 ))}
               </div>
-              
+
               {/* Desktop Table Layout - Full Information */}
               <div className="hidden md:block overflow-x-auto">
                 <Table className="enhanced-table">
@@ -559,9 +968,9 @@ export default function SewadarLookupPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {searchResults.map((sewadar, index) => (
-                      <TableRow 
-                        key={sewadar._id} 
+                    {paginatedResults.map((sewadar, index) => (
+                      <TableRow
+                        key={sewadar._id}
                         className={selectedSewadar?._id === sewadar._id ? "bg-blue-50" : index % 2 === 0 ? "bg-white" : "bg-gray-50"}
                       >
                         <TableCell className="font-mono text-sm">{sewadar.badgeNumber}</TableCell>
@@ -569,9 +978,8 @@ export default function SewadarLookupPage() {
                         <TableCell>{sewadar.fatherHusbandName}</TableCell>
                         <TableCell>
                           <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              sewadar.gender === "MALE" ? "bg-blue-100 text-blue-800" : "bg-pink-100 text-pink-800"
-                            }`}
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${sewadar.gender === "MALE" ? "bg-blue-100 text-blue-800" : "bg-pink-100 text-pink-800"
+                              }`}
                           >
                             {sewadar.gender}
                           </span>
@@ -580,11 +988,10 @@ export default function SewadarLookupPage() {
                         <TableCell>{sewadar.department}</TableCell>
                         <TableCell>
                           <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              sewadar.badgeStatus === "PERMANENT"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-yellow-100 text-yellow-800"
-                            }`}
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${sewadar.badgeStatus === "PERMANENT"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-yellow-100 text-yellow-800"
+                              }`}
                           >
                             {sewadar.badgeStatus}
                           </span>
@@ -606,161 +1013,93 @@ export default function SewadarLookupPage() {
                 </Table>
               </div>
             </CardContent>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="px-6 py-4 border-t">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+                  <div className="text-xs md:text-sm text-gray-600 text-center md:text-left">
+                    Showing {startIndex + 1} to {Math.min(endIndex, searchResults.length)} of {searchResults.length} results
+                  </div>
+                  <div className="flex justify-center md:justify-end">
+                    <div className="flex space-x-1 md:space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage <= 1}
+                        className="text-xs md:text-sm px-2 md:px-3"
+                      >
+                        <span className="hidden md:inline">Previous</span>
+                        <span className="md:hidden">Prev</span>
+                      </Button>
+
+                      {/* Page numbers */}
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum
+                        if (totalPages <= 5) {
+                          pageNum = i + 1
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i
+                        } else {
+                          pageNum = currentPage - 2 + i
+                        }
+
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={pageNum === currentPage ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handlePageChange(pageNum)}
+                            className="text-xs md:text-sm px-2 md:px-3 min-w-[32px] md:min-w-[40px]"
+                          >
+                            {pageNum}
+                          </Button>
+                        )
+                      })}
+
+                      {totalPages > 5 && currentPage < totalPages - 2 && (
+                        <>
+                          <span className="flex items-center text-gray-400 px-1">...</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePageChange(totalPages)}
+                            className="text-xs md:text-sm px-2 md:px-3 min-w-[32px] md:min-w-[40px]"
+                          >
+                            {totalPages}
+                          </Button>
+                        </>
+                      )}
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage >= totalPages}
+                        className="text-xs md:text-sm px-2 md:px-3"
+                      >
+                        <span className="hidden md:inline">Next</span>
+                        <span className="md:hidden">Next</span>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </Card>
         )}
 
-        {/* Selected Sewadar Details and Attendance */}
-        {selectedSewadar && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Sewadar Information */}
-            <Card className="enhanced-card">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span className="flex items-center">
-                    <User className="mr-2 h-5 w-5" />
-                    Sewadar Details
-                  </span>
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedSewadar(null)}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-sm font-medium text-gray-500">Badge Number</div>
-                    <div className="font-mono text-sm mt-1">{selectedSewadar.badgeNumber}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-gray-500">Badge Status</div>
-                    <div className="mt-1">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${selectedSewadar.badgeStatus === "PERMANENT"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-yellow-100 text-yellow-800"
-                          }`}
-                      >
-                        {selectedSewadar.badgeStatus}
-                      </span>
-                    </div>
-                  </div>
-                </div>
 
-                <div>
-                  <div className="text-sm font-medium text-gray-500">Name</div>
-                  <div className="font-medium mt-1">{selectedSewadar.name}</div>
-                </div>
 
-                <div>
-                  <div className="text-sm font-medium text-gray-500">Father/Husband Name</div>
-                  <div className="mt-1">{selectedSewadar.fatherHusbandName}</div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-sm font-medium text-gray-500">Gender</div>
-                    <div className="mt-1">
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${selectedSewadar.gender === "MALE" ? "bg-blue-100 text-blue-800" : "bg-pink-100 text-pink-800"
-                          }`}
-                      >
-                        {selectedSewadar.gender}
-                      </span>
-                    </div>
-                  </div>
-                  {selectedSewadar.contactNo && (
-                    <div>
-                      <div className="text-sm font-medium text-gray-500">Contact</div>
-                      <div className="font-mono text-sm mt-1">{selectedSewadar.contactNo}</div>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <div className="text-sm font-medium text-gray-500">Center</div>
-                  <div className="mt-1">{selectedSewadar.center}</div>
-                </div>
-
-                <div>
-                  <div className="text-sm font-medium text-gray-500">Department</div>
-                  <div className="mt-1">{selectedSewadar.department}</div>
-                </div>
-
-                {attendanceStats && (
-                  <div className="pt-4 border-t">
-                    <div className="text-sm font-medium text-gray-500 mb-3">Attendance Summary</div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-3 bg-blue-50 rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600">{attendanceStats.totalEvents}</div>
-                        <div className="text-sm text-blue-800">Events</div>
-                      </div>
-                      <div className="text-center p-3 bg-green-50 rounded-lg">
-                        <div className="text-2xl font-bold text-green-600">{attendanceStats.totalDays}</div>
-                        <div className="text-sm text-green-800">Days</div>
-                      </div>
-                    </div>
-                    <Button
-                      onClick={handleExportAttendance}
-                      disabled={isExporting}
-                      className="w-full mt-4 rssb-primary"
-                    >
-                      {isExporting ? (
-                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Download className="mr-2 h-4 w-4" />
-                      )}
-                      {isExporting ? "Exporting..." : "Export CSV"}
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Attendance Records */}
-            <Card className="enhanced-card">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Calendar className="mr-2 h-5 w-5" />
-                  Attendance Records
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoadingAttendance ? (
-                  <div className="flex items-center justify-center py-12">
-                    <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
-                    <span className="ml-2 text-gray-600">Loading attendance...</span>
-                  </div>
-                ) : attendanceRecords.length > 0 ? (
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {attendanceRecords.map((record) => (
-                      <div key={record._id} className="p-3 border rounded-lg hover:bg-gray-50">
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-medium text-sm">{record.eventId?.place || 'N/A'}</h4>
-                          <span className="text-xs text-gray-500">
-                            {record.eventId?.fromDate ? formatDate(record.eventId.fromDate) : 'Invalid Date'}
-                          </span>
-                        </div>
-                        <div className="text-xs text-gray-600 mb-1">{record.eventId?.department || 'N/A'}</div>
-                        <div className="text-xs text-gray-500">
-                          {record.eventId?.fromDate ? formatDate(record.eventId.fromDate) : 'Invalid Date'} -{" "}
-                          {record.eventId?.toDate ? formatDate(record.eventId.toDate) : 'Invalid Date'}
-                        </div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          Recorded by {record.submittedBy?.name || 'Unknown'}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-gray-500">
-                    <FileText className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                    <p>No attendance records found</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        {/* Sewadar Attendance Modal */}
+        <SewadarAttendanceModal
+          isOpen={!!selectedSewadar}
+          onClose={() => setSelectedSewadar(null)}
+          sewadar={selectedSewadar}
+        />
       </div>
     </Layout>
   )

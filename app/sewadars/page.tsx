@@ -613,8 +613,8 @@ export default function SewadarsPage() {
                 {/* Mobile Card Layout - Essential Info Only */}
                 <div className="block md:hidden space-y-3">
                   {sewadars.map((sewadar, index) => (
-                    <div 
-                      key={sewadar._id} 
+                    <div
+                      key={sewadar._id}
                       className={`p-4 border rounded-lg ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
                     >
                       <div className="flex items-start justify-between mb-3">
@@ -632,7 +632,7 @@ export default function SewadarsPage() {
                           </code>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <Badge variant={sewadar.gender === "MALE" ? "default" : "secondary"} className="text-xs">
@@ -642,7 +642,7 @@ export default function SewadarsPage() {
                             {sewadar.badgeStatus}
                           </Badge>
                         </div>
-                        
+
                         <div className="flex space-x-1">
                           <Button
                             variant="ghost"
@@ -688,15 +688,13 @@ export default function SewadarsPage() {
                   <Table className="enhanced-table">
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Badge Number</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Father/Husband</TableHead>
-                        <TableHead>Gender</TableHead>
-                        <TableHead>Center</TableHead>
-                        <TableHead>Department</TableHead>
-                        <TableHead>Contact</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
+                        <TableHead className="w-32">Badge Number</TableHead>
+                        <TableHead className="w-40">Name</TableHead>
+                        <TableHead className="w-40">Father/Husband</TableHead>
+                        {user?.role === "admin" && <TableHead className="w-24">Center</TableHead>}
+                        <TableHead className="w-32">Department</TableHead>
+                        <TableHead className="w-24">Status</TableHead>
+                        <TableHead className="w-20">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -705,23 +703,17 @@ export default function SewadarsPage() {
                           key={sewadar._id}
                           className={index % 2 === 0 ? "bg-white" : "bg-gray-100"}
                         >
-                          <TableCell className="font-mono text-sm font-medium">{sewadar.badgeNumber}</TableCell>
-                          <TableCell className="font-medium">{sewadar.name}</TableCell>
-                          <TableCell>{sewadar.fatherHusbandName}</TableCell>
-                          <TableCell>
-                            <Badge variant={sewadar.gender === "MALE" ? "default" : "secondary"}>
-                              {sewadar.gender}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{sewadar.center}</TableCell>
-                          <TableCell>{sewadar.department}</TableCell>
-                          <TableCell>{sewadar.contactNo}</TableCell>
-                          <TableCell>
+                          <TableCell className="font-mono text-sm font-medium w-32">{sewadar.badgeNumber}</TableCell>
+                          <TableCell className="font-medium w-40">{sewadar.name}</TableCell>
+                          <TableCell className="w-40">{sewadar.fatherHusbandName}</TableCell>
+                          {user?.role === "admin" && <TableCell className="w-24 whitespace-nowrap text-sm">{sewadar.center}</TableCell>}
+                          <TableCell className="w-32 whitespace-nowrap text-sm">{sewadar.department}</TableCell>
+                          <TableCell className="w-24">
                             <Badge variant={sewadar.badgeStatus === "PERMANENT" ? "default" : "outline"}>
                               {sewadar.badgeStatus}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="w-20">
                             <div className="flex space-x-1">
                               <Button
                                 variant="ghost"

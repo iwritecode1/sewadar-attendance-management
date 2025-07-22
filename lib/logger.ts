@@ -109,7 +109,6 @@ export async function cleanupOldLogs(daysToKeep = 90): Promise<void> {
       timestamp: { $lt: cutoffDate },
     })
 
-    console.log(`Cleaned up ${result.deletedCount} old activity logs`)
   } catch (error) {
     console.error("Failed to cleanup old logs:", error)
   }

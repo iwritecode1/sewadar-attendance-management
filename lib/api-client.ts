@@ -419,6 +419,17 @@ class ApiClient {
       return { success: false, data: [] }
     })
   }
+
+  // Profile APIs
+  async changePassword(data: {
+    currentPassword: string
+    newPassword: string
+  }) {
+    return this.request("/profile/change-password", {
+      method: "POST",
+      body: JSON.stringify(data),
+    })
+  }
 }
 
 export const apiClient = new ApiClient()

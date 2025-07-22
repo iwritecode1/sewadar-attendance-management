@@ -25,6 +25,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import SearchableEventSelect from "@/components/SearchableEventSelect";
+import SearchablePlaceSelect from "@/components/SearchablePlaceSelect";
+import SearchableDepartmentSelect from "@/components/SearchableDepartmentSelect";
 import {
   Calendar,
   Plus,
@@ -120,8 +122,6 @@ export default function AttendancePage() {
     fromDate: "",
     toDate: "",
   });
-  const [newPlace, setNewPlace] = useState("");
-  const [newDepartment, setNewDepartment] = useState("");
   const [selectedSewadars, setSelectedSewadars] = useState<string[]>([]);
   const [tempSewadars, setTempSewadars] = useState([
     {
@@ -133,8 +133,6 @@ export default function AttendancePage() {
     },
   ]);
   const [showNewEventForm, setShowNewEventForm] = useState(false);
-  const [showNewPlaceForm, setShowNewPlaceForm] = useState(false);
-  const [showNewDepartmentForm, setShowNewDepartmentForm] = useState(false);
 
   // Searchable dropdown states
   const [sewadarSearch, setSewadarSearch] = useState("");
@@ -170,30 +168,24 @@ export default function AttendancePage() {
     const genderPrefix = gender === "MALE" ? "GA" : "LA";
     const exactBadgePattern = `T${centerId}${genderPrefix}`;
 
-    // Debug: Log all available sewadars to see what we're working with
-    console.log("All available sewadars:", availableSewadars.map(s => ({ name: s.name, badge: s.badgeNumber })));
+
 
     // Get existing temp sewadars with exact badge pattern (must be exactly T + centerId + genderPrefix + 4 digits)
     const matchingBadges = availableSewadars
       .filter(sewadar => {
         const regex = new RegExp(`^T${centerId}${genderPrefix}\\d{4}$`);
-        const matches = regex.test(sewadar.badgeNumber);
-        console.log(`Checking badge ${sewadar.badgeNumber} against pattern T${centerId}${genderPrefix}\\d{4}: ${matches}`);
-        return matches;
+        return regex.test(sewadar.badgeNumber);
       });
 
-    console.log("Matching badges:", matchingBadges.map(s => s.badgeNumber));
+
 
     const existingNumbers = matchingBadges
       .map(sewadar => {
         const match = sewadar.badgeNumber.match(/(\d{4})$/);
         const num = match ? parseInt(match[1]) : 0;
-        console.log(`Extracted number from ${sewadar.badgeNumber}: ${num}`);
         return num;
       })
       .filter(num => num > 0);
-
-    console.log("Existing numbers:", existingNumbers);
 
     // Count how many temp sewadars of the same gender are being added before this one
     let sameGenderCount = 0;
@@ -206,13 +198,11 @@ export default function AttendancePage() {
 
     // Find the highest existing number for this gender
     const maxExisting = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
-    console.log(`Max existing: ${maxExisting}, Same gender count: ${sameGenderCount}`);
 
     // Next number should be maxExisting + sameGenderCount + 1
     const nextNumber = maxExisting + sameGenderCount + 1;
 
     const finalBadge = `${exactBadgePattern}${String(nextNumber).padStart(4, "0")}`;
-    console.log(`Generated badge: ${finalBadge}`);
 
     return finalBadge;
   };
@@ -251,71 +241,9 @@ export default function AttendancePage() {
     }
   };
 
-  const handlePlaceSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newPlace.trim()) {
-      const placeToAdd = newPlace.trim();
-      addPlace(placeToAdd);
 
-      // Close form first
-      setNewPlace("");
-      setShowNewPlaceForm(false);
 
-      // Auto-select the new place with multiple attempts to ensure it works
-      const attemptAutoSelect = (attempts = 0) => {
-        if (attempts < 5) {
-          setTimeout(() => {
-            if (places.includes(placeToAdd)) {
-              setNewEvent((prev) => ({ ...prev, place: placeToAdd }));
-              console.log(`Auto-selected place: ${placeToAdd} (attempt ${attempts + 1})`);
-            } else {
-              console.log(`Place not yet in list, retrying... (attempt ${attempts + 1})`);
-              attemptAutoSelect(attempts + 1);
-            }
-          }, 200 * (attempts + 1)); // Increasing delay: 200ms, 400ms, 600ms, etc.
-        }
-      };
-      attemptAutoSelect();
 
-      toast({
-        title: "Success",
-        description: "New place added and selected",
-      });
-    }
-  };
-
-  const handleDepartmentSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newDepartment.trim()) {
-      const departmentToAdd = newDepartment.trim();
-      addDepartment(departmentToAdd);
-
-      // Close form first
-      setNewDepartment("");
-      setShowNewDepartmentForm(false);
-
-      // Auto-select the new department with multiple attempts to ensure it works
-      const attemptAutoSelect = (attempts = 0) => {
-        if (attempts < 5) {
-          setTimeout(() => {
-            if (departments.includes(departmentToAdd)) {
-              setNewEvent((prev) => ({ ...prev, department: departmentToAdd }));
-              console.log(`Auto-selected department: ${departmentToAdd} (attempt ${attempts + 1})`);
-            } else {
-              console.log(`Department not yet in list, retrying... (attempt ${attempts + 1})`);
-              attemptAutoSelect(attempts + 1);
-            }
-          }, 200 * (attempts + 1)); // Increasing delay: 200ms, 400ms, 600ms, etc.
-        }
-      };
-      attemptAutoSelect();
-
-      toast({
-        title: "Success",
-        description: "New department added and selected",
-      });
-    }
-  };
 
   const handleAttendanceSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -545,137 +473,34 @@ export default function AttendancePage() {
                       <div className="form-grid">
                         <div>
                           <Label htmlFor="place">Place *</Label>
-                          <div className="flex space-x-2 mt-1">
-                            <Select
-                              key={`place-${newEvent.place}-${places.length}`}
+                          <div className="mt-1">
+                            <SearchablePlaceSelect
                               value={newEvent.place}
                               onValueChange={(value) => {
-                                if (value === "add-new") {
-                                  setShowNewPlaceForm(true);
-                                } else {
-                                  setNewEvent((prev) => ({
-                                    ...prev,
-                                    place: value,
-                                  }));
-                                }
+                                setNewEvent((prev) => ({
+                                  ...prev,
+                                  place: value,
+                                }));
                               }}
-                            >
-                              <SelectTrigger className="flex-1">
-                                <SelectValue placeholder="Select or add place" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {places.map((place) => (
-                                  <SelectItem key={place} value={place}>
-                                    {place}
-                                  </SelectItem>
-                                ))}
-                                <SelectItem value="add-new">
-                                  <div className="flex items-center">
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    <span>Add New Place</span>
-                                  </div>
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
+                              placeholder="Search or add place"
+                            />
                           </div>
-
-                          {showNewPlaceForm && (
-                            <div className="mt-2 p-3 bg-white border rounded-lg">
-                              <div className="flex space-x-2">
-                                <Input
-                                  value={newPlace}
-                                  onChange={(e) => setNewPlace(e.target.value?.toUpperCase())}
-                                  placeholder="Enter new place"
-                                  className="flex-1"
-                                />
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  className="rssb-primary"
-                                  onClick={handlePlaceSubmit}
-                                >
-                                  Add
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setShowNewPlaceForm(false)}
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
-                            </div>
-                          )}
                         </div>
 
                         <div>
                           <Label htmlFor="department">Department *</Label>
-                          <div className="flex space-x-2 mt-1">
-                            <Select
-                              key={`department-${newEvent.department}-${departments.length}`}
+                          <div className="mt-1">
+                            <SearchableDepartmentSelect
                               value={newEvent.department}
                               onValueChange={(value) => {
-                                if (value === "add-new") {
-                                  setShowNewDepartmentForm(true);
-                                } else {
-                                  setNewEvent((prev) => ({
-                                    ...prev,
-                                    department: value,
-                                  }));
-                                }
+                                setNewEvent((prev) => ({
+                                  ...prev,
+                                  department: value,
+                                }));
                               }}
-                            >
-                              <SelectTrigger className="flex-1">
-                                <SelectValue placeholder="Select or add department" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {departments.map((dept) => (
-                                  <SelectItem key={dept} value={dept}>
-                                    {dept}
-                                  </SelectItem>
-                                ))}
-                                <SelectItem value="add-new">
-                                  <div className="flex items-center">
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    <span>Add New Department</span>
-                                  </div>
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
+                              placeholder="Search or add department"
+                            />
                           </div>
-
-                          {showNewDepartmentForm && (
-                            <div className="mt-2 p-3 bg-white border rounded-lg">
-                              <div className="flex space-x-2"
-                              >
-                                <Input
-                                  value={newDepartment}
-                                  onChange={(e) =>
-                                    setNewDepartment(e.target.value?.toUpperCase())
-                                  }
-                                  placeholder="Enter new department"
-                                  className="flex-1"
-                                />
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  className="rssb-primary"
-                                  onClick={handleDepartmentSubmit}
-                                >
-                                  Add
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setShowNewDepartmentForm(false)}
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
-                            </div>
-                          )}
                         </div>
 
                         <div>

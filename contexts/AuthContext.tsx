@@ -6,13 +6,15 @@ import { apiClient } from "@/lib/api-client"
 import { redirect, useRouter } from "next/navigation"
 
 export interface User {
-  _id: string
+  id: string
   name: string
+  username: string
   role: "admin" | "coordinator"
-  centerId?: string
-  centerName?: string
   area: string
   areaCode: string
+  centerId?: string
+  centerName?: string
+  createdAt?: string
 }
 
 interface AuthContextType {

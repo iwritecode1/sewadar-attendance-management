@@ -234,8 +234,8 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
                     <SelectValue placeholder="Select gender" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="MALE">Male</SelectItem>
-                    <SelectItem value="FEMALE">Female</SelectItem>
+                    <SelectItem value="MALE">MALE</SelectItem>
+                    <SelectItem value="FEMALE">FEMALE</SelectItem>
                   </SelectContent>
                 </Select>
                 {errors.gender && <p className="text-sm text-red-500">{errors.gender}</p>}
@@ -252,8 +252,9 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PERMANENT">Permanent</SelectItem>
-                    <SelectItem value="TEMPORARY">Temporary</SelectItem>
+                    <SelectItem value="PERMANENT">PERMANENT</SelectItem>
+                    <SelectItem value="OPEN">OPEN</SelectItem>
+                    <SelectItem value="TEMPORARY">TEMPORARY</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -262,8 +263,8 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
                 <Label htmlFor="zone">Zone</Label>
                 <Input
                   id="zone"
-                  value={formData.zone || ""}
-                  onChange={(e) => handleInputChange("zone", e.target.value)}
+                  value={formData.zone?.toUpperCase() || ""}
+                  onChange={(e) => handleInputChange("zone", e.target.value?.toUpperCase())}
                   placeholder="Enter zone"
                   disabled={user?.role !== "admin"}
                 />

@@ -28,11 +28,24 @@ export async function GET(request: NextRequest) {
 
     // Filter by sewadar
     if (sewadarId) {
-      query.sewadars = new mongoose.Types.ObjectId(sewadarId)
+      // Validate ObjectId format
+      if (!mongoose.Types.ObjectId.isValid(sewadarId)) {
+        return NextResponse.json(
+          { error: "Invalid sewadar ID format" },
+          { status: 400 }
+        )
+      }
+      query.sewadars = { $in: [new mongoose.Types.ObjectId(sewadarId)] }
     }
 
     // Filter by event
     if (eventId) {
+      if (!mongoose.Types.ObjectId.isValid(eventId)) {
+        return NextResponse.json(
+          { error: "Invalid event ID format" },
+          { status: 400 }
+        )
+      }
       query.eventId = new mongoose.Types.ObjectId(eventId)
     }
 
@@ -69,7 +82,7 @@ export async function GET(request: NextRequest) {
       const csvHeaders = [
         "Date",
         "Event",
-        "Department", 
+        "Department",
         "Event From Date",
         "Event To Date",
         "Center",

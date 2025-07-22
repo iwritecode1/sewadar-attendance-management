@@ -7,11 +7,13 @@ import dbConnect from "./mongodb"
 export interface UserSession {
   id: string
   name: string
+  username: string
   role: "admin" | "coordinator"
   area: string
   areaCode: string
   centerId?: string
   centerName?: string
+  createdAt?: string
 }
 
 export async function getSession(): Promise<UserSession | null> {
@@ -50,11 +52,13 @@ export async function login(
   const session: UserSession = {
     id: user._id.toString(),
     name: user.name,
+    username: user.username,
     role: user.role,
     area: user.area,
     areaCode: user.areaCode,
     centerId: user.centerId,
     centerName: user.centerName,
+    createdAt: user.createdAt?.toISOString(),
   }
 
   const token = await createToken(session)

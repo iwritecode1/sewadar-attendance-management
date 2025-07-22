@@ -178,7 +178,7 @@ export async function GET(request: NextRequest) {
     const total = await Sewadar.countDocuments(query)
 
     // Get sewadars
-    const sewadars = await Sewadar.find(query).sort({ name: 1 }).skip(skip).limit(limit)
+    const sewadars = await Sewadar.find(query).sort({ badgeNumber: 1 }).skip(skip).limit(limit)
 
     let maleCount;
     let femaleCount;

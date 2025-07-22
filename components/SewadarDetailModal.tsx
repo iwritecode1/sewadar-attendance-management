@@ -289,7 +289,7 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                       <Clock className="mr-2 h-4 w-4" />
                       Attendance History
                     </CardTitle>
-                    <CardDescription className="text-sm">Complete attendance record</CardDescription>
+                    <CardDescription className="text-sm mt-1">Complete attendance record</CardDescription>
                   </div>
                   <div className="flex space-x-2">
                     <Button variant="outline" size="sm" onClick={fetchAttendanceHistory} disabled={attendanceLoading} className="flex-1">
@@ -347,12 +347,10 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                       <div className="bg-green-50 p-4 rounded-lg">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm text-green-600">Departments</p>
-                            <p className="text-2xl font-bold text-green-900">
-                              {new Set(attendanceHistory.map((record) => record.eventId.department)).size}
-                            </p>
+                            <p className="text-sm text-green-600">Total Attendance</p>
+                            <p className="text-2xl font-bold text-green-900">{attendanceHistory.length}</p>
                           </div>
-                          <Briefcase className="h-8 w-8 text-green-600" />
+                          <Users className="h-8 w-8 text-green-600" />
                         </div>
                       </div>
 
