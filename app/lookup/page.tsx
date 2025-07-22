@@ -77,7 +77,7 @@ export default function SewadarLookupPage() {
 
   // Attendance filter states
   const [showAttendanceFilters, setShowAttendanceFilters] = useState(false)
-  const [attendanceFilterCenter, setAttendanceFilterCenter] = useState("all")
+  const [attendanceFilterCenter, setAttendanceFilterCenter] = useState(user?.role === "admin" ? "all" : (user?.centerId || "all"))
   const [attendanceFilterOperator, setAttendanceFilterOperator] = useState("less_than")
   const [attendanceFilterCount, setAttendanceFilterCount] = useState("")
 
@@ -745,7 +745,12 @@ export default function SewadarLookupPage() {
                   <BarChart3 className="mr-2 h-4 w-4 md:h-5 md:w-5" />
                   Attendance Filters
                 </CardTitle>
-                <CardDescription className="text-sm">Find sewadars based on their attendance count for specific centers</CardDescription>
+                <CardDescription className="text-sm">
+                  {user?.role === "admin" 
+                    ? "Find sewadars based on their attendance count for specific centers" 
+                    : "Find sewadars based on their attendance count in your center"
+                  }
+                </CardDescription>
               </div>
               <Button
                 variant="outline"
@@ -760,25 +765,28 @@ export default function SewadarLookupPage() {
           </CardHeader>
           {showAttendanceFilters && (
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Center
-                  </label>
-                  <Select value={attendanceFilterCenter} onValueChange={setAttendanceFilterCenter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select center" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Centers</SelectItem>
-                      {centers.map((center) => (
-                        <SelectItem key={center._id} value={center.code}>
-                          {center.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className={`grid grid-cols-1 gap-3 md:gap-4 ${user?.role === "admin" ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
+                {/* Center selection - only for admin users */}
+                {user?.role === "admin" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Center
+                    </label>
+                    <Select value={attendanceFilterCenter} onValueChange={setAttendanceFilterCenter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select center" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Centers</SelectItem>
+                        {centers.map((center) => (
+                          <SelectItem key={center._id} value={center.code}>
+                            {center.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -831,9 +839,19 @@ export default function SewadarLookupPage() {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4">
                 <h4 className="font-medium text-blue-900 mb-2 text-sm md:text-base">Filter Examples:</h4>
                 <ul className="text-xs md:text-sm text-blue-800 space-y-1">
-                  <li>• Find sewadars with less than 5 attendances in HISAR-I center</li>
-                  <li>• Find sewadars with exactly 0 attendances across all centers</li>
-                  <li>• Find sewadars with more than 10 attendances in a specific center</li>
+                  {user?.role === "admin" ? (
+                    <>
+                      <li>• Find sewadars with less than 5 attendances in HISAR-I center</li>
+                      <li>• Find sewadars with exactly 0 attendances across all centers</li>
+                      <li>• Find sewadars with more than 10 attendances in a specific center</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>• Find sewadars with less than 5 attendance days in your center</li>
+                      <li>• Find sewadars with exactly 0 attendances in your center</li>
+                      <li>• Find sewadars with more than 10 attendance days in your center</li>
+                    </>
+                  )}
                 </ul>
               </div>
             </CardContent>

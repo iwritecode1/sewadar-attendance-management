@@ -161,9 +161,9 @@ export default function SewadarAttendanceModal({ isOpen, onClose, sewadar }: Sew
               <DialogTitle className="text-lg font-semibold truncate pr-2">
                 {sewadar.name}
               </DialogTitle>
-              <Button variant="ghost" size="sm" onClick={onClose} className="flex-shrink-0">
+              {/* <Button variant="ghost" size="sm" onClick={onClose} className="flex-shrink-0">
                 <X className="h-4 w-4" />
-              </Button>
+              </Button> */}
             </div>
             <div className="text-sm font-mono text-gray-600 mb-1">
               {sewadar.badgeNumber}

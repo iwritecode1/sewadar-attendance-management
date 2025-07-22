@@ -160,13 +160,13 @@ export default function Dashboard() {
           <Card className="stat-card">
             <CardContent className="py-4 px-4">
               <div className="grid grid-cols-3 gap-3">
-                <div className="text-center space-y-1">
+                {/* <div className="text-center space-y-1">
                   <div className="flex items-center justify-center space-x-1">
                     <Building className="h-4 w-4 text-blue-600" />
                     <span className="text-xs font-medium text-gray-600">Centers</span>
                   </div>
                   <p className="text-xl font-bold text-gray-900">{overview.centerCount}</p>
-                </div>
+                </div> */}
                 <div className="text-center space-y-1">
                   <div className="flex items-center justify-center space-x-1">
                     <Users className="h-4 w-4 text-green-600" />
@@ -181,6 +181,13 @@ export default function Dashboard() {
                   </div>
                   <p className="text-xl font-bold text-gray-900">{overview.eventCount}</p>
                 </div>
+                <div className="text-center space-y-1">
+                  <div className="flex items-center justify-center space-x-1">
+                    <TrendingUp className="h-4 w-4 text-orange-600" />
+                    <span className="text-xs font-medium text-gray-600">Attendance</span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">{overview.totalAttendance}</p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -189,19 +196,19 @@ export default function Dashboard() {
           <Card className="stat-card">
             <CardContent className="py-4 px-4">
               <div className="grid grid-cols-2 gap-4">
+              <div className="text-center space-y-2">
+                  <div className="flex items-center justify-center space-x-2">
+                    <Building className="h-5 w-5 text-blue-600" />
+                    <span className="text-sm font-medium text-gray-600">Centers</span>
+                  </div>
+                  <p className="text-xl font-bold text-gray-900">{overview.centerCount}</p>
+                </div>
                 <div className="text-center space-y-2">
                   <div className="flex items-center justify-center space-x-2">
                     <Activity className="h-5 w-5 text-indigo-600" />
                     <span className="text-sm font-medium text-gray-600">Coordinators</span>
                   </div>
                   <p className="text-2xl font-bold text-gray-900">{overview.coordinatorCount}</p>
-                </div>
-                <div className="text-center space-y-2">
-                  <div className="flex items-center justify-center space-x-2">
-                    <TrendingUp className="h-5 w-5 text-orange-600" />
-                    <span className="text-sm font-medium text-gray-600">Attendance</span>
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">{overview.totalAttendance}</p>
                 </div>
               </div>
             </CardContent>
