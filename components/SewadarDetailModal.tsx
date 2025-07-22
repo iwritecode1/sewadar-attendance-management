@@ -84,8 +84,10 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
         sewadarId,
         format: "json",
       })
-      if (response.success) {
-        setAttendanceHistory(response.data.records || [])
+      if (response.success && response.data) {
+        // Handle the response data properly
+        const records = Array.isArray(response.data) ? response.data : (response.data as any)?.records || []
+        setAttendanceHistory(records)
       }
     } catch (error) {
       console.error("Failed to fetch attendance history:", error)

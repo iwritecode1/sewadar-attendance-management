@@ -135,18 +135,18 @@ export default function SewadarAttendanceModal({ isOpen, onClose, sewadar }: Sew
   // Calculate attendance statistics
   const attendanceStats = sewadar && attendanceRecords.length > 0
     ? {
-        totalEvents: attendanceRecords.length,
-        totalDays: attendanceRecords.reduce((sum, record) => {
-          if (!record.eventId?.fromDate || !record.eventId?.toDate) return sum
-          const fromDate = new Date(record.eventId.fromDate)
-          const toDate = new Date(record.eventId.toDate)
-          const diffTime = Math.abs(toDate.getTime() - fromDate.getTime())
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
-          return sum + diffDays
-        }, 0),
-        departments: [...new Set(attendanceRecords.map((record) => record.eventId?.department).filter(Boolean))],
-        places: [...new Set(attendanceRecords.map((record) => record.eventId?.place).filter(Boolean))],
-      }
+      totalEvents: attendanceRecords.length,
+      totalDays: attendanceRecords.reduce((sum, record) => {
+        if (!record.eventId?.fromDate || !record.eventId?.toDate) return sum
+        const fromDate = new Date(record.eventId.fromDate)
+        const toDate = new Date(record.eventId.toDate)
+        const diffTime = Math.abs(toDate.getTime() - fromDate.getTime())
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
+        return sum + diffDays
+      }, 0),
+      departments: [...new Set(attendanceRecords.map((record) => record.eventId?.department).filter(Boolean))],
+      places: [...new Set(attendanceRecords.map((record) => record.eventId?.place).filter(Boolean))],
+    }
     : null
 
   if (!sewadar) return null
@@ -161,9 +161,9 @@ export default function SewadarAttendanceModal({ isOpen, onClose, sewadar }: Sew
               <DialogTitle className="text-lg font-semibold truncate pr-2">
                 {sewadar.name}
               </DialogTitle>
-              {/* <Button variant="ghost" size="sm" onClick={onClose} className="flex-shrink-0">
+              <Button variant="ghost" size="sm" onClick={onClose} className="flex-shrink-0">
                 <X className="h-4 w-4" />
-              </Button> */}
+              </Button>
             </div>
             <div className="text-sm font-mono text-gray-600 mb-1">
               {sewadar.badgeNumber}
@@ -183,9 +183,9 @@ export default function SewadarAttendanceModal({ isOpen, onClose, sewadar }: Sew
                   <span className="ml-2 text-sm font-mono text-gray-600">({sewadar.badgeNumber})</span>
                 </div>
               </div>
-              {/* <Button variant="ghost" size="sm" onClick={onClose}>
+              <Button variant="ghost" size="sm" onClick={onClose}>
                 <X className="h-4 w-4" />
-              </Button> */}
+              </Button>
             </DialogTitle>
             <DialogDescription>
               Attendance records for {sewadar.name} from {sewadar.center}
@@ -203,7 +203,7 @@ export default function SewadarAttendanceModal({ isOpen, onClose, sewadar }: Sew
               </div>
               <div className="text-center p-3 md:p-4 bg-green-50 rounded-lg">
                 <div className="text-xl md:text-2xl font-bold text-green-600">{attendanceStats.totalDays}</div>
-                <div className="text-sm text-green-800">Days</div>
+                <div className="text-xs md:text-sm text-green-800">Days</div>
               </div>
             </div>
           )}
