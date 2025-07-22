@@ -84,10 +84,8 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
         sewadarId,
         format: "json",
       })
-      if (response.success && response.data) {
-        // Handle the response data properly
-        const records = Array.isArray(response.data) ? response.data : (response.data as any)?.records || []
-        setAttendanceHistory(records)
+      if (response.success) {
+        setAttendanceHistory(response.data?.records || [])
       }
     } catch (error) {
       console.error("Failed to fetch attendance history:", error)
@@ -107,14 +105,16 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
       })
 
       if (response.success && response.data) {
-        // Convert to CSV and download
-        const csvContent = convertToCSV(response.data)
-        downloadCSV(csvContent, `${sewadar.name}_attendance_report.csv`)
+        // For CSV format, the API returns the CSV string directly
+        const csvContent = typeof response.data === 'string' ? response.data : convertToCSV(attendanceHistory)
+        downloadCSV(csvContent, `${sewadar.badgeNumber}_attendance_report.csv`)
 
         toast({
           title: "Success",
           description: "Attendance report downloaded successfully",
         })
+      } else {
+        throw new Error(response.error || "Failed to generate report")
       }
     } catch (error) {
       console.error("Failed to generate attendance report:", error)
