@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect, useCallback } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react"
 import { apiClient } from "@/lib/api-client"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "./AuthContext"
@@ -219,6 +219,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     coordinators: null,
   })
 
+  // Request cancellation controllers using refs to avoid dependency issues
+  const currentSewadarsController = useRef<AbortController | null>(null)
+  const currentEventsController = useRef<AbortController | null>(null)
+  const currentAttendanceController = useRef<AbortController | null>(null)
+
   // Helper function to handle API responses
   const handleApiResponse = useCallback(
     (response: any, successMessage?: string, errorMessage?: string) => {
@@ -290,29 +295,72 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   // Fetch functions
   const fetchSewadars = useCallback(async (params?: any) => {
+    // Cancel previous sewadars request if it exists
+    if (currentSewadarsController.current) {
+      currentSewadarsController.current.abort()
+    }
+
+    // Create new AbortController for this request
+    const controller = new AbortController()
+    currentSewadarsController.current = controller
+
     setLoading((prev) => ({ ...prev, sewadars: true }))
     try {
-      // For coordinators and when fetching all sewadars, use high limit to get all records
+      // Use provided params, with defaults for backward compatibility
       const fetchParams = {
-        limit: 10000, // High limit to get all sewadars
-        ...params
+        limit: 50, // Default limit for pagination
+        page: 1,   // Default page
+        signal: controller.signal, // Pass abort signal
+        ...params  // Override with provided params
       }
       const response = await apiClient.getSewadars(fetchParams)
+      
+      // Check if request was aborted
+      if (controller.signal.aborted) {
+        return
+      }
+
       if (response.success && response.data) {
         setSewadars(response.data)
         setPagination((prev) => ({ ...prev, sewadars: response.pagination }))
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Don't log error if request was aborted
+      if (error.name === 'AbortError' || controller.signal.aborted) {
+        return
+      }
       console.error("Failed to fetch sewadars:", error)
     } finally {
-      setLoading((prev) => ({ ...prev, sewadars: false }))
+      // Only update loading state if request wasn't aborted
+      if (!controller.signal.aborted) {
+        setLoading((prev) => ({ ...prev, sewadars: false }))
+        currentSewadarsController.current = null
+      }
     }
   }, [])
 
   const fetchEvents = useCallback(async (params?: any) => {
+    // Cancel previous events request if it exists
+    if (currentEventsController.current) {
+      currentEventsController.current.abort()
+    }
+
+    // Create new AbortController for this request
+    const controller = new AbortController()
+    currentEventsController.current = controller
+
     setLoading((prev) => ({ ...prev, events: true }))
     try {
-      const response = await apiClient.getEvents(params)
+      const response = await apiClient.getEvents({
+        signal: controller.signal,
+        ...params
+      })
+      
+      // Check if request was aborted
+      if (controller.signal.aborted) {
+        return
+      }
+
       if (response.success && response.data) {
         setEvents(response.data)
         setPagination((prev) => ({ ...prev, events: response.pagination }))
@@ -323,10 +371,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setPlaces(uniquePlaces)
         setDepartments(uniqueDepartments)
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Don't log error if request was aborted
+      if (error.name === 'AbortError' || controller.signal.aborted) {
+        return
+      }
       console.error("Failed to fetch events:", error)
     } finally {
-      setLoading((prev) => ({ ...prev, events: false }))
+      // Only update loading state if request wasn't aborted
+      if (!controller.signal.aborted) {
+        setLoading((prev) => ({ ...prev, events: false }))
+        currentEventsController.current = null
+      }
     }
   }, [])
 
@@ -666,6 +722,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     refreshAll()
   }, [user]);
+
+  // Cleanup: Cancel any pending requests when component unmounts
+  useEffect(() => {
+    return () => {
+      if (currentSewadarsController.current) {
+        currentSewadarsController.current.abort()
+      }
+      if (currentEventsController.current) {
+        currentEventsController.current.abort()
+      }
+      if (currentAttendanceController.current) {
+        currentAttendanceController.current.abort()
+      }
+    }
+  }, [])
 
   return (
     <DataContext.Provider

@@ -155,9 +155,9 @@ export function validateCoordinatorData(data: any): ValidationResult {
   }
 
   if (data.username && typeof data.username === "string") {
-    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/
+    const usernameRegex = /^[a-zA-Z0-9_.@-]{5,35}$/;
     if (!usernameRegex.test(data.username)) {
-      errors.push("Username must be 3-20 characters long and contain only letters, numbers, and underscores")
+      errors.push("Username must be 5-35 characters long and contain only letters, numbers, underscores, dots, @ symbols, and hyphens")
     }
   }
 

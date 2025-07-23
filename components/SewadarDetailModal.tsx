@@ -350,7 +350,16 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-sm text-green-600">Total Attendance</p>
-                            <p className="text-2xl font-bold text-green-900">{attendanceHistory.length}</p>
+                            <p className="text-2xl font-bold text-green-900">
+                              {attendanceHistory.reduce((totalDays, record) => {
+                                if (!record.eventId?.fromDate || !record.eventId?.toDate) return totalDays
+                                const fromDate = new Date(record.eventId.fromDate)
+                                const toDate = new Date(record.eventId.toDate)
+                                const diffTime = Math.abs(toDate.getTime() - fromDate.getTime())
+                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
+                                return totalDays + diffDays
+                              }, 0)}
+                            </p>
                           </div>
                           <Users className="h-8 w-8 text-green-600" />
                         </div>

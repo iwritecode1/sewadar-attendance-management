@@ -48,8 +48,11 @@ class ApiClient {
       }
 
       return data
-    } catch (error) {
-      console.error(`API request failed: ${endpoint}`, error)
+    } catch (error: any) {
+      // Don't log AbortErrors as they are intentional cancellations
+      if (error.name !== 'AbortError') {
+        console.error(`API request failed: ${endpoint}`, error)
+      }
       throw error
     }
   }
@@ -82,16 +85,19 @@ class ApiClient {
     includeStats?: boolean
     page?: number
     limit?: number
+    signal?: AbortSignal
   }) {
     const searchParams = new URLSearchParams()
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
+        if (value !== undefined && value !== null && key !== 'signal') {
           searchParams.append(key, value.toString())
         }
       })
     }
-    return this.request(`/sewadars?${searchParams.toString()}`)
+    return this.request(`/sewadars?${searchParams.toString()}`, {
+      signal: params?.signal
+    })
   }
 
   async getSewadar(id: string) {
@@ -220,16 +226,19 @@ class ApiClient {
     includeStats?: boolean
     page?: number
     limit?: number
+    signal?: AbortSignal
   }) {
     const searchParams = new URLSearchParams()
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
+        if (value !== undefined && value !== null && key !== 'signal') {
           searchParams.append(key, value.toString())
         }
       })
     }
-    return this.request(`/events?${searchParams.toString()}`)
+    return this.request(`/events?${searchParams.toString()}`, {
+      signal: params?.signal
+    })
   }
 
   async getEvent(id: string) {

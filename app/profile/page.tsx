@@ -77,7 +77,7 @@ export default function ProfilePage() {
 
   const handleSubmitPasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validatePasswordForm()) {
       return
     }
@@ -217,7 +217,7 @@ export default function ProfilePage() {
                     <User className="h-5 w-5 text-gray-400" />
                     <div>
                       <p className="text-sm text-gray-600">Username</p>
-                      <p className="font-medium">@{user.username}</p>
+                      <p className="font-medium">{user.username}</p>
                     </div>
                   </div>
 

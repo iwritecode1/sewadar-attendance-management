@@ -75,6 +75,10 @@ export default function SewadarLookupPage() {
   const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([])
   const [recentSearches, setRecentSearches] = useState<string[]>([])
 
+  // Request cancellation
+  const [currentSearchController, setCurrentSearchController] = useState<AbortController | null>(null)
+  const [currentFilterController, setCurrentFilterController] = useState<AbortController | null>(null)
+
   // Attendance filter states
   const [showAttendanceFilters, setShowAttendanceFilters] = useState(false)
   const [attendanceFilterCenter, setAttendanceFilterCenter] = useState(user?.role === "admin" ? "all" : (user?.centerId || "all"))
@@ -97,6 +101,18 @@ export default function SewadarLookupPage() {
     setCurrentPage(1)
     setTotalResults(searchResults.length)
   }, [searchResults])
+
+  // Cleanup: Cancel any pending requests when component unmounts
+  useEffect(() => {
+    return () => {
+      if (currentSearchController) {
+        currentSearchController.abort()
+      }
+      if (currentFilterController) {
+        currentFilterController.abort()
+      }
+    }
+  }, [])
 
   // Handle page change
   const handlePageChange = (page: number) => {
@@ -200,6 +216,15 @@ export default function SewadarLookupPage() {
       return
     }
 
+    // Cancel previous search request if it exists
+    if (currentSearchController) {
+      currentSearchController.abort()
+    }
+
+    // Create new AbortController for this request
+    const controller = new AbortController()
+    setCurrentSearchController(controller)
+
     setIsSearching(true)
     setShowSuggestions(false)
 
@@ -231,7 +256,13 @@ export default function SewadarLookupPage() {
       const response = await apiClient.getSewadars({
         ...searchParams,
         limit: 10000,
+        signal: controller.signal, // Pass abort signal to API call
       })
+
+      // Check if request was aborted
+      if (controller.signal.aborted) {
+        return
+      }
 
       if (response.success) {
         setSearchResults(response.data || [])
@@ -252,6 +283,11 @@ export default function SewadarLookupPage() {
         throw new Error(response.error || "Search failed")
       }
     } catch (error: any) {
+      // Don't show error if request was aborted
+      if (error.name === 'AbortError' || controller.signal.aborted) {
+        return
+      }
+
       console.error("Search error:", error)
       toast({
         title: "Search Failed",
@@ -260,7 +296,11 @@ export default function SewadarLookupPage() {
       })
       setSearchResults([])
     } finally {
-      setIsSearching(false)
+      // Only update loading state if request wasn't aborted
+      if (!controller.signal.aborted) {
+        setIsSearching(false)
+        setCurrentSearchController(null)
+      }
     }
   }
 
@@ -302,15 +342,9 @@ export default function SewadarLookupPage() {
 
       if (!hasSewadar) return false
 
-      // If specific center is requested, filter by center
+      // If specific center is requested, filter by center code
       if (centerId && centerId !== "all") {
-        // Find the center object to get all possible matching values
-        const targetCenter = centers.find(c => c.code === centerId)
-        if (!targetCenter) return false
-
-        // Simple center code matching
-        const centerMatch = record.centerId === centerId
-        return centerMatch
+        return record.centerId === centerId
       }
 
       return true
@@ -340,6 +374,15 @@ export default function SewadarLookupPage() {
       return
     }
 
+    // Cancel previous filter request if it exists
+    if (currentFilterController) {
+      currentFilterController.abort()
+    }
+
+    // Create new AbortController for this request
+    const controller = new AbortController()
+    setCurrentFilterController(controller)
+
     setIsSearching(true)
     setShowSuggestions(false)
 
@@ -349,6 +392,11 @@ export default function SewadarLookupPage() {
 
       // Filter sewadars based on attendance count
       const filteredSewadars = sewadars.filter(sewadar => {
+        // Check if request was aborted during filtering
+        if (controller.signal.aborted) {
+          return false
+        }
+
         // If filtering by specific center, only include sewadars from that center
         if (targetCenterId && targetCenterId !== "all") {
           const targetCenter = centers.find(c => c.code === targetCenterId)
@@ -382,6 +430,11 @@ export default function SewadarLookupPage() {
         }
       })
 
+      // Check if request was aborted before setting results
+      if (controller.signal.aborted) {
+        return
+      }
+
       setSearchResults(filteredSewadars)
 
       // Clear search term since this is a filter operation
@@ -411,6 +464,11 @@ export default function SewadarLookupPage() {
         })
       }
     } catch (error: any) {
+      // Don't show error if request was aborted
+      if (error.name === 'AbortError' || controller.signal.aborted) {
+        return
+      }
+
       console.error("Filter error:", error)
       toast({
         title: "Filter Failed",
@@ -419,7 +477,11 @@ export default function SewadarLookupPage() {
       })
       setSearchResults([])
     } finally {
-      setIsSearching(false)
+      // Only update loading state if request wasn't aborted
+      if (!controller.signal.aborted) {
+        setIsSearching(false)
+        setCurrentFilterController(null)
+      }
     }
   }
 

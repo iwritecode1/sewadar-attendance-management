@@ -172,44 +172,80 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
       const attendanceRecord = eventAttendance.find(record => record._id === attendanceRecordId)
       if (!attendanceRecord) return
 
-      let updatedSewadars = [...attendanceRecord.sewadars]
-      let updatedTempSewadars = [...(attendanceRecord.tempSewadars || [])]
+      let updatedSewadarIds: string[] = []
+      let updatedTempSewadars: any[] = []
 
       if (isTemp) {
-        // Remove from temp sewadars
-        updatedTempSewadars = updatedTempSewadars.filter(ts => ts.id !== sewadarId)
+        // Remove from temp sewadars - attendanceRecord.sewadars contains IDs
+        updatedSewadarIds = [...attendanceRecord.sewadars]
+        updatedTempSewadars = (attendanceRecord.tempSewadars || []).filter((ts: any) => 
+          (ts.id || ts._id) !== sewadarId
+        )
       } else {
-        // Remove from regular sewadars
-        updatedSewadars = updatedSewadars.filter(s => s._id !== sewadarId)
+        // Remove from regular sewadars - attendanceRecord.sewadars contains IDs
+        updatedSewadarIds = attendanceRecord.sewadars.filter((id: string) => id !== sewadarId)
+        updatedTempSewadars = [...(attendanceRecord.tempSewadars || [])]
       }
 
-      // Update the attendance record
-      const response = await fetch(`/api/attendance/${attendanceRecordId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          sewadarIds: updatedSewadars.map(s => s._id),
-          tempSewadars: updatedTempSewadars,
-        }),
-      })
+      // Check if this would leave the attendance record empty
+      const wouldBeEmpty = updatedSewadarIds.length === 0 && updatedTempSewadars.length === 0
 
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Sewadar removed from event successfully",
+      if (wouldBeEmpty) {
+        // If removing this sewadar would leave the attendance record empty, delete the entire record
+        if (!confirm("This will remove the last participant from this center's attendance record, which will delete the entire attendance record. Continue?")) {
+          return
+        }
+
+        const response = await fetch(`/api/attendance/${attendanceRecordId}`, {
+          method: 'DELETE',
         })
-        // Refresh attendance data
-        await fetchAttendance()
-        onSuccess()
+
+        if (response.ok) {
+          toast({
+            title: "Success",
+            description: "Attendance record deleted successfully (no participants remaining)",
+          })
+        } else {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to delete attendance record")
+        }
       } else {
-        throw new Error("Failed to update attendance record")
+        // Update the attendance record with remaining participants
+        const formData = new FormData()
+        
+        // Add sewadar IDs
+        updatedSewadarIds.forEach(id => {
+          formData.append('sewadarIds[]', id)
+        })
+        
+        // Add temp sewadars as JSON string
+        formData.append('tempSewadars', JSON.stringify(updatedTempSewadars))
+
+        const response = await fetch(`/api/attendance/${attendanceRecordId}`, {
+          method: 'PUT',
+          body: formData,
+        })
+
+        if (response.ok) {
+          toast({
+            title: "Success",
+            description: "Sewadar removed from event successfully",
+          })
+        } else {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to update attendance record")
+        }
       }
-    } catch (error) {
+
+      // Refresh attendance data
+      await fetchAttendance()
+      onSuccess()
+
+    } catch (error: any) {
+      console.error("Remove sewadar error:", error)
       toast({
         title: "Error",
-        description: "Failed to remove sewadar from event",
+        description: error.message || "Failed to remove sewadar from event",
         variant: "destructive",
       })
     }

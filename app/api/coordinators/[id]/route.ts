@@ -6,6 +6,7 @@ import Center from "@/models/Center"
 import { logActivity } from "@/lib/logger"
 import { validateCoordinatorData } from "@/lib/validators"
 import mongoose from "mongoose"
+import bcrypt from "bcryptjs"
 
 // Get single coordinator
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
@@ -159,6 +160,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       updateData.centerName = center.name
     }
 
+    // Update coordinator - handle password hashing properly
+    if (updateData.password) {
+      // If password is being updated, we need to use the save method to trigger the pre-save hook
+      const salt = await bcrypt.genSalt(10)
+      updateData.password = await bcrypt.hash(updateData.password, salt)
+    }
+    
     // Update coordinator
     const updatedCoordinator = await User.findByIdAndUpdate(
       params.id,

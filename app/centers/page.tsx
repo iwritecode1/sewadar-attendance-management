@@ -162,7 +162,7 @@ export default function CentersPage() {
                       value={newCenter.name}
                       onChange={(e) => setNewCenter((prev) => ({ ...prev, name: e.target.value }))}
                       required
-                      placeholder="e.g., HISSAR-III"
+                      placeholder="e.g., HISSAR-I"
                       className="mt-1"
                       disabled={isSubmitting}
                     />
@@ -174,7 +174,7 @@ export default function CentersPage() {
                       value={newCenter.code}
                       onChange={(e) => setNewCenter((prev) => ({ ...prev, code: e.target.value }))}
                       required
-                      placeholder="e.g., 5231"
+                      placeholder="e.g., 5228"
                       pattern="\d{4}"
                       maxLength={4}
                       className="mt-1"

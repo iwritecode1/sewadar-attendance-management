@@ -7,6 +7,9 @@ import AttendanceRecord from "@/models/AttendanceRecord"
 import { logActivity } from "@/lib/logger"
 import { validateSewadarData } from "@/lib/validators"
 
+// Ensure all models are loaded
+import "@/models"
+
 // Create new sewadar
 export async function POST(request: NextRequest) {
   try {
@@ -123,13 +126,18 @@ export async function POST(request: NextRequest) {
 // Get sewadars
 export async function GET(request: NextRequest) {
   try {
+    console.log("GET /api/sewadars - Starting request")
     const session = await getSession()
+    console.log("Session:", session ? { id: session.id, role: session.role, area: session.area } : "No session")
 
     if (!session) {
+      console.log("No session found, returning 401")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    console.log("Connecting to database...")
     await dbConnect()
+    console.log("Database connected successfully")
 
     const { searchParams } = new URL(request.url)
     const centerId = searchParams.get("centerId")
@@ -174,28 +182,48 @@ export async function GET(request: NextRequest) {
       ]
     }
 
+    console.log("Query built:", JSON.stringify(query))
+    console.log("Pagination params:", { page, limit, skip })
+
     // Get total count
+    console.log("Getting total count...")
     const total = await Sewadar.countDocuments(query)
+    console.log("Total count:", total)
 
     // Get sewadars
+    console.log("Fetching sewadars...")
     const sewadars = await Sewadar.find(query).sort({ badgeNumber: 1 }).skip(skip).limit(limit)
+    console.log("Sewadars fetched:", sewadars.length)
 
-    let maleCount;
-    let femaleCount;
-    if(!query["gender"]){
-      maleCount = await Sewadar.countDocuments({...query, gender:"MALE"})
-      femaleCount = await Sewadar.countDocuments({...query, gender:"FEMALE"})
-    } else if(query["gender"] === "MALE"){
+    // Calculate gender counts
+    let maleCount = 0;
+    let femaleCount = 0;
+    if (!query["gender"]) {
+      // No gender filter, count both
+      const maleQuery = { ...query, gender: "MALE" }
+      const femaleQuery = { ...query, gender: "FEMALE" }
+      delete maleQuery.gender; // Remove the undefined gender filter
+      delete femaleQuery.gender;
+      maleQuery.gender = "MALE";
+      femaleQuery.gender = "FEMALE";
+      maleCount = await Sewadar.countDocuments(maleQuery)
+      femaleCount = await Sewadar.countDocuments(femaleQuery)
+    } else if (query["gender"] === "MALE") {
       maleCount = await Sewadar.countDocuments(query);
       femaleCount = 0;
-    } else {
+    } else if (query["gender"] === "FEMALE") {
       femaleCount = await Sewadar.countDocuments(query)
       maleCount = 0
     }
 
-    let permanentCount;
-    if(!query["badgeStatus"] || query["badgeStatus"] === "PERMANENT"){
-      permanentCount = await Sewadar.countDocuments({...query, badgeStatus: "PERMANENT" })
+    // Calculate permanent count
+    let permanentCount = 0;
+    if (!query["badgeStatus"]) {
+      // No badge status filter, count permanent
+      const permanentQuery = { ...query, badgeStatus: "PERMANENT" }
+      permanentCount = await Sewadar.countDocuments(permanentQuery)
+    } else if (query["badgeStatus"] === "PERMANENT") {
+      permanentCount = await Sewadar.countDocuments(query)
     }
 
     let sewadarsWithStats = sewadars
@@ -233,9 +261,15 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("Get sewadars error:", error)
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      name: error instanceof Error ? error.name : 'Unknown error type'
+    })
     return NextResponse.json(
       {
         error: "Failed to fetch sewadars",
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 },
     )

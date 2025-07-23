@@ -183,9 +183,9 @@ export default function SewadarAttendanceModal({ isOpen, onClose, sewadar }: Sew
                   <span className="ml-2 text-sm font-mono text-gray-600">({sewadar.badgeNumber})</span>
                 </div>
               </div>
-              <Button variant="ghost" size="sm" onClick={onClose}>
+              {/* <Button variant="ghost" size="sm" onClick={onClose}>
                 <X className="h-4 w-4" />
-              </Button>
+              </Button> */}
             </DialogTitle>
             <DialogDescription>
               Attendance records for {sewadar.name} from {sewadar.center}

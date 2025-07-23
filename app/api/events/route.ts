@@ -111,6 +111,7 @@ export async function GET(request: NextRequest) {
     const toDate = searchParams.get("toDate")
     const department = searchParams.get("department")
     const place = searchParams.get("place")
+    const search = searchParams.get("search")
     const includeStats = searchParams.get("includeStats") === "true"
     const page = Number.parseInt(searchParams.get("page") || "1")
     const limit = Number.parseInt(searchParams.get("limit") || "20")
@@ -133,6 +134,14 @@ export async function GET(request: NextRequest) {
 
     if (place) {
       query.place = place
+    }
+
+    // Search functionality - search in place and department
+    if (search) {
+      query.$or = [
+        { place: { $regex: search, $options: "i" } },
+        { department: { $regex: search, $options: "i" } },
+      ]
     }
 
     // Get total count

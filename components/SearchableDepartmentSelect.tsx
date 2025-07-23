@@ -57,7 +57,7 @@ export default function SearchableDepartmentSelect({
   }, [])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value
+    const inputValue = e.target.value?.toUpperCase()
     setSearchTerm(inputValue)
     setIsOpen(true)
     setShowAddForm(false)

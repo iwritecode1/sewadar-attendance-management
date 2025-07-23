@@ -125,7 +125,7 @@ export default function SearchableEventSelect({
                 ref={inputRef}
                 placeholder="Search events..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => setSearchTerm(e.target.value?.toUpperCase())}
                 className="pl-10 pr-8"
               />
               {searchTerm && (
