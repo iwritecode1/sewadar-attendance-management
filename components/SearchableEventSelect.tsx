@@ -30,6 +30,7 @@ export default function SearchableEventSelect({
 }: SearchableEventSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
+  const [focusedEventIndex, setFocusedEventIndex] = useState(-1)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -93,6 +94,7 @@ export default function SearchableEventSelect({
     onValueChange(eventValue)
     setIsOpen(false)
     setSearchTerm("")
+    setFocusedEventIndex(-1)
   }
 
   const formatEventDisplay = (event: SewaEvent) => {
@@ -125,7 +127,52 @@ export default function SearchableEventSelect({
                 ref={inputRef}
                 placeholder="Search events..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value?.toUpperCase())}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value?.toUpperCase());
+                  setFocusedEventIndex(-1); // Reset focused index when search changes
+                }}
+                onKeyDown={(e) => {
+                  if (displayEvents.length > 0 || e.key === "Escape") {
+                    // Arrow down - move focus down
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setFocusedEventIndex((prev) => 
+                        // Allow focusing on the "Create New Event" button (index = displayEvents.length)
+                        prev < displayEvents.length ? prev + 1 : prev
+                      );
+                    }
+                    // Arrow up - move focus up
+                    else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setFocusedEventIndex((prev) => (prev > 0 ? prev - 1 : 0));
+                    }
+                    // Enter - select the focused item
+                    else if (e.key === "Enter" && focusedEventIndex >= 0) {
+                      e.preventDefault();
+                      const event = displayEvents[focusedEventIndex];
+                      if (event) {
+                        handleSelect(event._id);
+                      }
+                    }
+                    // Enter with no selection but with search term - create new event
+                    else if (e.key === "Enter" && focusedEventIndex === -1 && displayEvents.length === 0 && searchTerm) {
+                      e.preventDefault();
+                      handleSelect("new");
+                    }
+                    // Special case: if focused index is equal to displayEvents.length, it means we're focusing the "Create New Event" button
+                    else if (e.key === "Enter" && focusedEventIndex === displayEvents.length) {
+                      e.preventDefault();
+                      handleSelect("new");
+                    }
+                    // Escape - close dropdown
+                    else if (e.key === "Escape") {
+                      e.preventDefault();
+                      setIsOpen(false);
+                      setSearchTerm("");
+                      setFocusedEventIndex(-1);
+                    }
+                  }
+                }}
                 className="pl-10 pr-8"
               />
               {searchTerm && (
@@ -144,12 +191,17 @@ export default function SearchableEventSelect({
             {/* Event Options - Scrollable */}
             <div className="max-h-64 overflow-y-auto">
               <div className="space-y-1">
-                {displayEvents.map((event) => (
+                {displayEvents.map((event, index) => (
                   <button
                     key={event._id}
                     type="button"
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded-md transition-colors"
+                    className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                      focusedEventIndex === index 
+                        ? "bg-blue-50" 
+                        : "hover:bg-gray-50"
+                    }`}
                     onClick={() => handleSelect(event._id)}
+                    onMouseEnter={() => setFocusedEventIndex(index)}
                   >
                     <div className="font-medium text-gray-900">
                       {formatEventDisplay(event)}

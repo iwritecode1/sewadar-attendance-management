@@ -308,13 +308,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     try {
       // Use provided params, with defaults for backward compatibility
       const fetchParams = {
-        limit: 50, // Default limit for pagination
+        limit: 10000, // Set a high limit to fetch all sewadars
         page: 1,   // Default page
         signal: controller.signal, // Pass abort signal
         ...params  // Override with provided params
       }
       const response = await apiClient.getSewadars(fetchParams)
-      
+
       // Check if request was aborted
       if (controller.signal.aborted) {
         return
@@ -355,7 +355,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         signal: controller.signal,
         ...params
       })
-      
+
       // Check if request was aborted
       if (controller.signal.aborted) {
         return

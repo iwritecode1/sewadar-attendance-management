@@ -1,7 +1,6 @@
 "use client";
 
-import type React from "react";
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useData } from "@/contexts/DataContext";
 import Layout from "@/components/Layout";
@@ -39,6 +38,7 @@ import {
   UserPlus,
   FileImage,
   Building2,
+  RefreshCw,
 } from "lucide-react";
 
 const validateImageFile = (file: File): boolean => {
@@ -117,6 +117,14 @@ export default function AttendancePage() {
   const [selectedCenter, setSelectedCenter] = useState(
     user?.role === "coordinator" ? user.centerId || "" : ""
   );
+
+  // Fetch all sewadars for the coordinator's center when the component mounts
+  useEffect(() => {
+    if (user?.role === "coordinator" && user.centerId) {
+      // Fetch all sewadars for the coordinator's center with a high limit
+      fetchSewadarsForCenter(user.centerId);
+    }
+  }, [user, fetchSewadarsForCenter]);
   const [newEvent, setNewEvent] = useState({
     place: "",
     department: "",
@@ -138,6 +146,7 @@ export default function AttendancePage() {
   // Searchable dropdown states
   const [sewadarSearch, setSewadarSearch] = useState("");
   const [showSewadarDropdown, setShowSewadarDropdown] = useState(false);
+  const [focusedSewadarIndex, setFocusedSewadarIndex] = useState(-1);
 
   const [showTempSewadarForm, setShowTempSewadarForm] = useState(false);
   const [showNominalRollForm, setShowNominalRollForm] = useState(false);
@@ -214,13 +223,13 @@ export default function AttendancePage() {
 
     // Store the event data before creating it
     const eventData = { ...newEvent };
-    
+
     // Show loading toast
     toast({
       title: "Creating event...",
       description: "Please wait while we create your event",
     });
-    
+
     try {
       // Make a direct API call to create the event and get the response
       const response = await fetch('/api/events', {
@@ -230,9 +239,9 @@ export default function AttendancePage() {
         },
         body: JSON.stringify(eventData),
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success && result.data && result.data._id) {
         // Reset form immediately
         setNewEvent({
@@ -241,23 +250,23 @@ export default function AttendancePage() {
           fromDate: "",
           toDate: "",
         });
-        
+
         // Immediately set selectedEvent to empty to unmount the create form
         setSelectedEvent("");
-        
+
         // Get the newly created event ID directly from the response
         const newEventId = result.data._id;
-        
+
         // Wait a moment before selecting the event
         setTimeout(() => {
           // Select the newly created event
           setSelectedEvent(newEventId);
-          
+
           toast({
             title: "Success",
             description: "Event created and selected successfully",
           });
-          
+
           // Refresh events in the background to ensure everything is up to date
           fetchEvents();
         }, 300);
@@ -405,6 +414,7 @@ export default function AttendancePage() {
     setSelectedSewadars([]);
     setSewadarSearch("");
     setShowSewadarDropdown(false);
+    setFocusedSewadarIndex(-1);
 
     // Fetch sewadars for the selected center
     if (centerId && user?.role === "admin") {
@@ -464,7 +474,14 @@ export default function AttendancePage() {
                           {centers.find((c) => c._id === selectedCenter)?.name}
                         </p>
                         <p className="text-sm text-blue-700">
-                          Available Sewadars: {availableSewadars.length}
+                          Available Sewadars: {loading.sewadars ? (
+                            <span className="inline-flex items-center">
+                              <RefreshCw className="h-3 w-3 animate-spin mr-1" />
+                              Loading...
+                            </span>
+                          ) : (
+                            availableSewadars.length
+                          )}
                         </p>
                       </div>
                     </div>
@@ -482,7 +499,7 @@ export default function AttendancePage() {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Calendar className="mr-2 h-5 w-5" />
-                  Select or Create Event *
+                  Select Sewa *
                 </CardTitle>
                 <CardDescription>
                   Choose an existing event or create a new one
@@ -620,8 +637,43 @@ export default function AttendancePage() {
                       onChange={(e) => {
                         setSewadarSearch(e.target.value);
                         setShowSewadarDropdown(true);
+                        setFocusedSewadarIndex(-1); // Reset focused index when search changes
                       }}
                       onFocus={() => setShowSewadarDropdown(true)}
+                      onKeyDown={(e) => {
+                        if (showSewadarDropdown && filteredSewadars.length > 0) {
+                          // Arrow down - move focus down
+                          if (e.key === "ArrowDown") {
+                            e.preventDefault();
+                            setFocusedSewadarIndex((prev) =>
+                              prev < filteredSewadars.length - 1 ? prev + 1 : prev
+                            );
+                          }
+                          // Arrow up - move focus up
+                          else if (e.key === "ArrowUp") {
+                            e.preventDefault();
+                            setFocusedSewadarIndex((prev) => (prev > 0 ? prev - 1 : 0));
+                          }
+                          // Enter - select the focused item
+                          else if (e.key === "Enter" && focusedSewadarIndex >= 0) {
+                            e.preventDefault();
+                            const sewadar = filteredSewadars[focusedSewadarIndex];
+                            if (sewadar) {
+                              toggleSewadarSelection(sewadar._id);
+                              setSewadarSearch("");
+                              setShowSewadarDropdown(false);
+                              setFocusedSewadarIndex(-1);
+                            }
+                          }
+                          // Escape - close dropdown
+                          else if (e.key === "Escape") {
+                            e.preventDefault();
+                            setShowSewadarDropdown(false);
+                            setSewadarSearch("");
+                            setFocusedSewadarIndex(-1);
+                          }
+                        }
+                      }}
                       className="pl-10"
                     />
                   </div>
@@ -632,16 +684,20 @@ export default function AttendancePage() {
                       <div className="absolute top-0 left-0 right-0 z-10 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                         {sewadarSearch ? (
                           filteredSewadars.length > 0 ? (
-                            filteredSewadars.map((sewadar) => (
+                            filteredSewadars.map((sewadar, index) => (
                               <div
                                 key={sewadar._id}
-                                className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                className={`p-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${focusedSewadarIndex === index
+                                  ? "bg-blue-50"
+                                  : "hover:bg-gray-50"
+                                  }`}
                                 onClick={() => {
                                   if (!selectedSewadars.includes(sewadar._id)) {
                                     toggleSewadarSelection(sewadar._id);
                                     // Clear search and close dropdown
                                     setSewadarSearch("");
                                     setShowSewadarDropdown(false);
+                                    setFocusedSewadarIndex(-1);
                                     // Focus back on search input for next search
                                     setTimeout(() => {
                                       const searchInput = document.querySelector('input[placeholder*="Search sewadars"]') as HTMLInputElement;
@@ -654,6 +710,7 @@ export default function AttendancePage() {
                                     toggleSewadarSelection(sewadar._id);
                                   }
                                 }}
+                                onMouseEnter={() => setFocusedSewadarIndex(index)}
                               >
                                 <div className="flex items-center justify-between">
                                   <div>
@@ -696,6 +753,7 @@ export default function AttendancePage() {
                             onClick={() => {
                               setShowSewadarDropdown(false);
                               setSewadarSearch("");
+                              setFocusedSewadarIndex(-1);
                             }}
                             className="w-full text-gray-500 hover:text-gray-700"
                           >
@@ -876,7 +934,7 @@ export default function AttendancePage() {
                             </Select>
                           </div>
                           <div>
-                            <Label>Phone *</Label>
+                            <Label>Phone</Label>
                             <Input
                               value={tempSewadar.phone}
                               onChange={(e) =>
@@ -886,7 +944,7 @@ export default function AttendancePage() {
                                   e.target.value
                                 )
                               }
-                              placeholder="Phone number"
+                              placeholder="Phone number (optional)"
                               className="mt-1"
                             />
                           </div>
@@ -1074,6 +1132,8 @@ export default function AttendancePage() {
                     setSewadarSearch("");
                     setNominalRollImages([]);
                     setShowTempSewadarForm(false);
+                    setShowSewadarDropdown(false);
+                    setFocusedSewadarIndex(-1);
                   }}
                   disabled={isSubmitting}
                   className="w-full md:w-auto order-2 md:order-1 hover:bg-gray-50 active:bg-gray-100"

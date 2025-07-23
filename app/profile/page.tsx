@@ -157,7 +157,7 @@ export default function ProfilePage() {
                   <User className="h-8 w-8 text-blue-600" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-900">{user.name}</h2>
-                <p className="text-sm text-gray-600">@{user.username}</p>
+                <p className="text-sm text-gray-600">{user.username}</p>
               </div>
 
               <div className="grid grid-cols-1 gap-4">
