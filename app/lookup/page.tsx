@@ -390,26 +390,26 @@ export default function SewadarLookupPage() {
       const targetCount = parseInt(attendanceFilterCount)
       const targetCenterId = attendanceFilterCenter !== "all" ? attendanceFilterCenter : undefined
 
+      // First, fetch ALL sewadars with a high limit to overcome the default 50 limit
+      // We need to get all sewadars to properly filter by attendance count
+      const response = await apiClient.getSewadars({
+        centerId: targetCenterId,
+        limit: 10000, // Use a very high limit to get all sewadars
+        signal: controller.signal,
+      });
+      
+      if (!response.success || !response.data) {
+        throw new Error(response.error || "Failed to fetch sewadars");
+      }
+      
+      // Now we have all the sewadars, filter them by attendance count
+      const allSewadars = response.data;
+      
       // Filter sewadars based on attendance count
-      const filteredSewadars = sewadars.filter(sewadar => {
+      const filteredSewadars = allSewadars.filter(sewadar => {
         // Check if request was aborted during filtering
         if (controller.signal.aborted) {
           return false
-        }
-
-        // If filtering by specific center, only include sewadars from that center
-        if (targetCenterId && targetCenterId !== "all") {
-          const targetCenter = centers.find(c => c.code === targetCenterId)
-          if (!targetCenter) return false
-
-          // Check if sewadar belongs to the target center
-          const sewadarBelongsToCenter =
-            sewadar.centerId === targetCenterId ||
-            sewadar.centerId === targetCenter._id ||
-            sewadar.center === targetCenter.name ||
-            sewadar.center === targetCenter.code
-
-          if (!sewadarBelongsToCenter) return false
         }
 
         const attendanceCount = getSewadarAttendanceCount(sewadar._id, targetCenterId)
@@ -1002,17 +1002,17 @@ export default function SewadarLookupPage() {
 
               {/* Desktop Table Layout - Full Information */}
               <div className="hidden md:block overflow-x-auto">
-                <Table className="enhanced-table">
+                <Table className="enhanced-table w-full">
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Badge Number</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Father/Husband</TableHead>
-                      <TableHead>Gender</TableHead>
-                      <TableHead>Center</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Action</TableHead>
+                    <TableRow className="border-b">
+                      <TableHead className="w-[15%] py-3 font-semibold">Badge Number</TableHead>
+                      <TableHead className="w-[15%] py-3 font-semibold">Name</TableHead>
+                      <TableHead className="w-[15%] py-3 font-semibold">Father/Husband</TableHead>
+                      <TableHead className="w-[10%] py-3 font-semibold text-center">Gender</TableHead>
+                      <TableHead className="w-[15%] py-3 font-semibold">Center</TableHead>
+                      <TableHead className="w-[15%] py-3 font-semibold">Department</TableHead>
+                      <TableHead className="w-[10%] py-3 font-semibold text-center">Status</TableHead>
+                      <TableHead className="w-[10%] py-3 font-semibold text-center">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1021,10 +1021,10 @@ export default function SewadarLookupPage() {
                         key={sewadar._id}
                         className={selectedSewadar?._id === sewadar._id ? "bg-blue-50" : index % 2 === 0 ? "bg-white" : "bg-gray-50"}
                       >
-                        <TableCell className="font-mono text-sm">{sewadar.badgeNumber}</TableCell>
-                        <TableCell className="font-medium">{sewadar.name}</TableCell>
-                        <TableCell>{sewadar.fatherHusbandName}</TableCell>
-                        <TableCell>
+                        <TableCell className="font-mono text-sm py-3">{sewadar.badgeNumber}</TableCell>
+                        <TableCell className="font-medium py-3">{sewadar.name}</TableCell>
+                        <TableCell className="py-3">{sewadar.fatherHusbandName}</TableCell>
+                        <TableCell className="text-center py-3">
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-medium ${sewadar.gender === "MALE" ? "bg-blue-100 text-blue-800" : "bg-pink-100 text-pink-800"
                               }`}
@@ -1032,9 +1032,9 @@ export default function SewadarLookupPage() {
                             {sewadar.gender}
                           </span>
                         </TableCell>
-                        <TableCell>{sewadar.center}</TableCell>
-                        <TableCell>{sewadar.department}</TableCell>
-                        <TableCell>
+                        <TableCell className="py-3">{sewadar.center}</TableCell>
+                        <TableCell className="py-3">{sewadar.department}</TableCell>
+                        <TableCell className="text-center py-3">
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-medium ${sewadar.badgeStatus === "PERMANENT"
                               ? "bg-green-100 text-green-800"
@@ -1044,7 +1044,7 @@ export default function SewadarLookupPage() {
                             {sewadar.badgeStatus}
                           </span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-center py-3">
                           <Button
                             variant={selectedSewadar?._id === sewadar._id ? "default" : "outline"}
                             size="sm"

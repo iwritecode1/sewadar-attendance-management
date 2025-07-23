@@ -3,7 +3,6 @@
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
 import { Plus, Search, Check } from "lucide-react"
 import { useData } from "@/contexts/DataContext"
 
@@ -23,8 +22,6 @@ export default function SearchablePlaceSelect({
     const { places, addPlace } = useData()
     const [isOpen, setIsOpen] = useState(false)
     const [searchTerm, setSearchTerm] = useState("")
-    const [showAddForm, setShowAddForm] = useState(false)
-    const [newPlace, setNewPlace] = useState("")
     const inputRef = useRef<HTMLInputElement>(null)
     const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -60,7 +57,6 @@ export default function SearchablePlaceSelect({
         const inputValue = e.target.value?.toUpperCase()
         setSearchTerm(inputValue)
         setIsOpen(true)
-        setShowAddForm(false)
     }
 
     const handleInputFocus = () => {
@@ -72,16 +68,11 @@ export default function SearchablePlaceSelect({
         onValueChange(place)
         setSearchTerm("")
         setIsOpen(false)
-        setShowAddForm(false)
     }
 
     const handleAddNewPlace = () => {
-        setShowAddForm(true)
-        setNewPlace(searchTerm.trim())
-    }
-
-    const handleAddPlaceSubmit = () => {
-        const placeToAdd = newPlace.trim().toUpperCase()
+        // Directly add the place
+        const placeToAdd = searchTerm.trim().toUpperCase()
 
         if (!placeToAdd) return
 
@@ -103,18 +94,10 @@ export default function SearchablePlaceSelect({
         setTimeout(() => {
             handlePlaceSelect(placeToAdd)
         }, 100)
-
-        setNewPlace("")
-        setShowAddForm(false)
-    }
-
-    const handleAddPlaceCancel = () => {
-        setShowAddForm(false)
-        setNewPlace("")
     }
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === "Enter" && !showAddForm) {
+        if (e.key === "Enter") {
             e.preventDefault()
             if (filteredPlaces.length === 1) {
                 handlePlaceSelect(filteredPlaces[0])
@@ -123,7 +106,6 @@ export default function SearchablePlaceSelect({
             }
         } else if (e.key === "Escape") {
             setIsOpen(false)
-            setShowAddForm(false)
         }
     }
 
@@ -150,79 +132,23 @@ export default function SearchablePlaceSelect({
                     ref={dropdownRef}
                     className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1"
                 >
-                    {showAddForm ? (
-                        <div className="p-3 border-b">
-                            <div className="space-y-2">
-                                <div className="flex items-center space-x-2">
-                                    <Input
-                                        value={newPlace}
-                                        onChange={(e) => setNewPlace(e.target.value.toUpperCase())}
-                                        placeholder="Enter new place"
-                                        className="flex-1"
-                                        autoFocus
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                e.preventDefault()
-                                                handleAddPlaceSubmit()
-                                            } else if (e.key === "Escape") {
-                                                handleAddPlaceCancel()
-                                            }
-                                        }}
-                                    />
-                                </div>
-                                <div className="flex space-x-2">
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        onClick={handleAddPlaceSubmit}
-                                        className="flex-1"
-                                    >
-                                        <Plus className="mr-1 h-3 w-3" />
-                                        Add Place
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={handleAddPlaceCancel}
-                                        className="flex-1"
-                                    >
-                                        Cancel
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
+                    {filteredPlaces.length > 0 ? (
                         <>
-                            {filteredPlaces.length > 0 ? (
-                                <>
-                                    {filteredPlaces.map((place) => (
-                                        <div
-                                            key={place}
-                                            className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 flex items-center justify-between"
-                                            onClick={() => handlePlaceSelect(place)}
-                                        >
-                                            <span className="font-medium">{place}</span>
-                                            {value === place && (
-                                                <Check className="h-4 w-4 text-blue-600" />
-                                            )}
-                                        </div>
-                                    ))}
-                                    {searchTerm.trim() && !exactMatch && (
-                                        <div
-                                            className="p-3 hover:bg-blue-50 cursor-pointer border-t border-gray-200 text-blue-600"
-                                            onClick={handleAddNewPlace}
-                                        >
-                                            <div className="flex items-center">
-                                                <Plus className="mr-2 h-4 w-4" />
-                                                <span>Add "{searchTerm.trim().toUpperCase()}"</span>
-                                            </div>
-                                        </div>
-                                    )}
-                                </>
-                            ) : searchTerm.trim() ? (
+                            {filteredPlaces.map((place) => (
                                 <div
-                                    className="p-3 hover:bg-blue-50 cursor-pointer text-blue-600"
+                                    key={place}
+                                    className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 flex items-center justify-between"
+                                    onClick={() => handlePlaceSelect(place)}
+                                >
+                                    <span className="font-medium">{place}</span>
+                                    {value === place && (
+                                        <Check className="h-4 w-4 text-blue-600" />
+                                    )}
+                                </div>
+                            ))}
+                            {searchTerm.trim() && !exactMatch && (
+                                <div
+                                    className="p-3 hover:bg-blue-50 cursor-pointer border-t border-gray-200 text-blue-600"
                                     onClick={handleAddNewPlace}
                                 >
                                     <div className="flex items-center">
@@ -230,14 +156,24 @@ export default function SearchablePlaceSelect({
                                         <span>Add "{searchTerm.trim().toUpperCase()}"</span>
                                     </div>
                                 </div>
-                            ) : (
-                                <div className="p-4 text-center text-gray-400">
-                                    <Search className="mx-auto h-8 w-8 mb-2" />
-                                    <p>Start typing to search places...</p>
-                                    <p className="text-xs mt-1">{places.length} places available</p>
-                                </div>
                             )}
                         </>
+                    ) : searchTerm.trim() ? (
+                        <div
+                            className="p-3 hover:bg-blue-50 cursor-pointer text-blue-600"
+                            onClick={handleAddNewPlace}
+                        >
+                            <div className="flex items-center">
+                                <Plus className="mr-2 h-4 w-4" />
+                                <span>Add "{searchTerm.trim().toUpperCase()}"</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="p-4 text-center text-gray-400">
+                            <Search className="mx-auto h-8 w-8 mb-2" />
+                            <p>Start typing to search places...</p>
+                            <p className="text-xs mt-1">{places.length} places available</p>
+                        </div>
                     )}
                 </div>
             )}

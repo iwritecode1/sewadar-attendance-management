@@ -59,7 +59,6 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
   useEffect(() => {
     if (eventId && isOpen) {
       const eventAttendanceRecords = attendance.filter(record => record.eventId._id === eventId)
-      console.log('Event attendance records:', eventAttendanceRecords)
       setEventAttendance(eventAttendanceRecords)
     }
   }, [eventId, isOpen, attendance])

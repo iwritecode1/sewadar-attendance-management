@@ -126,18 +126,14 @@ export async function POST(request: NextRequest) {
 // Get sewadars
 export async function GET(request: NextRequest) {
   try {
-    console.log("GET /api/sewadars - Starting request")
     const session = await getSession()
-    console.log("Session:", session ? { id: session.id, role: session.role, area: session.area } : "No session")
 
     if (!session) {
       console.log("No session found, returning 401")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    console.log("Connecting to database...")
     await dbConnect()
-    console.log("Database connected successfully")
 
     const { searchParams } = new URL(request.url)
     const centerId = searchParams.get("centerId")
@@ -182,18 +178,12 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    console.log("Query built:", JSON.stringify(query))
-    console.log("Pagination params:", { page, limit, skip })
 
     // Get total count
-    console.log("Getting total count...")
     const total = await Sewadar.countDocuments(query)
-    console.log("Total count:", total)
 
     // Get sewadars
-    console.log("Fetching sewadars...")
     const sewadars = await Sewadar.find(query).sort({ badgeNumber: 1 }).skip(skip).limit(limit)
-    console.log("Sewadars fetched:", sewadars.length)
 
     // Calculate gender counts
     let maleCount = 0;

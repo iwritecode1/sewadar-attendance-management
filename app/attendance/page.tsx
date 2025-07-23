@@ -106,6 +106,7 @@ export default function AttendancePage() {
     createAttendance,
     addPlace,
     addDepartment,
+    fetchEvents,
     loading,
   } = useData();
 
@@ -211,32 +212,68 @@ export default function AttendancePage() {
     e.preventDefault();
     if (!user) return;
 
-    const success = await createEvent(newEvent);
-    if (success) {
-      // Close the form first
-      setShowNewEventForm(false);
-
-      // Wait a bit for the events to be refreshed, then find and select the new event
-      setTimeout(() => {
-        const newEventId = events.find(
-          (e) =>
-            e.place === newEvent.place &&
-            e.department === newEvent.department &&
-            e.fromDate === newEvent.fromDate &&
-            e.toDate === newEvent.toDate
-        )?._id;
-
-        if (newEventId) {
+    // Store the event data before creating it
+    const eventData = { ...newEvent };
+    
+    // Show loading toast
+    toast({
+      title: "Creating event...",
+      description: "Please wait while we create your event",
+    });
+    
+    try {
+      // Make a direct API call to create the event and get the response
+      const response = await fetch('/api/events', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(eventData),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.data && result.data._id) {
+        // Reset form immediately
+        setNewEvent({
+          place: "",
+          department: "",
+          fromDate: "",
+          toDate: "",
+        });
+        
+        // Immediately set selectedEvent to empty to unmount the create form
+        setSelectedEvent("");
+        
+        // Get the newly created event ID directly from the response
+        const newEventId = result.data._id;
+        
+        // Wait a moment before selecting the event
+        setTimeout(() => {
+          // Select the newly created event
           setSelectedEvent(newEventId);
-        }
-      }, 500);
-
-      // Reset form
-      setNewEvent({
-        place: "",
-        department: "",
-        fromDate: "",
-        toDate: "",
+          
+          toast({
+            title: "Success",
+            description: "Event created and selected successfully",
+          });
+          
+          // Refresh events in the background to ensure everything is up to date
+          fetchEvents();
+        }, 300);
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to create event",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error creating event:", error);
+      toast({
+        title: "Error",
+        description: "There was a problem creating the event",
+        variant: "destructive",
       });
     }
   };
