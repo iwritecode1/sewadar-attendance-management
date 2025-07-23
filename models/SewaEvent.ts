@@ -22,4 +22,15 @@ const SewaEventSchema: Schema = new Schema({
   createdAt: { type: Date, default: Date.now },
 })
 
-export default mongoose.models.SewaEvent || mongoose.model<ISewaEvent>("SewaEvent", SewaEventSchema)
+// Ensure the model is properly registered
+let SewaEvent: mongoose.Model<ISewaEvent>
+
+try {
+  // Try to get existing model
+  SewaEvent = mongoose.model<ISewaEvent>("SewaEvent")
+} catch (error) {
+  // Model doesn't exist, create it
+  SewaEvent = mongoose.model<ISewaEvent>("SewaEvent", SewaEventSchema)
+}
+
+export default SewaEvent

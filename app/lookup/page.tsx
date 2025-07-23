@@ -308,40 +308,8 @@ export default function SewadarLookupPage() {
         const targetCenter = centers.find(c => c.code === centerId)
         if (!targetCenter) return false
 
-        // Debug center matching for first few records
-        if (!window.centerMatchDebugCount) {
-          window.centerMatchDebugCount = 0
-        }
-
-        if (window.centerMatchDebugCount < 5) {
-          console.log('=== Center Match Debug ===')
-          console.log('Target center ID:', centerId)
-          console.log('Target center object:', targetCenter)
-          console.log('Record center data:', {
-            centerId: record.centerId,
-            centerCode: record.centerCode,
-            centerName: record.centerName,
-            fullRecord: record
-          })
-          console.log('All centers:', centers.map(c => ({ _id: c._id, code: c.code, name: c.name })))
-          window.centerMatchDebugCount++
-        }
-
-        // Try multiple matching approaches based on different possible formats
-        const centerMatch =
-          record.centerId === centerId ||                    // Match by code
-          record.centerId === targetCenter._id ||            // Match by _id
-          record.centerCode === centerId ||                  // Match by centerCode field
-          record.centerName === targetCenter.name ||         // Match by name
-          record.centerName === targetCenter.code ||         // Match centerName to code
-          // Also try case-insensitive matching
-          record.centerName?.toLowerCase() === targetCenter.name?.toLowerCase() ||
-          record.centerName?.toLowerCase() === targetCenter.code?.toLowerCase()
-
-        if (window.centerMatchDebugCount <= 3) {
-          console.log('Center match result:', centerMatch)
-        }
-
+        // Simple center code matching
+        const centerMatch = record.centerId === centerId
         return centerMatch
       }
 
@@ -746,8 +714,8 @@ export default function SewadarLookupPage() {
                   Attendance Filters
                 </CardTitle>
                 <CardDescription className="text-sm">
-                  {user?.role === "admin" 
-                    ? "Find sewadars based on their attendance count for specific centers" 
+                  {user?.role === "admin"
+                    ? "Find sewadars based on their attendance count for specific centers"
                     : "Find sewadars based on their attendance count in your center"
                   }
                 </CardDescription>
@@ -1034,70 +1002,115 @@ export default function SewadarLookupPage() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+              <div className="px-3 md:px-6 py-4 border-t">
+                <div className="flex flex-col space-y-3 md:space-y-0 md:flex-row md:items-center md:justify-between">
                   <div className="text-xs md:text-sm text-gray-600 text-center md:text-left">
                     Showing {startIndex + 1} to {Math.min(endIndex, searchResults.length)} of {searchResults.length} results
                   </div>
                   <div className="flex justify-center md:justify-end">
-                    <div className="flex space-x-1 md:space-x-2">
+                    <div className="flex items-center space-x-1">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage <= 1}
-                        className="text-xs md:text-sm px-2 md:px-3"
+                        className="text-xs px-2 py-1 h-8 min-w-[60px] md:min-w-[80px]"
                       >
                         <span className="hidden md:inline">Previous</span>
                         <span className="md:hidden">Prev</span>
                       </Button>
 
-                      {/* Page numbers */}
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        let pageNum
-                        if (totalPages <= 5) {
-                          pageNum = i + 1
-                        } else if (currentPage <= 3) {
-                          pageNum = i + 1
-                        } else if (currentPage >= totalPages - 2) {
-                          pageNum = totalPages - 4 + i
-                        } else {
-                          pageNum = currentPage - 2 + i
-                        }
+                      {/* Mobile: Show fewer page numbers */}
+                      <div className="hidden md:flex space-x-1">
+                        {/* Desktop pagination - show up to 5 pages */}
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum
+                          if (totalPages <= 5) {
+                            pageNum = i + 1
+                          } else if (currentPage <= 3) {
+                            pageNum = i + 1
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i
+                          } else {
+                            pageNum = currentPage - 2 + i
+                          }
 
-                        return (
-                          <Button
-                            key={pageNum}
-                            variant={pageNum === currentPage ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => handlePageChange(pageNum)}
-                            className="text-xs md:text-sm px-2 md:px-3 min-w-[32px] md:min-w-[40px]"
-                          >
-                            {pageNum}
-                          </Button>
-                        )
-                      })}
+                          return (
+                            <Button
+                              key={pageNum}
+                              variant={pageNum === currentPage ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => handlePageChange(pageNum)}
+                              className="text-sm px-3 py-1 h-8 min-w-[40px]"
+                            >
+                              {pageNum}
+                            </Button>
+                          )
+                        })}
 
-                      {totalPages > 5 && currentPage < totalPages - 2 && (
-                        <>
-                          <span className="flex items-center text-gray-400 px-1">...</span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handlePageChange(totalPages)}
-                            className="text-xs md:text-sm px-2 md:px-3 min-w-[32px] md:min-w-[40px]"
-                          >
-                            {totalPages}
-                          </Button>
-                        </>
-                      )}
+                        {totalPages > 5 && currentPage < totalPages - 2 && (
+                          <>
+                            <span className="flex items-center text-gray-400 px-1">...</span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePageChange(totalPages)}
+                              className="text-sm px-3 py-1 h-8 min-w-[40px]"
+                            >
+                              {totalPages}
+                            </Button>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Mobile pagination - show only 3 pages max */}
+                      <div className="flex md:hidden space-x-1">
+                        {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
+                          let pageNum
+                          if (totalPages <= 3) {
+                            pageNum = i + 1
+                          } else if (currentPage <= 2) {
+                            pageNum = i + 1
+                          } else if (currentPage >= totalPages - 1) {
+                            pageNum = totalPages - 2 + i
+                          } else {
+                            pageNum = currentPage - 1 + i
+                          }
+
+                          return (
+                            <Button
+                              key={pageNum}
+                              variant={pageNum === currentPage ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => handlePageChange(pageNum)}
+                              className="text-xs px-2 py-1 h-8 min-w-[32px]"
+                            >
+                              {pageNum}
+                            </Button>
+                          )
+                        })}
+
+                        {totalPages > 3 && currentPage < totalPages - 1 && (
+                          <>
+                            <span className="flex items-center text-gray-400 px-1 text-xs">...</span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePageChange(totalPages)}
+                              className="text-xs px-2 py-1 h-8 min-w-[32px]"
+                            >
+                              {totalPages}
+                            </Button>
+                          </>
+                        )}
+                      </div>
 
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage >= totalPages}
-                        className="text-xs md:text-sm px-2 md:px-3"
+                        className="text-xs px-2 py-1 h-8 min-w-[60px] md:min-w-[80px]"
                       >
                         <span className="hidden md:inline">Next</span>
                         <span className="md:hidden">Next</span>
