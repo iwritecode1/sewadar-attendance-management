@@ -328,16 +328,9 @@ export default function SewadarLookupPage() {
       // Check if this attendance record includes the sewadar
       let hasSewadar = false
 
-      // Check regular sewadars (array of sewadar IDs)
+      // Check sewadars (includes both regular and formerly temporary sewadars)
       if (record.sewadars && Array.isArray(record.sewadars)) {
         hasSewadar = record.sewadars.includes(sewadarId)
-      }
-
-      // Check temporary sewadars
-      if (!hasSewadar && record.tempSewadars && Array.isArray(record.tempSewadars)) {
-        hasSewadar = record.tempSewadars.some((ts: any) =>
-          ts.id === sewadarId || ts._id === sewadarId
-        )
       }
 
       if (!hasSewadar) return false
@@ -963,7 +956,7 @@ export default function SewadarLookupPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {/* Mobile Card Layout - Only Badge Number, Name, Father/Husband Name */}
+              {/* Mobile Card Layout - Badge Number, Name, Father/Husband Name, Center, Attendance */}
               <div className="block md:hidden space-y-3">
                 {paginatedResults.map((sewadar, index) => (
                   <div
@@ -976,19 +969,33 @@ export default function SewadarLookupPage() {
                       }`}
                     onClick={() => handleSelectSewadar(sewadar)}
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-900 text-sm truncate">
+                    <div className="space-y-3">
+                      {/* Header row with name and badge number */}
+                      <div className="flex items-start justify-between">
+                        <h4 className="font-medium text-gray-900 text-sm truncate flex-1">
                           {sewadar.name}
                         </h4>
-                        <p className="text-xs text-gray-600 truncate mt-1">
-                          {sewadar.fatherHusbandName}
-                        </p>
-                      </div>
-                      <div className="ml-3 flex-shrink-0">
-                        <code className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">
+                        <code className="text-xs font-mono bg-gray-100 px-2 py-1 rounded ml-3 flex-shrink-0">
                           {sewadar.badgeNumber}
                         </code>
+                      </div>
+                      
+                      {/* Father name and age */}
+                      <div className="text-xs text-gray-600">
+                        <p className="truncate">{sewadar.fatherHusbandName}</p>
+                        {sewadar.age && (
+                          <p className="text-gray-500 mt-1">Age: {sewadar.age}</p>
+                        )}
+                      </div>
+                      
+                      {/* Center and attendance badges */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                          {sewadar.center}
+                        </span>
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                          {getSewadarAttendanceCount(sewadar._id)} days
+                        </span>
                       </div>
                     </div>
                     {selectedSewadar?._id === sewadar._id && (
@@ -1002,17 +1009,17 @@ export default function SewadarLookupPage() {
 
               {/* Desktop Table Layout - Full Information */}
               <div className="hidden md:block overflow-x-auto">
-                <Table className="enhanced-table w-full">
+                <Table className="w-full border-collapse">
                   <TableHeader>
                     <TableRow className="border-b">
-                      <TableHead className="w-[15%] py-3 font-semibold">Badge Number</TableHead>
-                      <TableHead className="w-[15%] py-3 font-semibold">Name</TableHead>
-                      <TableHead className="w-[15%] py-3 font-semibold">Father/Husband</TableHead>
-                      <TableHead className="w-[10%] py-3 font-semibold text-center">Gender</TableHead>
-                      <TableHead className="w-[15%] py-3 font-semibold">Center</TableHead>
-                      <TableHead className="w-[15%] py-3 font-semibold">Department</TableHead>
-                      <TableHead className="w-[10%] py-3 font-semibold text-center">Status</TableHead>
-                      <TableHead className="w-[10%] py-3 font-semibold text-center">Action</TableHead>
+                      <TableHead className="w-[15%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Badge Number</TableHead>
+                      <TableHead className="w-[15%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Name</TableHead>
+                      <TableHead className="w-[15%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Father/Husband</TableHead>
+                      <TableHead className="w-[10%] py-3 px-4 font-semibold text-center bg-gray-50 border-b">Gender</TableHead>
+                      <TableHead className="w-[15%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Center</TableHead>
+                      <TableHead className="w-[15%] py-3 px-4 font-semibold text-center bg-gray-50 border-b">Attendance</TableHead>
+                      <TableHead className="w-[10%] py-3 px-4 font-semibold text-center bg-gray-50 border-b">Status</TableHead>
+                      <TableHead className="w-[10%] py-3 px-4 font-semibold text-center bg-gray-50 border-b">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1021,10 +1028,10 @@ export default function SewadarLookupPage() {
                         key={sewadar._id}
                         className={selectedSewadar?._id === sewadar._id ? "bg-blue-50" : index % 2 === 0 ? "bg-white" : "bg-gray-50"}
                       >
-                        <TableCell className="font-mono text-sm py-3">{sewadar.badgeNumber}</TableCell>
-                        <TableCell className="font-medium py-3">{sewadar.name}</TableCell>
-                        <TableCell className="py-3">{sewadar.fatherHusbandName}</TableCell>
-                        <TableCell className="text-center py-3">
+                        <TableCell className="font-mono text-sm py-3 px-4 text-left border-b border-gray-100">{sewadar.badgeNumber}</TableCell>
+                        <TableCell className="font-medium py-3 px-4 text-left border-b border-gray-100">{sewadar.name}</TableCell>
+                        <TableCell className="py-3 px-4 text-left border-b border-gray-100">{sewadar.fatherHusbandName}</TableCell>
+                        <TableCell className="text-center py-3 px-4 border-b border-gray-100">
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-medium ${sewadar.gender === "MALE" ? "bg-blue-100 text-blue-800" : "bg-pink-100 text-pink-800"
                               }`}
@@ -1032,9 +1039,13 @@ export default function SewadarLookupPage() {
                             {sewadar.gender}
                           </span>
                         </TableCell>
-                        <TableCell className="py-3">{sewadar.center}</TableCell>
-                        <TableCell className="py-3">{sewadar.department}</TableCell>
-                        <TableCell className="text-center py-3">
+                        <TableCell className="py-3 px-4 text-left border-b border-gray-100">{sewadar.center}</TableCell>
+                        <TableCell className="text-center py-3 px-4 border-b border-gray-100">
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {getSewadarAttendanceCount(sewadar._id)} days
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center py-3 px-4 border-b border-gray-100">
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-medium ${sewadar.badgeStatus === "PERMANENT"
                               ? "bg-green-100 text-green-800"
@@ -1044,7 +1055,7 @@ export default function SewadarLookupPage() {
                             {sewadar.badgeStatus}
                           </span>
                         </TableCell>
-                        <TableCell className="text-center py-3">
+                        <TableCell className="text-center py-3 px-4 border-b border-gray-100">
                           <Button
                             variant={selectedSewadar?._id === sewadar._id ? "default" : "outline"}
                             size="sm"

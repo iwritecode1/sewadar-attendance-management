@@ -33,7 +33,7 @@ window.addEventListener("beforeinstallprompt", (e) => {
   deferredPrompt = e
 
   // Show custom install button
-  showInstallButton()
+  // showInstallButton()
 })
 
 function showInstallButton() {
@@ -170,7 +170,7 @@ window.addEventListener("online", () => {
   if (indicator) {
     indicator.remove()
   }
-  
+
   // Trigger background sync if needed
   if ("serviceWorker" in navigator && "sync" in window.ServiceWorkerRegistration.prototype) {
     navigator.serviceWorker.ready.then((registration) => {

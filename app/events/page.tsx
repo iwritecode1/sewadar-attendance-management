@@ -57,7 +57,12 @@ export default function EventsPage() {
       if (selectedPlace !== "all") params.place = selectedPlace
       if (selectedDepartment !== "all") params.department = selectedDepartment
 
-      fetchEvents(params)
+      // Add a small delay to ensure database is ready after hard refresh
+      const timeoutId = setTimeout(() => {
+        fetchEvents(params)
+      }, 100)
+
+      return () => clearTimeout(timeoutId)
     }
   }, [searchTerm, selectedPlace, selectedDepartment, currentPage, fetchEvents, user])
 
@@ -83,6 +88,20 @@ export default function EventsPage() {
     })
   }
 
+  // Auto-refresh if stats are showing 0 for all events (likely a race condition)
+  useEffect(() => {
+    if (events.length > 0 && !loading.events) {
+      const hasAnyStats = events.some(event => event.stats && event.stats.totalAttendance > 0)
+      if (!hasAnyStats) {
+        // Wait a bit and retry once
+        const timeoutId = setTimeout(() => {
+          refreshData()
+        }, 2000)
+        return () => clearTimeout(timeoutId)
+      }
+    }
+  }, [events, loading.events])
+
   const handleDeleteEvent = async (eventId: string) => {
     if (!confirm("Are you sure you want to delete this event? This will also delete all associated attendance records.")) {
       return
@@ -107,20 +126,10 @@ export default function EventsPage() {
     const uniqueSewadarIds = new Set<string>()
 
     attendance.forEach(record => {
-      // Add regular sewadars
+      // Add sewadars (includes both regular and formerly temporary sewadars)
       if (record.sewadars && Array.isArray(record.sewadars)) {
         record.sewadars.forEach((sewadarId: string) => {
           uniqueSewadarIds.add(sewadarId)
-        })
-      }
-
-      // Add temporary sewadars (using their temp badge as unique identifier)
-      if (record.tempSewadars && Array.isArray(record.tempSewadars)) {
-        record.tempSewadars.forEach((tempSewadar: any) => {
-          const tempId = tempSewadar.tempBadge || tempSewadar.id || tempSewadar._id
-          if (tempId) {
-            uniqueSewadarIds.add(`temp_${tempId}`)
-          }
         })
       }
     })
@@ -427,7 +436,8 @@ export default function EventsPage() {
                   {events.map((event, index) => (
                     <div
                       key={event._id}
-                      className={`p-4 border rounded-lg ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                      className={`p-4 border rounded-lg cursor-pointer hover:shadow-md transition-shadow ${index % 2 === 0 ? "bg-white hover:bg-gray-50" : "bg-gray-50 hover:bg-gray-100"}`}
+                      onClick={() => setViewingEvent(event._id)}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1 min-w-0">
@@ -456,7 +466,7 @@ export default function EventsPage() {
                           </Badge>
                         </div>
 
-                        <div className="flex space-x-1">
+                        <div className="flex space-x-1" onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -498,7 +508,7 @@ export default function EventsPage() {
                         <TableHead className="w-40">Place</TableHead>
                         <TableHead className="w-32">Department</TableHead>
                         <TableHead className="w-32">Duration</TableHead>
-                        <TableHead className="w-24">Attendance</TableHead>
+                        <TableHead className="w-24">Sewadars</TableHead>
                         {/* <TableHead className="w-24">Centers</TableHead> */}
                         <TableHead className="w-32">Created By</TableHead>
                         <TableHead className="w-20">Actions</TableHead>
@@ -508,7 +518,8 @@ export default function EventsPage() {
                       {events.map((event, index) => (
                         <TableRow
                           key={event._id}
-                          className={index % 2 === 0 ? "bg-white" : "bg-gray-100"}
+                          className={`cursor-pointer hover:bg-blue-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-gray-100"}`}
+                          onClick={() => setViewingEvent(event._id)}
                         >
                           <TableCell className="font-medium w-40">{event.place}</TableCell>
                           <TableCell className="w-32">{event.department}</TableCell>
@@ -531,7 +542,7 @@ export default function EventsPage() {
                           </TableCell> */}
                           <TableCell className="w-32 text-sm">{event.createdBy.name}</TableCell>
                           <TableCell className="w-20">
-                            <div className="flex space-x-1">
+                            <div className="flex space-x-1" onClick={(e) => e.stopPropagation()}>
                               <Button
                                 variant="ghost"
                                 size="sm"

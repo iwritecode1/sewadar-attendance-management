@@ -1,11 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getSession } from "@/lib/auth"
+import { getSession, isAuthorized } from "@/lib/auth"
 import dbConnect from "@/lib/mongodb"
 import Sewadar from "@/models/Sewadar"
 import Center from "@/models/Center"
 import AttendanceRecord from "@/models/AttendanceRecord"
 import { logActivity } from "@/lib/logger"
 import { validateSewadarData } from "@/lib/validators"
+import { generateBadgePattern, getNextBadgeNumber } from "@/lib/badgeUtils"
 
 // Ensure all models are loaded
 import "@/models"
@@ -19,14 +20,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // Check if user is admin or coordinator
+    if (!isAuthorized(session, "admin") && !isAuthorized(session, "coordinator")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     await dbConnect()
 
     const body = await request.json()
+    let badgeNumber = body.badgeNumber
+
+    // Generate badge number for temporary sewadars if not provided
+    if (!badgeNumber && body.badgeStatus === "TEMPORARY") {
+      const badgePattern = generateBadgePattern(body.centerId, body.gender, true)
+
+      // Find existing badges with this pattern
+      const existingBadges = await Sewadar.find({
+        badgeNumber: { $regex: new RegExp(`^${badgePattern}\\d{4}$`) }
+      }).select('badgeNumber')
+
+      const existingBadgeNumbers = existingBadges.map(s => s.badgeNumber)
+      badgeNumber = getNextBadgeNumber(existingBadgeNumbers, badgePattern)
+    }
+
     const sewadarData = {
-      badgeNumber: body.badgeNumber,
+      badgeNumber,
       name: body.name,
       fatherHusbandName: body.fatherHusbandName,
       dob: body.dob,
+      age: body.age,
       gender: body.gender,
       badgeStatus: body.badgeStatus,
       zone: body.zone,
@@ -37,6 +59,24 @@ export async function POST(request: NextRequest) {
       department: body.department,
       contactNo: body.contactNo,
       emergencyContact: body.emergencyContact,
+    }
+
+    // Check for existing sewadar by name and father name (case insensitive) - same logic as attendance API
+    if (body.badgeStatus === "TEMPORARY") {
+      const existingSewadar = await Sewadar.findOne({
+        centerId: sewadarData.centerId,
+        name: { $regex: new RegExp(`^${sewadarData.name.trim()}$`, 'i') },
+        fatherHusbandName: { $regex: new RegExp(`^${sewadarData.fatherHusbandName.trim()}$`, 'i') }
+      })
+
+      if (existingSewadar) {
+        return NextResponse.json({
+          success: true,
+          data: existingSewadar,
+          message: `Found existing sewadar: ${existingSewadar.name} (Father: ${existingSewadar.fatherHusbandName}) with badge ${existingSewadar.badgeNumber}`,
+          isExisting: true
+        })
+      }
     }
 
     // Validate sewadar data

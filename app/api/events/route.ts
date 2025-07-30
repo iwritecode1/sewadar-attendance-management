@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getSession } from "@/lib/auth"
 import dbConnect from "@/lib/mongodb"
+import mongoose from "mongoose"
 import SewaEvent from "@/models/SewaEvent"
 import AttendanceRecord from "@/models/AttendanceRecord"
 import { logActivity } from "@/lib/logger"
@@ -106,6 +107,11 @@ export async function GET(request: NextRequest) {
 
     await dbConnect()
 
+    // Ensure database connection is ready
+    if (!mongoose.connection.readyState) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+
     const { searchParams } = new URL(request.url)
     const fromDate = searchParams.get("fromDate")
     const toDate = searchParams.get("toDate")
@@ -160,22 +166,42 @@ export async function GET(request: NextRequest) {
       // Add attendance statistics for each event
       eventsWithStats = await Promise.all(
         events.map(async (event) => {
-          const attendanceRecords = await AttendanceRecord.find({ eventId: event._id })
+          try {
+            // Use a more robust query with proper error handling
+            const attendanceRecords = await AttendanceRecord.find({ 
+              eventId: event._id 
+            }).lean().exec()
 
-          const totalAttendance = attendanceRecords.reduce(
-            (sum, record) => sum + record.sewadars.length,
-            0,
-          )
+            const totalAttendance = attendanceRecords.reduce(
+              (sum, record) => sum + (record.sewadars?.length || 0),
+              0,
+            )
 
-          const centersParticipated = new Set(attendanceRecords.map((r) => r.centerId)).size
+            const centersParticipated = new Set(
+              attendanceRecords
+                .filter(r => r.centerId)
+                .map((r) => r.centerId)
+            ).size
 
-          return {
-            ...event.toObject(),
-            stats: {
-              totalAttendance,
-              centersParticipated,
-              attendanceRecords: attendanceRecords.length,
-            },
+            return {
+              ...event.toObject(),
+              stats: {
+                totalAttendance,
+                centersParticipated,
+                attendanceRecords: attendanceRecords.length,
+              },
+            }
+          } catch (error) {
+            console.error(`Error calculating stats for event ${event._id}:`, error)
+            // Return event with zero stats if calculation fails
+            return {
+              ...event.toObject(),
+              stats: {
+                totalAttendance: 0,
+                centersParticipated: 0,
+                attendanceRecords: 0,
+              },
+            }
           }
         }),
       )

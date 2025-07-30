@@ -74,7 +74,14 @@ export default function SewadarAttendanceModal({ isOpen, onClose, sewadar }: Sew
       })
 
       if (response.success) {
-        setAttendanceRecords(response.data?.records || [])
+        const records = response.data?.records || []
+        // Sort by event fromDate (most recent first)
+        const sortedRecords = records.sort((a, b) => {
+          const dateA = new Date(a.eventId?.fromDate || 0)
+          const dateB = new Date(b.eventId?.fromDate || 0)
+          return dateB.getTime() - dateA.getTime()
+        })
+        setAttendanceRecords(sortedRecords)
       } else {
         throw new Error(response.error || "Failed to fetch attendance")
       }
@@ -196,7 +203,7 @@ export default function SewadarAttendanceModal({ isOpen, onClose, sewadar }: Sew
         <div className="space-y-4">
           {/* Quick Stats */}
           {attendanceStats && (
-            <div className="grid grid-cols-2 gap-3 md:gap-4">
+            <div className="grid grid-cols-3 gap-2 md:gap-4">
               <div className="text-center p-3 md:p-4 bg-blue-50 rounded-lg">
                 <div className="text-xl md:text-2xl font-bold text-blue-600">{attendanceStats.totalEvents}</div>
                 <div className="text-xs md:text-sm text-blue-800">Events</div>
@@ -204,6 +211,19 @@ export default function SewadarAttendanceModal({ isOpen, onClose, sewadar }: Sew
               <div className="text-center p-3 md:p-4 bg-green-50 rounded-lg">
                 <div className="text-xl md:text-2xl font-bold text-green-600">{attendanceStats.totalDays}</div>
                 <div className="text-xs md:text-sm text-green-800">Days</div>
+              </div>
+              <div className="text-center p-3 md:p-4 bg-purple-50 rounded-lg">
+                <div className="text-lg md:text-xl font-bold text-purple-600">
+                  {attendanceRecords[0]?.eventId?.fromDate
+                    ? new Date(attendanceRecords[0].eventId.fromDate).toLocaleDateString('en-GB', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: '2-digit'
+                    })
+                    : "N/A"
+                  }
+                </div>
+                <div className="text-xs md:text-sm text-purple-800">Last Event</div>
               </div>
             </div>
           )}

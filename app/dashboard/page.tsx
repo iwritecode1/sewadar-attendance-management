@@ -169,17 +169,17 @@ export default function Dashboard() {
                 </div> */}
                 <div className="text-center space-y-1">
                   <div className="flex items-center justify-center space-x-1">
-                    <Users className="h-4 w-4 text-green-600" />
-                    <span className="text-xs font-medium text-gray-600">Sewadars</span>
-                  </div>
-                  <p className="text-xl font-bold text-gray-900">{overview.sewadarCount}</p>
-                </div>
-                <div className="text-center space-y-1">
-                  <div className="flex items-center justify-center space-x-1">
                     <Calendar className="h-4 w-4 text-purple-600" />
                     <span className="text-xs font-medium text-gray-600">Events</span>
                   </div>
                   <p className="text-xl font-bold text-gray-900">{overview.eventCount}</p>
+                </div>
+                <div className="text-center space-y-1">
+                  <div className="flex items-center justify-center space-x-1">
+                    <Users className="h-4 w-4 text-green-600" />
+                    <span className="text-xs font-medium text-gray-600">Sewadars</span>
+                  </div>
+                  <p className="text-xl font-bold text-gray-900">{overview.sewadarCount}</p>
                 </div>
                 <div className="text-center space-y-1">
                   <div className="flex items-center justify-center space-x-1">
@@ -196,7 +196,7 @@ export default function Dashboard() {
           <Card className="stat-card">
             <CardContent className="py-4 px-4">
               <div className="grid grid-cols-2 gap-4">
-              <div className="text-center space-y-2">
+                <div className="text-center space-y-2">
                   <div className="flex items-center justify-center space-x-2">
                     <Building className="h-5 w-5 text-blue-600" />
                     <span className="text-sm font-medium text-gray-600">Centers</span>
@@ -217,20 +217,10 @@ export default function Dashboard() {
 
         {/* Desktop - Individual Cards */}
         <div className="hidden lg:grid grid-cols-5 gap-6">
-          <Card className="stat-card">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Centers</CardTitle>
-              <Building className="h-5 w-5 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{overview.centerCount}</div>
-              <p className="text-xs text-gray-500 mt-1">Active in {user.area}</p>
-            </CardContent>
-          </Card>
 
           <Card className="stat-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Sewadars</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">Sewadars</CardTitle>
               <Users className="h-5 w-5 text-green-600" />
             </CardHeader>
             <CardContent>
@@ -241,12 +231,12 @@ export default function Dashboard() {
 
           <Card className="stat-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Events</CardTitle>
-              <Calendar className="h-5 w-5 text-purple-600" />
+              <CardTitle className="text-sm font-medium text-gray-600">Centers</CardTitle>
+              <Building className="h-5 w-5 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{overview.eventCount}</div>
-              <p className="text-xs text-gray-500 mt-1">Sewa events</p>
+              <div className="text-3xl font-bold text-gray-900">{overview.centerCount}</div>
+              <p className="text-xs text-gray-500 mt-1">Active in {user.area}</p>
             </CardContent>
           </Card>
 
@@ -263,14 +253,26 @@ export default function Dashboard() {
 
           <Card className="stat-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Attendance</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">Events</CardTitle>
+              <Calendar className="h-5 w-5 text-purple-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900">{overview.eventCount}</div>
+              <p className="text-xs text-gray-500 mt-1">Sewa Jatha</p>
+            </CardContent>
+          </Card>
+
+          <Card className="stat-card">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Attended</CardTitle>
               <TrendingUp className="h-5 w-5 text-orange-600" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-gray-900">{overview.totalAttendance}</div>
-              <p className="text-xs text-gray-500 mt-1">Records</p>
+              <p className="text-xs text-gray-500 mt-1">Sewadars</p>
             </CardContent>
           </Card>
+
         </div>
 
         {/* Charts Row */}
@@ -300,7 +302,7 @@ export default function Dashboard() {
                     </div>
                     <div className="text-right ml-3">
                       <p className="text-xl md:text-2xl font-bold text-blue-600">{center.attendanceCount}</p>
-                      <p className="text-xs md:text-sm text-gray-600">Total attendance</p>
+                      <p className="text-xs md:text-sm text-gray-600">Participated</p>
                     </div>
                   </div>
                 ))}
@@ -409,7 +411,7 @@ export default function Dashboard() {
                         <Eye className="h-4 w-4" />
                       </Button>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-3 mb-2">
                       <div className="bg-gray-50 rounded-lg p-2">
                         <div className="flex items-center justify-center mb-1">
@@ -423,7 +425,7 @@ export default function Dashboard() {
                         <p className="text-xs text-gray-500 text-center">to {formatDate(event.toDate)}</p>
                       </div>
                     </div>
-                    
+
                     <p className="text-xs text-gray-500">Created by {event.createdBy.name}</p>
                   </div>
 

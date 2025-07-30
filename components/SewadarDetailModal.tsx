@@ -85,7 +85,14 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
         format: "json",
       })
       if (response.success) {
-        setAttendanceHistory(response.data?.records || [])
+        const records = response.data?.records || []
+        // Sort by event fromDate (most recent first)
+        const sortedRecords = records.sort((a, b) => {
+          const dateA = new Date(a.eventId?.fromDate || 0)
+          const dateB = new Date(b.eventId?.fromDate || 0)
+          return dateB.getTime() - dateA.getTime()
+        })
+        setAttendanceHistory(sortedRecords)
       }
     } catch (error) {
       console.error("Failed to fetch attendance history:", error)
@@ -220,6 +227,14 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                       <div>
                         <p className="text-sm text-gray-600">Date of Birth</p>
                         <p className="font-medium">{sewadar.dob}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-3">
+                      <Clock className="h-5 w-5 text-gray-400" />
+                      <div>
+                        <p className="text-sm text-gray-600">Age</p>
+                        <p className="font-medium">{sewadar.age || "Not specified"}</p>
                       </div>
                     </div>
 
@@ -370,7 +385,14 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                           <div>
                             <p className="text-sm text-purple-600">Last Event</p>
                             <p className="text-lg font-bold text-purple-900">
-                              {formatDate(attendanceHistory[0].submittedAt)}
+                              {attendanceHistory[0]?.eventId?.fromDate
+                                ? new Date(attendanceHistory[0].eventId.fromDate).toLocaleDateString('en-GB', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: '2-digit'
+                                })
+                                : "N/A"
+                              }
                             </p>
                           </div>
                           <Calendar className="h-8 w-8 text-purple-600" />
@@ -381,8 +403,8 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                     {/* Mobile Card Layout for Attendance */}
                     <div className="block md:hidden space-y-3">
                       {attendanceHistory.map((record, index) => (
-                        <div 
-                          key={record._id} 
+                        <div
+                          key={record._id}
                           className={`p-4 border rounded-lg ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
                         >
                           <div className="space-y-2">

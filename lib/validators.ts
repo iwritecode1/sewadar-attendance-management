@@ -82,7 +82,7 @@ export function validateAttendanceData(data: any): ValidationResult {
     errors.push("At least one sewadar must be selected")
   }
 
-  // Validate temporary sewadars
+  // Validate temporary sewadars (they will be converted to actual sewadars)
   if (Array.isArray(data.tempSewadars)) {
     data.tempSewadars.forEach((tempSewadar: any, index: number) => {
       if (!tempSewadar.name || typeof tempSewadar.name !== "string") {

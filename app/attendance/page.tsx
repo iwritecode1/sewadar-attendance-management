@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import SearchableEventSelect from "@/components/SearchableEventSelect";
 import SearchablePlaceSelect from "@/components/SearchablePlaceSelect";
 import SearchableDepartmentSelect from "@/components/SearchableDepartmentSelect";
+import { generateBadgePattern, getNextBadgeNumber } from "@/lib/badgeUtils";
 import {
   Calendar,
   Plus,
@@ -93,6 +94,13 @@ const handleImageUpload = (
   }
 };
 
+// Helper function to get date in YYYY-MM-DD format
+const getFormattedDate = (daysOffset: number = 0) => {
+  const date = new Date();
+  date.setDate(date.getDate() + daysOffset);
+  return date.toISOString().split('T')[0];
+};
+
 export default function AttendancePage() {
   const { user } = useAuth();
   const {
@@ -118,18 +126,11 @@ export default function AttendancePage() {
     user?.role === "coordinator" ? user.centerId || "" : ""
   );
 
-  // Fetch all sewadars for the coordinator's center when the component mounts
-  useEffect(() => {
-    if (user?.role === "coordinator" && user.centerId) {
-      // Fetch all sewadars for the coordinator's center with a high limit
-      fetchSewadarsForCenter(user.centerId);
-    }
-  }, [user, fetchSewadarsForCenter]);
   const [newEvent, setNewEvent] = useState({
     place: "",
     department: "",
-    fromDate: "",
-    toDate: "",
+    fromDate: getFormattedDate(0), // Current date
+    toDate: getFormattedDate(4), // 4 days after current date
   });
   const [selectedSewadars, setSelectedSewadars] = useState<string[]>([]);
   const [tempSewadars, setTempSewadars] = useState([
@@ -147,6 +148,38 @@ export default function AttendancePage() {
   const [sewadarSearch, setSewadarSearch] = useState("");
   const [showSewadarDropdown, setShowSewadarDropdown] = useState(false);
   const [focusedSewadarIndex, setFocusedSewadarIndex] = useState(-1);
+
+  // Fetch all sewadars for the coordinator's center when the component mounts
+  useEffect(() => {
+    if (user?.role === "coordinator" && user.centerId) {
+      // Fetch all sewadars for the coordinator's center with a high limit
+      fetchSewadarsForCenter(user.centerId);
+    }
+  }, [user, fetchSewadarsForCenter]);
+
+  // Auto-scroll to focused sewadar item within dropdown only
+  useEffect(() => {
+    if (focusedSewadarIndex >= 0 && showSewadarDropdown) {
+      const focusedElement = document.getElementById(`sewadar-option-${focusedSewadarIndex}`);
+      const dropdown = document.getElementById('sewadar-dropdown');
+
+      if (focusedElement && dropdown) {
+        const dropdownScrollTop = dropdown.scrollTop;
+        const dropdownHeight = dropdown.clientHeight;
+        const elementOffsetTop = focusedElement.offsetTop;
+        const elementHeight = focusedElement.offsetHeight;
+
+        // Check if element is above the visible area
+        if (elementOffsetTop < dropdownScrollTop) {
+          dropdown.scrollTop = elementOffsetTop;
+        }
+        // Check if element is below the visible area
+        else if (elementOffsetTop + elementHeight > dropdownScrollTop + dropdownHeight) {
+          dropdown.scrollTop = elementOffsetTop + elementHeight - dropdownHeight;
+        }
+      }
+    }
+  }, [focusedSewadarIndex, showSewadarDropdown]);
 
   const [showTempSewadarForm, setShowTempSewadarForm] = useState(false);
   const [showNominalRollForm, setShowNominalRollForm] = useState(false);
@@ -175,46 +208,29 @@ export default function AttendancePage() {
   // Function to get next progressive badge number for temp sewadars
   const getNextTempBadgeNumber = (gender: "MALE" | "FEMALE", currentIndex: number = 0) => {
     const centerId = selectedCenter || user?.centerId || "";
-    const genderPrefix = gender === "MALE" ? "GA" : "LA";
-    const exactBadgePattern = `T${centerId}${genderPrefix}`;
+    const badgePattern = generateBadgePattern(centerId, gender, true);
 
-
-
-    // Get existing temp sewadars with exact badge pattern (must be exactly T + centerId + genderPrefix + 4 digits)
-    const matchingBadges = availableSewadars
-      .filter(sewadar => {
-        const regex = new RegExp(`^T${centerId}${genderPrefix}\\d{4}$`);
-        return regex.test(sewadar.badgeNumber);
-      });
-
-
-
-    const existingNumbers = matchingBadges
-      .map(sewadar => {
-        const match = sewadar.badgeNumber.match(/(\d{4})$/);
-        const num = match ? parseInt(match[1]) : 0;
-        return num;
-      })
-      .filter(num => num > 0);
+    // Get existing badges with this pattern
+    const existingBadges = availableSewadars
+      .filter(sewadar => sewadar.badgeNumber.startsWith(badgePattern))
+      .map(sewadar => sewadar.badgeNumber);
 
     // Count how many temp sewadars of the same gender are being added before this one
-    let sameGenderCount = 0;
+    let sameGenderCountBefore = 0;
     for (let i = 0; i < currentIndex; i++) {
       const ts = tempSewadars[i];
-      if (ts.gender === gender && ts.name.trim() && ts.fatherName.trim()) {
-        sameGenderCount++;
+      if (ts && ts.gender === gender && (ts.name.trim() || i === currentIndex)) {
+        sameGenderCountBefore++;
       }
     }
 
-    // Find the highest existing number for this gender
-    const maxExisting = existingNumbers.length > 0 ? Math.max(...existingNumbers) : 0;
+    // Generate base next badge number from existing badges
+    const baseNextBadge = getNextBadgeNumber(existingBadges, badgePattern);
+    const baseNumber = parseInt(baseNextBadge.slice(-4));
 
-    // Next number should be maxExisting + sameGenderCount + 1
-    const nextNumber = maxExisting + sameGenderCount + 1;
-
-    const finalBadge = `${exactBadgePattern}${String(nextNumber).padStart(4, "0")}`;
-
-    return finalBadge;
+    // Calculate the final badge number for this specific sewadar
+    const finalNumber = baseNumber + sameGenderCountBefore;
+    return `${badgePattern}${String(finalNumber).padStart(4, "0")}`;
   };
 
   const handleEventSubmit = async (e: React.FormEvent) => {
@@ -247,8 +263,8 @@ export default function AttendancePage() {
         setNewEvent({
           place: "",
           department: "",
-          fromDate: "",
-          toDate: "",
+          fromDate: getFormattedDate(0), // Current date
+          toDate: getFormattedDate(4), // 4 days after current date
         });
 
         // Immediately set selectedEvent to empty to unmount the create form
@@ -451,16 +467,39 @@ export default function AttendancePage() {
                   <Select
                     value={selectedCenter}
                     onValueChange={handleCenterChange}
+                    disabled={loading.centers}
                   >
                     <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select a center" />
+                      <SelectValue 
+                        placeholder={
+                          loading.centers ? (
+                            <span className="flex items-center">
+                              <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                              Loading centers...
+                            </span>
+                          ) : (
+                            "Select a center"
+                          )
+                        } 
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      {centers.map((center) => (
-                        <SelectItem key={center._id} value={center.code}>
-                          {center.name} ({center.code})
-                        </SelectItem>
-                      ))}
+                      {loading.centers ? (
+                        <div className="flex items-center justify-center py-4">
+                          <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                          <span className="text-sm text-gray-600">Loading centers...</span>
+                        </div>
+                      ) : centers.length > 0 ? (
+                        centers.map((center) => (
+                          <SelectItem key={center._id} value={center.code}>
+                            {center.name} ({center.code})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="flex items-center justify-center py-4">
+                          <span className="text-sm text-gray-500">No centers available</span>
+                        </div>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -471,7 +510,7 @@ export default function AttendancePage() {
                       <div>
                         <p className="font-medium text-blue-900">
                           Selected Center:{" "}
-                          {centers.find((c) => c._id === selectedCenter)?.name}
+                          {centers.find((c) => c.code === selectedCenter)?.name}
                         </p>
                         <p className="text-sm text-blue-700">
                           Available Sewadars: {loading.sewadars ? (
@@ -681,12 +720,16 @@ export default function AttendancePage() {
                   {/* Searchable Dropdown */}
                   {showSewadarDropdown && (
                     <div className="relative">
-                      <div className="absolute top-0 left-0 right-0 z-10 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                      <div
+                        id="sewadar-dropdown"
+                        className="absolute top-0 left-0 right-0 z-10 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                      >
                         {sewadarSearch ? (
                           filteredSewadars.length > 0 ? (
                             filteredSewadars.map((sewadar, index) => (
                               <div
                                 key={sewadar._id}
+                                id={`sewadar-option-${index}`}
                                 className={`p-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${focusedSewadarIndex === index
                                   ? "bg-blue-50"
                                   : "hover:bg-gray-50"
@@ -720,9 +763,16 @@ export default function AttendancePage() {
                                     <p className="text-sm text-gray-600 font-mono">
                                       {sewadar.badgeNumber}
                                     </p>
-                                    <p className="text-sm text-gray-500">
-                                      {sewadar.department}
-                                    </p>
+                                    <div className="flex items-center space-x-2">
+                                      <p className="text-sm text-gray-500">
+                                        {sewadar.department}
+                                      </p>
+                                      {sewadar.age && (
+                                        <span className="text-sm text-gray-500">
+                                          | {sewadar.age}Y
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                   {selectedSewadars.includes(sewadar._id) && (
                                     <Badge variant="secondary">Selected</Badge>
@@ -779,14 +829,21 @@ export default function AttendancePage() {
                           >
                             <div>
                               <p className="font-medium text-gray-900">
-                                {sewadar.name}
+                                {sewadar.name} / {sewadar.fatherHusbandName}
                               </p>
                               <p className="text-sm text-gray-600 font-mono">
                                 {sewadar.badgeNumber}
                               </p>
-                              <p className="text-sm text-gray-500">
-                                {sewadar.department}
-                              </p>
+                              <div className="flex items-center space-x-2">
+                                <p className="text-sm text-gray-500">
+                                  {sewadar.department}
+                                </p>
+                                {sewadar.age && (
+                                  <span className="text-sm text-gray-500">
+                                    | {sewadar.age}Y
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <Button
                               type="button"

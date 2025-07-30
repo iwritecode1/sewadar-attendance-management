@@ -6,6 +6,7 @@ interface SewadarImportData {
   Sewadar_Name: string
   Father_Husband_Name: string
   DOB: string
+  Age: string
   Gender: string
   Badge_Status: string
   Zone: string
@@ -26,6 +27,8 @@ export function parseSewadarXLS(buffer: Buffer): Partial<ISewadar>[] {
     // Convert to JSON
     const jsonData = XLSX.utils.sheet_to_json(worksheet) as SewadarImportData[]
 
+
+
     // Map to Sewadar model format
     return jsonData
       .filter((row) => row.Badge_Number && row.Sewadar_Name) // Ensure required fields exist
@@ -36,13 +39,19 @@ export function parseSewadarXLS(buffer: Buffer): Partial<ISewadar>[] {
         // Extract area code from badge number (e.g., "HI5228GA0001" -> "HI")
         const areaCode = row.Badge_Number.substring(0, 2)
 
+        // Parse age value
+        const ageValue = parseInt(row.Age) || 0
+
         return {
           badgeNumber: row.Badge_Number,
           name: row.Sewadar_Name,
           fatherHusbandName: row.Father_Husband_Name || "",
           dob: row.DOB || "",
+          age: ageValue,
           gender: (row.Gender === "FEMALE" ? "FEMALE" : "MALE") as "MALE" | "FEMALE",
-          badgeStatus: row.Badge_Status || "UNKNOWN",
+          badgeStatus: (row.Badge_Status === "PERMANENT" || row.Badge_Status === "TEMPORARY" || row.Badge_Status === "OPEN"
+            ? row.Badge_Status
+            : "UNKNOWN") as "PERMANENT" | "TEMPORARY" | "OPEN" | "UNKNOWN",
           zone: row.Zone || "",
           area: row.Area || "",
           areaCode: areaCode,

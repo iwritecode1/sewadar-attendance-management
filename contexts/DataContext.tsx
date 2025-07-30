@@ -12,6 +12,7 @@ export interface Sewadar {
   name: string
   fatherHusbandName: string
   dob: string
+  age?: number
   gender: "MALE" | "FEMALE"
   badgeStatus: "PERMANENT" | "OPEN" | "TEMPORARY"
   zone: string
@@ -62,23 +63,12 @@ export interface AttendanceRecord {
   centerId: string
   centerName: string
   sewadars: Sewadar[]
-  tempSewadars: TempSewadar[]
   nominalRollImages: string[]
   submittedBy: {
     _id: string
     name: string
   }
   submittedAt: string
-}
-
-export interface TempSewadar {
-  id: string
-  name: string
-  fatherName: string
-  age: number
-  gender: "MALE" | "FEMALE"
-  phone: string
-  tempBadge: string
 }
 
 export interface Center {
@@ -339,7 +329,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const fetchEvents = useCallback(async (params?: any) => {
+  const fetchEvents = useCallback(async (params?: any, retryCount = 0) => {
     // Cancel previous events request if it exists
     if (currentEventsController.current) {
       currentEventsController.current.abort()
@@ -370,6 +360,12 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const uniqueDepartments = [...new Set(response.data.map((e: SewaEvent) => e.department))]
         setPlaces(uniquePlaces)
         setDepartments(uniqueDepartments)
+      } else if (params?.includeStats && retryCount < 2) {
+        // If stats request failed and we haven't retried too many times, retry after a delay
+        setTimeout(() => {
+          fetchEvents(params, retryCount + 1)
+        }, 1000 * (retryCount + 1))
+        return
       }
     } catch (error: any) {
       // Don't log error if request was aborted
@@ -377,6 +373,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         return
       }
       console.error("Failed to fetch events:", error)
+      
+      // Retry for stats requests if it's a network/timing issue
+      if (params?.includeStats && retryCount < 2) {
+        setTimeout(() => {
+          fetchEvents(params, retryCount + 1)
+        }, 1000 * (retryCount + 1))
+        return
+      }
     } finally {
       // Only update loading state if request wasn't aborted
       if (!controller.signal.aborted) {
@@ -717,10 +721,40 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const refreshCenters = fetchCenters
   const refreshCoordinators = fetchCoordinators
 
-  // Initial data fetch
+  // Initial data fetch - stagger the requests to avoid race conditions
   useEffect(() => {
     if (!user) return;
-    refreshAll()
+    
+    const initializeData = async () => {
+      try {
+        // First fetch basic data that doesn't depend on each other
+        await Promise.all([
+          fetchCenters(),
+          fetchCoordinators()
+        ])
+        
+        // Then fetch attendance data
+        await fetchAttendance()
+        
+        // Wait a moment to ensure database operations are complete
+        await new Promise(resolve => setTimeout(resolve, 200))
+        
+        // Then fetch events with stats (after attendance is loaded)
+        await fetchEvents({ includeStats: true })
+        
+        // Finally fetch sewadars
+        await fetchSewadars()
+      } catch (error) {
+        console.error('Error initializing data:', error)
+        // Fallback: try to fetch events without stats first, then with stats
+        await fetchEvents()
+        setTimeout(() => {
+          fetchEvents({ includeStats: true })
+        }, 1000)
+      }
+    }
+    
+    initializeData()
   }, [user]);
 
   // Cleanup: Cancel any pending requests when component unmounts

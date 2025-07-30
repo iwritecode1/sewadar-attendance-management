@@ -7,17 +7,19 @@ import { useAuth } from "@/contexts/AuthContext"
 import Layout from "@/components/Layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
-import { Upload, Search, Download, FileSpreadsheet, Users, Filter, Eye, X, RefreshCw, Edit, Trash2, MoreHorizontal } from "lucide-react"
+import { Upload, Search, Download, FileSpreadsheet, Users, Filter, Eye, X, RefreshCw, Edit, Trash2, MoreHorizontal, Plus } from "lucide-react"
 import * as XLSX from "xlsx"
 import SewadarDetailModal from "@/components/SewadarDetailModal"
 import EditSewadarModal from "@/components/EditSewadarModal"
 import { DEPARTMENTS } from "@/lib/constants"
+import { generateBadgePattern, getNextBadgeNumber } from "@/lib/badgeUtils"
 
 export default function SewadarsPage() {
   const { user } = useAuth()
@@ -36,6 +38,16 @@ export default function SewadarsPage() {
   const [viewingSewadar, setViewingSewadar] = useState<string | null>(null)
   const [editingSewadar, setEditingSewadar] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [showTempSewadarForm, setShowTempSewadarForm] = useState(false)
+  const [tempSewadars, setTempSewadars] = useState([
+    {
+      name: "",
+      fatherName: "",
+      age: "",
+      gender: "MALE" as "MALE" | "FEMALE",
+      phone: "",
+    },
+  ])
 
   // Get unique departments from sewadars
   const departments = [...new Set(sewadars.map((s) => s.department))].sort()
@@ -90,6 +102,7 @@ export default function SewadarsPage() {
         Sewadar_Name: "SAMPLE SEWADAR",
         Father_Husband_Name: "FATHER NAME",
         DOB: "01-01-1990",
+        Age: "34",
         Gender: "MALE",
         Badge_Status: "PERMANENT",
         Zone: "Zone 3",
@@ -113,6 +126,7 @@ export default function SewadarsPage() {
       Sewadar_Name: sewadar.name,
       Father_Husband_Name: sewadar.fatherHusbandName,
       DOB: sewadar.dob,
+      Age: sewadar.age || "",
       Gender: sewadar.gender,
       Badge_Status: sewadar.badgeStatus,
       Zone: sewadar.zone,
@@ -183,6 +197,238 @@ export default function SewadarsPage() {
     }
   }
 
+  const addTempSewadar = () => {
+    setTempSewadars([
+      ...tempSewadars,
+      { name: "", fatherName: "", age: "", gender: "MALE", phone: "" },
+    ])
+  }
+
+  const removeTempSewadar = (index: number) => {
+    if (tempSewadars.length > 1) {
+      setTempSewadars(tempSewadars.filter((_, i) => i !== index))
+    }
+  }
+
+  const updateTempSewadar = (index: number, field: string, value: string) => {
+    const updated = [...tempSewadars]
+    updated[index] = { ...updated[index], [field]: value }
+    setTempSewadars(updated)
+  }
+
+  // State to store all temp sewadars for accurate badge calculation
+  const [allTempSewadars, setAllTempSewadars] = useState<any[]>([])
+
+  // Fetch all temporary sewadars for accurate badge number calculation
+  const fetchAllTempSewadars = async (centerId: string) => {
+    try {
+      const response = await fetch(`/api/sewadars?centerId=${centerId}&badgeStatus=TEMPORARY&limit=1000`)
+      if (response.ok) {
+        const result = await response.json()
+        setAllTempSewadars(result.data || [])
+      }
+    } catch (error) {
+      console.error("Error fetching temp sewadars:", error)
+    }
+  }
+
+  // Generate badge number for temp sewadars - use all temp sewadars data
+  const getNextTempBadgeNumber = (gender: "MALE" | "FEMALE", currentIndex: number = 0) => {
+    const centerId = user?.role === "admin" ? selectedCenter : user?.centerId || ""
+    if (!centerId || centerId === "all") return "Select center first"
+
+    const badgePattern = generateBadgePattern(centerId, gender, true)
+
+    // Get existing badges with this pattern from ALL temp sewadars (not just paginated results)
+    const existingBadges = allTempSewadars
+      .filter(sewadar => sewadar.badgeNumber && sewadar.badgeNumber.startsWith(badgePattern))
+      .map(sewadar => sewadar.badgeNumber)
+
+    // Count how many temp sewadars of the same gender are being added before AND INCLUDING this one
+    let sameGenderCountBefore = 0
+    for (let i = 0; i <= currentIndex; i++) {
+      const ts = tempSewadars[i]
+      if (ts && ts.gender === gender && (ts.name.trim() || i === currentIndex)) {
+        if (i < currentIndex) {
+          sameGenderCountBefore++
+        }
+      }
+    }
+
+    // Generate base next badge number from existing badges
+    const baseNextBadge = getNextBadgeNumber(existingBadges, badgePattern)
+    const baseNumber = parseInt(baseNextBadge.slice(-4))
+    
+    // Calculate the final badge number for this specific sewadar
+    const finalNumber = baseNumber + sameGenderCountBefore
+    return `${badgePattern}${String(finalNumber).padStart(4, "0")}`
+  }
+
+  const handleCreateTempSewadars = async () => {
+    // Validate that we have at least one valid temp sewadar
+    const validTempSewadars = tempSewadars.filter(ts => ts.name.trim() && ts.fatherName.trim())
+    
+    if (validTempSewadars.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please add at least one temporary sewadar with name and father/husband name",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Check for duplicates within the form itself
+    const duplicatesInForm = []
+    const seenCombinations = new Set()
+    
+    for (const [index, ts] of validTempSewadars.entries()) {
+      const combination = `${ts.name.toLowerCase().trim()}|${ts.fatherName.toLowerCase().trim()}`
+      
+      if (seenCombinations.has(combination)) {
+        duplicatesInForm.push(`${ts.name} (Father: ${ts.fatherName})`)
+      } else {
+        seenCombinations.add(combination)
+      }
+    }
+
+    if (duplicatesInForm.length > 0) {
+      toast({
+        title: "Duplicate Sewadars in Form",
+        description: `Please remove duplicate entries: ${duplicatesInForm.join(', ')}`,
+        variant: "destructive",
+      })
+      return
+    }
+
+    // For admin, ensure center is selected
+    if (user?.role === "admin" && selectedCenter === "all") {
+      toast({
+        title: "Error",
+        description: "Please select a center first",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      const centerId = user?.role === "admin" ? selectedCenter : user?.centerId
+      const centerData = centers.find(c => c.code === centerId || c._id === centerId)
+      
+      if (!centerData) {
+        throw new Error("Center not found")
+      }
+
+      // Process each temp sewadar (same logic as attendance page)
+      const createdBadges = []
+      const existingMessages = []
+      const errorMessages = []
+
+      for (const [index, ts] of validTempSewadars.entries()) {
+        try {
+          // Create/check sewadar - server will handle duplicate detection
+          const sewadarData = {
+            name: ts.name.trim().toUpperCase(),
+            fatherHusbandName: ts.fatherName.trim().toUpperCase(),
+            dob: "",
+            age: parseInt(ts.age) || 0,
+            gender: ts.gender,
+            badgeStatus: "TEMPORARY",
+            zone: centerData.area,
+            area: centerData.area,
+            areaCode: centerData.areaCode,
+            center: centerData.name,
+            centerId: centerData.code,
+            department: "General",
+            contactNo: ts.phone || "",
+            emergencyContact: "",
+          }
+
+          const response = await fetch('/api/sewadars', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(sewadarData),
+          })
+
+          if (response.ok) {
+            const result = await response.json()
+            
+            if (result.isExisting) {
+              // Server found existing sewadar
+              existingMessages.push(`${ts.name} (Father: ${ts.fatherName}) - Found existing record with badge ${result.data.badgeNumber}`)
+            } else {
+              // Server created new sewadar
+              createdBadges.push(result.data?.badgeNumber)
+            }
+          } else {
+            const errorData = await response.json()
+            throw new Error(errorData.error || `Failed to create sewadar: ${ts.name}`)
+          }
+        } catch (error: any) {
+          errorMessages.push(`Failed to process ${ts.name}: ${error.message}`)
+        }
+      }
+
+      // Show results - same approach as attendance page
+      if (createdBadges.length > 0 || existingMessages.length > 0) {
+        let message = "Processing completed successfully."
+        if (createdBadges.length > 0) {
+          message = `Created ${createdBadges.length} new temporary sewadar(s)`
+        }
+        if (existingMessages.length > 0) {
+          message += existingMessages.length > 0 ? ` Found ${existingMessages.length} existing sewadar(s)` : ""
+        }
+
+        toast({
+          title: "Success",
+          description: message,
+        })
+
+        // Show detailed information in a separate toast if there are existing sewadars
+        if (existingMessages.length > 0) {
+          setTimeout(() => {
+            toast({
+              title: "Existing Sewadars Found",
+              description: existingMessages.join("; "),
+              variant: "default",
+              duration: 10000,
+            })
+          }, 1500)
+        }
+
+        // Show errors if any
+        if (errorMessages.length > 0) {
+          setTimeout(() => {
+            toast({
+              title: "Processing Errors",
+              description: errorMessages.join("; "),
+              variant: "destructive",
+              duration: 8000,
+            })
+          }, 3000)
+        }
+      } else if (errorMessages.length > 0) {
+        toast({
+          title: "Error",
+          description: "No sewadars could be processed. " + errorMessages.join("; "),
+          variant: "destructive",
+        })
+      }
+      
+      // Reset form
+      setTempSewadars([{ name: "", fatherName: "", age: "", gender: "MALE", phone: "" }])
+      setShowTempSewadarForm(false)
+      refreshData()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create temporary sewadars",
+        variant: "destructive",
+      })
+    }
+  }
+
   return (
     <Layout>
       <div className="space-y-4 md:space-y-6 px-2 md:px-0">
@@ -198,8 +444,8 @@ export default function SewadarsPage() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="w-full">
-                  <MoreHorizontal className="mr-2 h-4 w-4" />
-                  More Actions
+                  {/* <MoreHorizontal className="mr-2 h-4 w-4" /> */}
+                  Actions
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
@@ -215,6 +461,27 @@ export default function SewadarsPage() {
                   <FileSpreadsheet className="mr-2 h-4 w-4" />
                   Export Data
                 </DropdownMenuItem>
+                {user?.role === "admin" && (
+                  <DropdownMenuItem onClick={() => setShowImportForm(!showImportForm)} disabled={isImporting}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Import Sewadars
+                  </DropdownMenuItem>
+                )}
+                {(user?.role === "admin" || user?.role === "coordinator") && (
+                  <DropdownMenuItem onClick={() => {
+                    if (!showTempSewadarForm) {
+                      // Fetch all temp sewadars for accurate badge number calculation
+                      const centerId = user?.role === "admin" ? selectedCenter : user?.centerId
+                      if (centerId && centerId !== "all") {
+                        fetchAllTempSewadars(centerId)
+                      }
+                    }
+                    setShowTempSewadarForm(!showTempSewadarForm)
+                  }}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Temp Sewadar
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -233,84 +500,288 @@ export default function SewadarsPage() {
               <FileSpreadsheet className="mr-2 h-4 w-4" />
               Export
             </Button>
+            {user?.role === "admin" && (
+              <Button 
+                onClick={() => setShowImportForm(!showImportForm)} 
+                variant={showImportForm ? "default" : "outline"} 
+                disabled={isImporting} 
+                className="text-sm"
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Import
+              </Button>
+            )}
+            {(user?.role === "admin" || user?.role === "coordinator") && (
+              <Button 
+                onClick={() => {
+                  if (!showTempSewadarForm) {
+                    // Fetch all temp sewadars for accurate badge number calculation
+                    const centerId = user?.role === "admin" ? selectedCenter : user?.centerId
+                    if (centerId && centerId !== "all") {
+                      fetchAllTempSewadars(centerId)
+                    }
+                  }
+                  setShowTempSewadarForm(!showTempSewadarForm)
+                }} 
+                variant={showTempSewadarForm ? "default" : "outline"} 
+                className="text-sm"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Temp Sewadar
+              </Button>
+            )}
           </div>
         </div>
 
-        {/* Import Button and Form - Area Level Only */}
-        {user?.role === "admin" && (
+        {/* Import Form - Show when Import button is clicked */}
+        {user?.role === "admin" && showImportForm && (
           <Card className="enhanced-card">
-            <CardHeader>
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-                <div>
-                  <CardTitle className="flex items-center text-base md:text-lg">
-                    <Upload className="mr-2 h-4 w-4 md:h-5 md:w-5" />
-                    Import Sewadars
-                  </CardTitle>
-                  <CardDescription className="text-sm">
-                    Import Sewadars from Excel file (.xlsx or .xls)
-                  </CardDescription>
-                </div>
-                <div className="w-full md:w-auto">
-                  <Button
-                    onClick={() => setShowImportForm(!showImportForm)}
-                    variant={showImportForm ? "secondary" : "default"}
-                    className="w-full md:w-auto rssb-primary text-sm hover:bg-blue-700 active:bg-blue-800"
-                    disabled={isImporting}
-                    size="sm"
-                  >
-                    {showImportForm ? (
-                      <>
-                        <X className="mr-2 h-3 w-3 md:h-4 md:w-4" />
-                        <span className="hidden md:inline">Close Import</span>
-                        <span className="md:hidden">Close</span>
-                      </>
-                    ) : (
-                      <>
-                        <FileSpreadsheet className="mr-2 h-3 w-3 md:h-4 md:w-4" />
-                        <span className="hidden md:inline">Import Sewadars</span>
-                        <span className="md:hidden">Import</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
+            <CardContent className="space-y-4 pt-6">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
+                <FileSpreadsheet className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <p className="text-lg font-medium text-gray-700 mb-2">Upload Excel File</p>
+                <p className="text-sm text-gray-500 mb-4">Drag and drop your Excel file here, or click to browse</p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  disabled={isImporting}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isImporting}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {isImporting ? "Importing..." : "Choose Excel File"}
+                </Button>
               </div>
-            </CardHeader>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-medium text-blue-900 mb-2">Import Guidelines:</h4>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• Use Badge_Number as unique identifier</li>
+                  <li>• Existing records will be updated if Badge_Number matches</li>
+                  <li>• Required columns: Badge_Number, Sewadar_Name, Centre</li>
+                  <li>• Optional columns: Age, DOB, Gender, Department, etc.</li>
+                  <li>• Download sample file for correct format</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-            {showImportForm && (
-              <CardContent className="space-y-4 pt-0 border-t">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
-                  <FileSpreadsheet className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <p className="text-lg font-medium text-gray-700 mb-2">Upload Excel File</p>
-                  <p className="text-sm text-gray-500 mb-4">Drag and drop your Excel file here, or click to browse</p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    disabled={isImporting}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isImporting}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    {isImporting ? "Importing..." : "Choose Excel File"}
-                  </Button>
+        {/* Add Temporary Sewadar Form - Show when Add Temp button is clicked */}
+        {(user?.role === "admin" || user?.role === "coordinator") && showTempSewadarForm && (
+          <Card className="enhanced-card">
+            <CardContent className="space-y-4 pt-6">
+              {/* Center Selection for Admin - Show first */}
+              {user?.role === "admin" && selectedCenter === "all" && (
+                <div className="text-center space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                    <h3 className="text-lg font-medium text-blue-900 mb-2">Select Center First</h3>
+                    <p className="text-sm text-blue-800 mb-4">
+                      Please select a center to create temporary sewadars for
+                    </p>
+                    
+                    <div className="max-w-md mx-auto">
+                      <Label className="block text-sm font-medium text-gray-700 mb-2">
+                        Center *
+                      </Label>
+                      <Select
+                        value={selectedCenter === "all" ? "" : selectedCenter}
+                        onValueChange={(value) => {
+                          setSelectedCenter(value)
+                          // Fetch temp sewadars for the newly selected center
+                          if (value && value !== "all") {
+                            fetchAllTempSewadars(value)
+                          }
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select center" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {centers.map((center) => (
+                            <SelectItem key={center._id} value={center.code}>
+                              {center.name} ({center.code})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-medium text-blue-900 mb-2">Import Guidelines:</h4>
-                  <ul className="text-sm text-blue-800 space-y-1">
-                    <li>• Use Badge_Number as unique identifier</li>
-                    <li>• Existing records will be updated if Badge_Number matches</li>
-                    <li>• Required columns: Badge_Number, Sewadar_Name, Centre</li>
-                    <li>• Download sample file for correct format</li>
-                  </ul>
-                </div>
-              </CardContent>
-            )}
+              )}
+
+              {/* Temp Sewadar Form - Show after center selection */}
+              {(user?.role === "coordinator" || (user?.role === "admin" && selectedCenter !== "all")) && (
+                <>
+                  {/* Show selected center for admin */}
+                  {user?.role === "admin" && selectedCenter !== "all" && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-green-900">
+                            Creating temporary sewadars for:
+                          </p>
+                          <p className="text-sm text-green-800">
+                            {centers.find(c => c.code === selectedCenter)?.name} ({selectedCenter})
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedCenter("all")}
+                          className="text-green-700 hover:text-green-900"
+                        >
+                          Change Center
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {tempSewadars.map((tempSewadar, index) => (
+                    <div key={index} className="form-section">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="font-medium text-gray-900">
+                          Temporary Sewadar #{index + 1}
+                        </h4>
+                        {tempSewadars.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeTempSewadar(index)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <X className="mr-1 h-4 w-4" />
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Name *</Label>
+                          <Input
+                            value={tempSewadar.name}
+                            onChange={(e) =>
+                              updateTempSewadar(index, "name", e.target.value?.toUpperCase())
+                            }
+                            placeholder="Full name"
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label>Father / Husband Name *</Label>
+                          <Input
+                            value={tempSewadar.fatherName}
+                            onChange={(e) =>
+                              updateTempSewadar(
+                                index,
+                                "fatherName",
+                                e.target.value?.toUpperCase()
+                              )
+                            }
+                            placeholder="Father / Husband Name"
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label>Age</Label>
+                          <Input
+                            type="number"
+                            value={tempSewadar.age}
+                            onChange={(e) =>
+                              updateTempSewadar(index, "age", e.target.value)
+                            }
+                            placeholder="Age"
+                            className="mt-1"
+                          />
+                        </div>
+                        <div>
+                          <Label>Gender *</Label>
+                          <Select
+                            value={tempSewadar.gender}
+                            onValueChange={(value: "MALE" | "FEMALE") =>
+                              updateTempSewadar(index, "gender", value)
+                            }
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="MALE">Male</SelectItem>
+                              <SelectItem value="FEMALE">Female</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="md:col-span-2">
+                          <Label>Phone</Label>
+                          <Input
+                            value={tempSewadar.phone}
+                            onChange={(e) =>
+                              updateTempSewadar(
+                                index,
+                                "phone",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Phone number (optional)"
+                            className="mt-1"
+                          />
+                        </div>
+                      </div>
+                      {tempSewadar.name && tempSewadar.gender && (
+                        <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                          <p className="text-sm text-gray-600">
+                            Auto-generated badge:
+                            <span className="font-mono font-medium ml-2 text-blue-600">
+                              {getNextTempBadgeNumber(tempSewadar.gender, index)}
+                            </span>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  <div className="flex space-x-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={addTempSewadar}
+                      className="bg-transparent"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Another Temporary Sewadar
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      onClick={handleCreateTempSewadars}
+                      className="rssb-primary"
+                    >
+                      <Users className="mr-2 h-4 w-4" />
+                      Create Temporary Sewadars
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setShowTempSewadarForm(false)
+                        setTempSewadars([{ name: "", fatherName: "", age: "", gender: "MALE", phone: "" }])
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
           </Card>
         )}
 
@@ -615,7 +1086,8 @@ export default function SewadarsPage() {
                   {sewadars.map((sewadar, index) => (
                     <div
                       key={sewadar._id}
-                      className={`p-4 border rounded-lg ${index % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
+                      className={`p-4 border rounded-lg cursor-pointer hover:shadow-md transition-shadow ${index % 2 === 0 ? "bg-white hover:bg-gray-50" : "bg-gray-50 hover:bg-gray-100"}`}
+                      onClick={() => setViewingSewadar(sewadar._id)}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1 min-w-0">
@@ -624,6 +1096,9 @@ export default function SewadarsPage() {
                           </h4>
                           <p className="text-xs text-gray-600 truncate mt-1">
                             {sewadar.fatherHusbandName}
+                          </p>
+                          <p className="text-xs text-gray-600 truncate mt-1">
+                            {sewadar.age}
                           </p>
                         </div>
                         <div className="ml-3 flex-shrink-0">
@@ -643,7 +1118,7 @@ export default function SewadarsPage() {
                           </Badge>
                         </div>
 
-                        <div className="flex space-x-1">
+                        <div className="flex space-x-1" onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -691,6 +1166,7 @@ export default function SewadarsPage() {
                         <TableHead className="w-32">Badge Number</TableHead>
                         <TableHead className="w-40">Name</TableHead>
                         <TableHead className="w-40">Father/Husband</TableHead>
+                        <TableHead className="w-16">Age</TableHead>
                         {user?.role === "admin" && <TableHead className="w-24">Center</TableHead>}
                         <TableHead className="w-32">Department</TableHead>
                         <TableHead className="w-24">Status</TableHead>
@@ -701,11 +1177,13 @@ export default function SewadarsPage() {
                       {sewadars.map((sewadar, index) => (
                         <TableRow
                           key={sewadar._id}
-                          className={index % 2 === 0 ? "bg-white" : "bg-gray-100"}
+                          className={`cursor-pointer hover:bg-blue-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-gray-100"}`}
+                          onClick={() => setViewingSewadar(sewadar._id)}
                         >
                           <TableCell className="font-mono text-sm font-medium w-32">{sewadar.badgeNumber}</TableCell>
                           <TableCell className="font-medium w-40">{sewadar.name}</TableCell>
                           <TableCell className="w-40">{sewadar.fatherHusbandName}</TableCell>
+                          <TableCell className="w-16 text-center">{sewadar.age || "-"}</TableCell>
                           {user?.role === "admin" && <TableCell className="w-24 whitespace-nowrap text-sm">{sewadar.center}</TableCell>}
                           <TableCell className="w-32 whitespace-nowrap text-sm">{sewadar.department}</TableCell>
                           <TableCell className="w-24">
@@ -714,7 +1192,7 @@ export default function SewadarsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="w-20">
-                            <div className="flex space-x-1">
+                            <div className="flex space-x-1" onClick={(e) => e.stopPropagation()}>
                               <Button
                                 variant="ghost"
                                 size="sm"

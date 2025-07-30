@@ -22,6 +22,7 @@ export default function SearchablePlaceSelect({
     const { places, addPlace } = useData()
     const [isOpen, setIsOpen] = useState(false)
     const [searchTerm, setSearchTerm] = useState("")
+    const [focusedPlaceIndex, setFocusedPlaceIndex] = useState(-1)
     const inputRef = useRef<HTMLInputElement>(null)
     const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -45,7 +46,6 @@ export default function SearchablePlaceSelect({
                 !inputRef.current.contains(event.target as Node)
             ) {
                 setIsOpen(false)
-                setShowAddForm(false)
             }
         }
 
@@ -53,10 +53,35 @@ export default function SearchablePlaceSelect({
         return () => document.removeEventListener("mousedown", handleClickOutside)
     }, [])
 
+    // Auto-scroll to focused place item within dropdown only
+    useEffect(() => {
+        if (focusedPlaceIndex >= 0 && isOpen) {
+            const focusedElement = document.getElementById(`place-option-${focusedPlaceIndex}`);
+            const dropdown = document.getElementById('place-dropdown');
+            
+            if (focusedElement && dropdown) {
+                const dropdownScrollTop = dropdown.scrollTop;
+                const dropdownHeight = dropdown.clientHeight;
+                const elementOffsetTop = focusedElement.offsetTop;
+                const elementHeight = focusedElement.offsetHeight;
+                
+                // Check if element is above the visible area
+                if (elementOffsetTop < dropdownScrollTop) {
+                    dropdown.scrollTop = elementOffsetTop;
+                }
+                // Check if element is below the visible area
+                else if (elementOffsetTop + elementHeight > dropdownScrollTop + dropdownHeight) {
+                    dropdown.scrollTop = elementOffsetTop + elementHeight - dropdownHeight;
+                }
+            }
+        }
+    }, [focusedPlaceIndex, isOpen])
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const inputValue = e.target.value?.toUpperCase()
         setSearchTerm(inputValue)
         setIsOpen(true)
+        setFocusedPlaceIndex(-1) // Reset focused index when search changes
     }
 
     const handleInputFocus = () => {
@@ -97,7 +122,34 @@ export default function SearchablePlaceSelect({
     }
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === "Enter") {
+        if (isOpen && filteredPlaces.length > 0) {
+            // Arrow down - move focus down
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setFocusedPlaceIndex((prev) =>
+                    prev < filteredPlaces.length - 1 ? prev + 1 : prev
+                );
+            }
+            // Arrow up - move focus up
+            else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setFocusedPlaceIndex((prev) => (prev > 0 ? prev - 1 : 0));
+            }
+            // Enter - select the focused item
+            else if (e.key === "Enter" && focusedPlaceIndex >= 0) {
+                e.preventDefault();
+                const place = filteredPlaces[focusedPlaceIndex];
+                if (place) {
+                    handlePlaceSelect(place);
+                }
+            }
+            // Escape - close dropdown
+            else if (e.key === "Escape") {
+                e.preventDefault();
+                setIsOpen(false);
+                setFocusedPlaceIndex(-1);
+            }
+        } else if (e.key === "Enter") {
             e.preventDefault()
             if (filteredPlaces.length === 1) {
                 handlePlaceSelect(filteredPlaces[0])
@@ -106,6 +158,7 @@ export default function SearchablePlaceSelect({
             }
         } else if (e.key === "Escape") {
             setIsOpen(false)
+            setFocusedPlaceIndex(-1)
         }
     }
 
@@ -130,15 +183,22 @@ export default function SearchablePlaceSelect({
             {isOpen && (
                 <div
                     ref={dropdownRef}
+                    id="place-dropdown"
                     className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1"
                 >
                     {filteredPlaces.length > 0 ? (
                         <>
-                            {filteredPlaces.map((place) => (
+                            {filteredPlaces.map((place, index) => (
                                 <div
                                     key={place}
-                                    className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 flex items-center justify-between"
+                                    id={`place-option-${index}`}
+                                    className={`p-3 cursor-pointer border-b border-gray-100 last:border-b-0 flex items-center justify-between ${
+                                        focusedPlaceIndex === index
+                                            ? "bg-blue-50"
+                                            : "hover:bg-gray-50"
+                                    }`}
                                     onClick={() => handlePlaceSelect(place)}
+                                    onMouseEnter={() => setFocusedPlaceIndex(index)}
                                 >
                                     <span className="font-medium">{place}</span>
                                     {value === place && (

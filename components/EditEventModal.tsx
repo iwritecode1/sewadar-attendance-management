@@ -84,24 +84,7 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
         })
       }
 
-      // Add temporary sewadars - these should have full details
-      if (record.tempSewadars && Array.isArray(record.tempSewadars)) {
-        record.tempSewadars.forEach((tempSewadar: any) => {
-          allSewadars.push({
-            _id: tempSewadar.id || tempSewadar._id,
-            name: tempSewadar.name,
-            fatherHusbandName: tempSewadar.fatherName || tempSewadar.fatherHusbandName,
-            badgeNumber: tempSewadar.tempBadge || tempSewadar.badgeNumber,
-            department: tempSewadar.department || 'N/A',
-            gender: tempSewadar.gender,
-            age: tempSewadar.age,
-            phone: tempSewadar.phone,
-            centerName: record.centerName,
-            attendanceRecordId: record._id,
-            isTemp: true
-          })
-        })
-      }
+      // Temporary sewadars are now stored as actual sewadars with badgeStatus: "TEMPORARY"
     })
 
     return allSewadars
@@ -171,23 +154,11 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
       const attendanceRecord = eventAttendance.find(record => record._id === attendanceRecordId)
       if (!attendanceRecord) return
 
-      let updatedSewadarIds: string[] = []
-      let updatedTempSewadars: any[] = []
-
-      if (isTemp) {
-        // Remove from temp sewadars - attendanceRecord.sewadars contains IDs
-        updatedSewadarIds = [...attendanceRecord.sewadars]
-        updatedTempSewadars = (attendanceRecord.tempSewadars || []).filter((ts: any) => 
-          (ts.id || ts._id) !== sewadarId
-        )
-      } else {
-        // Remove from regular sewadars - attendanceRecord.sewadars contains IDs
-        updatedSewadarIds = attendanceRecord.sewadars.filter((id: string) => id !== sewadarId)
-        updatedTempSewadars = [...(attendanceRecord.tempSewadars || [])]
-      }
+      // Remove from sewadars (all sewadars are now stored in the sewadars array)
+      const updatedSewadarIds = attendanceRecord.sewadars.filter((id: string) => id !== sewadarId)
 
       // Check if this would leave the attendance record empty
-      const wouldBeEmpty = updatedSewadarIds.length === 0 && updatedTempSewadars.length === 0
+      const wouldBeEmpty = updatedSewadarIds.length === 0
 
       if (wouldBeEmpty) {
         // If removing this sewadar would leave the attendance record empty, delete the entire record
@@ -217,8 +188,8 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
           formData.append('sewadarIds[]', id)
         })
         
-        // Add temp sewadars as JSON string
-        formData.append('tempSewadars', JSON.stringify(updatedTempSewadars))
+        // Add empty temp sewadars (no longer used)
+        formData.append('tempSewadars', JSON.stringify([]))
 
         const response = await fetch(`/api/attendance/${attendanceRecordId}`, {
           method: 'PUT',
@@ -449,7 +420,7 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
                       <div>
                         <span className="font-medium">{record.centerName}</span>
                         <span className="text-sm text-gray-600 ml-2">
-                          ({record.sewadars.length + (record.tempSewadars?.length || 0)} participants)
+                          ({record.sewadars.length} participants)
                         </span>
                       </div>
                       <Badge variant="outline">

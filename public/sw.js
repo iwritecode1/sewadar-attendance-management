@@ -1,4 +1,4 @@
-const CACHE_NAME = "rssb-sewadar-v2"
+const CACHE_NAME = "rssb-sewadar-v3"
 const urlsToCache = [
   "/",
   "/dashboard",
@@ -24,13 +24,28 @@ self.addEventListener("install", (event) => {
 
 // Fetch event
 self.addEventListener("fetch", (event) => {
+  // Skip caching for Next.js internal requests and API calls
+  if (
+    event.request.url.includes('/_next/') ||
+    event.request.url.includes('/api/') ||
+    event.request.url.includes('chrome-extension:') ||
+    event.request.method !== 'GET'
+  ) {
+    return fetch(event.request)
+  }
+
   event.respondWith(
     caches.match(event.request).then((response) => {
       // Return cached version or fetch from network
       if (response) {
         return response
       }
-      return fetch(event.request)
+      return fetch(event.request).catch(() => {
+        // Return offline fallback if available
+        if (event.request.destination === 'document') {
+          return caches.match('/')
+        }
+      })
     }),
   )
 })

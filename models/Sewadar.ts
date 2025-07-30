@@ -5,6 +5,7 @@ export interface ISewadar extends Document {
   name: string
   fatherHusbandName: string
   dob: string
+  age: number
   gender: "MALE" | "FEMALE"
   badgeStatus: "PERMANENT" | "TEMPORARY" | "OPEN" | "UNKNOWN"
   zone: string
@@ -24,6 +25,7 @@ const SewadarSchema: Schema = new Schema({
   name: { type: String, required: true },
   fatherHusbandName: { type: String, required: true },
   dob: { type: String },
+  age: { type: Number },
   gender: { type: String, enum: ["MALE", "FEMALE"], required: true },
   badgeStatus: { type: String, enum: ["PERMANENT", "OPEN", "TEMPORARY", "UNKNOWN"], required: true, default: "UNKNOWN" },
   zone: { type: String, required: true },
@@ -44,4 +46,9 @@ SewadarSchema.index({ area: 1 })
 SewadarSchema.index({ department: 1 })
 SewadarSchema.index({ name: "text" })
 
-export default mongoose.models.Sewadar || mongoose.model<ISewadar>("Sewadar", SewadarSchema)
+// Force model recompilation to ensure schema changes are recognized
+if (mongoose.models.Sewadar) {
+  delete mongoose.models.Sewadar
+}
+
+export default mongoose.model<ISewadar>("Sewadar", SewadarSchema)

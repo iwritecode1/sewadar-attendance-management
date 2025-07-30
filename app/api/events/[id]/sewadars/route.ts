@@ -46,7 +46,7 @@ export async function GET(
     const attendanceRecords = await AttendanceRecord.find(attendanceQuery)
       .populate({
         path: "sewadars",
-        select: "name fatherHusbandName dob gender badgeNumber badgeStatus centerId center department contactNo"
+        select: "name fatherHusbandName dob age gender badgeNumber badgeStatus centerId center department contactNo"
       })
 
     // Flatten all sewadars from all attendance records

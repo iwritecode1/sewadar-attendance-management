@@ -90,6 +90,30 @@ export default function SearchableEventSelect({
     }
   }, [isOpen])
 
+  // Auto-scroll to focused event item within dropdown only
+  useEffect(() => {
+    if (focusedEventIndex >= 0 && isOpen) {
+      const focusedElement = document.getElementById(`event-option-${focusedEventIndex}`);
+      const dropdown = document.getElementById('event-dropdown');
+      
+      if (focusedElement && dropdown) {
+        const dropdownScrollTop = dropdown.scrollTop;
+        const dropdownHeight = dropdown.clientHeight;
+        const elementOffsetTop = focusedElement.offsetTop;
+        const elementHeight = focusedElement.offsetHeight;
+        
+        // Check if element is above the visible area
+        if (elementOffsetTop < dropdownScrollTop) {
+          dropdown.scrollTop = elementOffsetTop;
+        }
+        // Check if element is below the visible area
+        else if (elementOffsetTop + elementHeight > dropdownScrollTop + dropdownHeight) {
+          dropdown.scrollTop = elementOffsetTop + elementHeight - dropdownHeight;
+        }
+      }
+    }
+  }, [focusedEventIndex, isOpen])
+
   const handleSelect = (eventValue: string) => {
     onValueChange(eventValue)
     setIsOpen(false)
@@ -189,11 +213,12 @@ export default function SearchableEventSelect({
             </div>
 
             {/* Event Options - Scrollable */}
-            <div className="max-h-64 overflow-y-auto">
+            <div id="event-dropdown" className="max-h-64 overflow-y-auto">
               <div className="space-y-1">
                 {displayEvents.map((event, index) => (
                   <button
                     key={event._id}
+                    id={`event-option-${index}`}
                     type="button"
                     className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
                       focusedEventIndex === index 

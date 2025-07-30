@@ -228,6 +228,19 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="age">Age</Label>
+                <Input
+                  id="age"
+                  type="number"
+                  min="0"
+                  max="120"
+                  value={formData.age || ""}
+                  onChange={(e) => handleInputChange("age", parseInt(e.target.value) || 0)}
+                  placeholder="Enter age"
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="gender">Gender *</Label>
                 <Select value={formData.gender || ""} onValueChange={(value) => handleInputChange("gender", value)}>
                   <SelectTrigger className={errors.gender ? "border-red-500" : ""}>

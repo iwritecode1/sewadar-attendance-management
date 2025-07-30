@@ -63,17 +63,17 @@ export async function GET(request: NextRequest) {
           _id: 1,
           name: 1,
           code: 1,
-          sewadarCount: { $size: "$sewadars" },
+          sewadarCount: { $size: { $ifNull: ["$sewadars", []] } },
           attendanceCount: {
             $reduce: {
-              input: "$attendance",
+              input: { $ifNull: ["$attendance", []] },
               initialValue: 0,
               in: {
-                $add: ["$$value", { $size: "$$this.sewadars" }],
+                $add: ["$$value", { $size: { $ifNull: ["$$this.sewadars", []] } }],
               },
             },
           },
-          eventCount: { $size: "$attendance" },
+          eventCount: { $size: { $ifNull: ["$attendance", []] } },
         },
       },
       { $sort: { attendanceCount: -1 } },
@@ -118,10 +118,10 @@ export async function GET(request: NextRequest) {
           createdBy: { $arrayElemAt: ["$createdBy.name", 0] },
           totalSewadars: {
             $reduce: {
-              input: "$attendanceRecords",
+              input: { $ifNull: ["$attendanceRecords", []] },
               initialValue: 0,
               in: {
-                $add: ["$$value", { $size: "$$this.sewadars" }]
+                $add: ["$$value", { $size: { $ifNull: ["$$this.sewadars", []] } }]
               }
             }
           }
@@ -161,7 +161,10 @@ export async function GET(request: NextRequest) {
           },
           count: {
             $sum: {
-              $add: [{ $size: "$sewadars" }, { $size: "$tempSewadars" }],
+              $add: [
+                { $size: { $ifNull: ["$sewadars", []] } }, 
+                { $size: { $ifNull: ["$tempSewadars", []] } }
+              ],
             },
           },
         },

@@ -134,6 +134,7 @@ export async function POST(request: NextRequest) {
               name: tempSewadar.name.trim(),
               fatherHusbandName: tempSewadar.fatherName.trim(),
               dob: "", // Empty for temp sewadars
+              age: tempSewadar.age || 0, // Include age from temp sewadar
               gender: tempSewadar.gender,
               badgeStatus: "TEMPORARY",
               zone: center.area, // Use center's area as zone
@@ -169,15 +170,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Upload nominal roll images
+    // Upload nominal roll images to ImageKit
     let imageUrls: string[] = []
     if (attendanceData.nominalRollImages.length > 0) {
       try {
-        imageUrls = await uploadFiles(attendanceData.nominalRollImages, "nominal-rolls")
+        const { uploadMultipleToImageKit } = await import("@/lib/imagekitUpload")
+        imageUrls = await uploadMultipleToImageKit(attendanceData.nominalRollImages, "nominal-rolls")
       } catch (error) {
+        console.error("ImageKit upload error:", error)
         return NextResponse.json(
           {
-            error: "Failed to upload images",
+            error: "Failed to upload images to ImageKit",
             details: error.message,
           },
           { status: 500 },
@@ -214,7 +217,6 @@ export async function POST(request: NextRequest) {
       area: session.area,
       areaCode: session.areaCode,
       sewadars: allSewadarIds,
-      tempSewadars: [], // Empty since we're now storing temp sewadars as actual sewadars
       nominalRollImages: imageUrls,
       submittedBy: new mongoose.Types.ObjectId(session.id),
       submittedAt: new Date(),

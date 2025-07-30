@@ -88,13 +88,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const updateData = {
       sewadarIds: formData.getAll("sewadarIds[]").map((id) => id.toString()),
-      tempSewadars: JSON.parse((formData.get("tempSewadars") as string) || "[]"),
       nominalRollImages: formData.getAll("nominalRollImages[]") as File[],
     }
 
     // Validate update data
     const validation = validateAttendanceData({
       ...updateData,
+      tempSewadars: [], // Empty since temp sewadars are now actual sewadars
       eventId: attendance.eventId.toString(),
       centerId: attendance.centerId,
       centerName: attendance.centerName,

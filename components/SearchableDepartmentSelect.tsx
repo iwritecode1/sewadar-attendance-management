@@ -22,6 +22,7 @@ export default function SearchableDepartmentSelect({
   const { departments, addDepartment } = useData()
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
+  const [focusedDepartmentIndex, setFocusedDepartmentIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -45,7 +46,6 @@ export default function SearchableDepartmentSelect({
         !inputRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false)
-        setShowAddForm(false)
       }
     }
 
@@ -53,10 +53,35 @@ export default function SearchableDepartmentSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
+  // Auto-scroll to focused department item within dropdown only
+  useEffect(() => {
+    if (focusedDepartmentIndex >= 0 && isOpen) {
+      const focusedElement = document.getElementById(`department-option-${focusedDepartmentIndex}`);
+      const dropdown = document.getElementById('department-dropdown');
+      
+      if (focusedElement && dropdown) {
+        const dropdownScrollTop = dropdown.scrollTop;
+        const dropdownHeight = dropdown.clientHeight;
+        const elementOffsetTop = focusedElement.offsetTop;
+        const elementHeight = focusedElement.offsetHeight;
+        
+        // Check if element is above the visible area
+        if (elementOffsetTop < dropdownScrollTop) {
+          dropdown.scrollTop = elementOffsetTop;
+        }
+        // Check if element is below the visible area
+        else if (elementOffsetTop + elementHeight > dropdownScrollTop + dropdownHeight) {
+          dropdown.scrollTop = elementOffsetTop + elementHeight - dropdownHeight;
+        }
+      }
+    }
+  }, [focusedDepartmentIndex, isOpen])
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value?.toUpperCase()
     setSearchTerm(inputValue)
     setIsOpen(true)
+    setFocusedDepartmentIndex(-1) // Reset focused index when search changes
   }
 
   const handleInputFocus = () => {
@@ -97,7 +122,34 @@ export default function SearchableDepartmentSelect({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (isOpen && filteredDepartments.length > 0) {
+      // Arrow down - move focus down
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setFocusedDepartmentIndex((prev) =>
+          prev < filteredDepartments.length - 1 ? prev + 1 : prev
+        );
+      }
+      // Arrow up - move focus up
+      else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setFocusedDepartmentIndex((prev) => (prev > 0 ? prev - 1 : 0));
+      }
+      // Enter - select the focused item
+      else if (e.key === "Enter" && focusedDepartmentIndex >= 0) {
+        e.preventDefault();
+        const department = filteredDepartments[focusedDepartmentIndex];
+        if (department) {
+          handleDepartmentSelect(department);
+        }
+      }
+      // Escape - close dropdown
+      else if (e.key === "Escape") {
+        e.preventDefault();
+        setIsOpen(false);
+        setFocusedDepartmentIndex(-1);
+      }
+    } else if (e.key === "Enter") {
       e.preventDefault()
       if (filteredDepartments.length === 1) {
         handleDepartmentSelect(filteredDepartments[0])
@@ -106,6 +158,7 @@ export default function SearchableDepartmentSelect({
       }
     } else if (e.key === "Escape") {
       setIsOpen(false)
+      setFocusedDepartmentIndex(-1)
     }
   }
 
@@ -130,15 +183,22 @@ export default function SearchableDepartmentSelect({
       {isOpen && (
         <div
           ref={dropdownRef}
+          id="department-dropdown"
           className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto mt-1"
         >
           {filteredDepartments.length > 0 ? (
             <>
-              {filteredDepartments.map((department) => (
+              {filteredDepartments.map((department, index) => (
                 <div
                   key={department}
-                  className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0 flex items-center justify-between"
+                  id={`department-option-${index}`}
+                  className={`p-3 cursor-pointer border-b border-gray-100 last:border-b-0 flex items-center justify-between ${
+                    focusedDepartmentIndex === index
+                      ? "bg-blue-50"
+                      : "hover:bg-gray-50"
+                  }`}
                   onClick={() => handleDepartmentSelect(department)}
+                  onMouseEnter={() => setFocusedDepartmentIndex(index)}
                 >
                   <span className="font-medium">{department}</span>
                   {value === department && (

@@ -80,7 +80,6 @@ export async function GET(request: NextRequest) {
     // If CSV format is requested
     if (format === "csv") {
       const csvHeaders = [
-        "Date",
         "Event",
         "Department",
         "Event From Date",

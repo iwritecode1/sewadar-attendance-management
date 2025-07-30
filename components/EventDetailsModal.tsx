@@ -27,7 +27,10 @@ import {
   User,
   UserCheck,
   UserX,
-  RefreshCw
+  RefreshCw,
+  FileImage,
+  X,
+  ZoomIn
 } from "lucide-react"
 import { apiClient } from "@/lib/api-client"
 import { useToast } from "@/hooks/use-toast"
@@ -37,6 +40,7 @@ interface Sewadar {
   name: string
   fatherHusbandName: string
   dob: string
+  age?: number
   gender: "MALE" | "FEMALE"
   badgeNumber: string
   badgeStatus: "PERMANENT" | "TEMPORARY" | "OPEN"
@@ -92,6 +96,17 @@ export default function EventDetailsModal({
   const [data, setData] = useState<EventDetailsData | null>(null)
   const [loading, setLoading] = useState(false)
   const [selectedCenter, setSelectedCenter] = useState<string>("all")
+  const [showNominalRolls, setShowNominalRolls] = useState(false)
+  const [nominalRollImages, setNominalRollImages] = useState<string[]>([])
+  const [imageDetails, setImageDetails] = useState<Array<{
+    url: string
+    centerName: string
+    centerId: string
+    submittedAt: string
+    submittedBy: string
+  }>>([])
+  const [loadingImages, setLoadingImages] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const { toast } = useToast()
 
   const fetchEventDetails = async () => {
@@ -124,11 +139,47 @@ export default function EventDetailsModal({
     }
   }
 
+  const fetchNominalRollImages = async () => {
+    if (!eventId) return
+
+    setLoadingImages(true)
+    try {
+      const response = await fetch(`/api/events/${eventId}/nominal-rolls`)
+      const result = await response.json()
+
+      if (result.success) {
+        setNominalRollImages(result.data.images || [])
+        setImageDetails(result.data.imageDetails || [])
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to fetch nominal roll images",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Failed to fetch nominal roll images:", error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch nominal roll images",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingImages(false)
+    }
+  }
+
   useEffect(() => {
     if (isOpen && eventId) {
       fetchEventDetails()
     }
   }, [isOpen, eventId]) // Removed selectedCenter from dependency array
+
+  useEffect(() => {
+    if (showNominalRolls && eventId) {
+      fetchNominalRollImages()
+    }
+  }, [showNominalRolls, eventId])
 
   const handleCenterFilterChange = (centerId: string) => {
     setSelectedCenter(centerId)
@@ -182,18 +233,32 @@ export default function EventDetailsModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-[95vw] max-w-6xl h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center text-sm md:text-base">
-            <Calendar className="mr-2 h-4 w-4 md:h-5 md:w-5" />
-            <span className="truncate">{eventName || "Event Details"}</span>
-          </DialogTitle>
-          <DialogDescription className="text-xs md:text-sm">
-            {data?.event && (
-              <>
-                <span className="block md:inline">{data.event.place} - {data.event.department}</span>
-                <span className="block md:inline md:ml-2">({data.event.fromDate} to {data.event.toDate})</span>
-              </>
-            )}
-          </DialogDescription>
+          <div className="flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <DialogTitle className="flex items-center text-sm md:text-base">
+                <Calendar className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+                <span className="truncate">{eventName || "Event Details"}</span>
+              </DialogTitle>
+              <DialogDescription className="text-xs md:text-sm">
+                {data?.event && (
+                  <>
+                    <span className="block md:inline">{data.event.place} - {data.event.department}</span>
+                    <span className="block md:inline md:ml-2">({data.event.fromDate} to {data.event.toDate})</span>
+                  </>
+                )}
+              </DialogDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowNominalRolls(true)}
+              className="ml-4 mr-4 flex-shrink-0"
+            >
+              <FileImage className="mr-2 h-4 w-4" />
+              <span className="hidden md:inline">View Nominal Rolls</span>
+              <span className="md:hidden">Images</span>
+            </Button>
+          </div>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto">
@@ -303,10 +368,10 @@ export default function EventDetailsModal({
                             </div>
                           </div>
                           <div className="flex flex-col items-end space-y-1 flex-shrink-0">
-                            <Badge variant="outline" className="text-xs px-1.5 py-0.5">
+                            <Badge variant={sewadar.gender === "MALE" ? "default" : "outline"} className="text-xs px-1.5 py-0.5">
                               {sewadar.gender}
                             </Badge>
-                            <Badge className={`text-xs px-1.5 py-0.5 ${getBadgeStatusColor(sewadar.badgeStatus)}`}>
+                            <Badge variant={sewadar.badgeStatus === "PERMANENT" ? "default" : "outline"} className={`text-xs px-1.5 py-0.5`}>
                               {sewadar.badgeStatus === "PERMANENT" ? "P" : sewadar.badgeStatus === "TEMPORARY" ? "T" : "O"}
                             </Badge>
                           </div>
@@ -327,11 +392,11 @@ export default function EventDetailsModal({
                             </div>
                           </div>
 
-                          <div className="p-2 bg-green-50 rounded text-center">
+                          {/* <div className="p-2 bg-green-50 rounded text-center">
                             <div className="text-xs text-green-900 font-medium truncate">
                               {sewadar.department}
                             </div>
-                          </div>
+                          </div> */}
                         </div>
                       </div>
                     ))}
@@ -342,19 +407,24 @@ export default function EventDetailsModal({
                     <table className="w-full border-collapse">
                       <thead>
                         <tr className="border-b">
+                          <th className="text-left p-3 font-medium text-gray-700">Badge Number</th>
                           <th className="text-left p-3 font-medium text-gray-700">Name</th>
                           <th className="text-left p-3 font-medium text-gray-700">Father Name</th>
-                          <th className="text-left p-3 font-medium text-gray-700">Badge Number</th>
                           <th className="text-left p-3 font-medium text-gray-700">Gender</th>
+                          <th className="text-left p-3 font-medium text-gray-700">Age</th>
                           <th className="text-left p-3 font-medium text-gray-700">Badge Status</th>
                           <th className="text-left p-3 font-medium text-gray-700">Center</th>
-                          <th className="text-left p-3 font-medium text-gray-700">Department</th>
                         </tr>
                       </thead>
                       <tbody>
                         {getFilteredSewadars()
                           .map((sewadar, index) => (
                             <tr key={sewadar._id} className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                              <td className="p-3">
+                                <code className="bg-gray-100 px-2 py-1 rounded text-sm">
+                                  {sewadar.badgeNumber}
+                                </code>
+                              </td>
                               <td className="p-3">
                                 <div className="flex items-center space-x-2">
                                   {/* <span>{getGenderIcon(sewadar.gender)}</span> */}
@@ -363,22 +433,19 @@ export default function EventDetailsModal({
                               </td>
                               <td className="p-3 text-gray-600">{sewadar.fatherHusbandName}</td>
                               <td className="p-3">
-                                <code className="bg-gray-100 px-2 py-1 rounded text-sm">
-                                  {sewadar.badgeNumber}
-                                </code>
-                              </td>
-                              <td className="p-3">
                                 <Badge variant="outline">
                                   {sewadar.gender}
                                 </Badge>
                               </td>
+                              <td variant={sewadar.gender === "MALE" ? "default" : "outline"} className="p-3 text-gray-600 text-center">
+                                {sewadar.age || "-"}
+                              </td>
                               <td className="p-3">
-                                <Badge className={getBadgeStatusColor(sewadar.badgeStatus)}>
+                                <Badge variant={sewadar.badgeStatus === "PERMANENT" ? "default" : "outline"}>
                                   {sewadar.badgeStatus}
                                 </Badge>
                               </td>
                               <td className="p-3 text-gray-600">{sewadar.centerName}</td>
-                              <td className="p-3 text-gray-600">{sewadar.department}</td>
                             </tr>
                           ))}
                       </tbody>
@@ -408,6 +475,124 @@ export default function EventDetailsModal({
           )}
         </div>
       </DialogContent>
+
+      {/* Nominal Rolls Modal */}
+      <Dialog open={showNominalRolls} onOpenChange={setShowNominalRolls}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <FileImage className="mr-2 h-5 w-5" />
+              Nominal Roll Images
+            </DialogTitle>
+            <DialogDescription>
+              All nominal roll images for this event across all centers
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {loadingImages ? (
+              <div className="flex items-center justify-center py-12">
+                <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+                <span className="ml-2 text-gray-600">Loading images...</span>
+              </div>
+            ) : nominalRollImages.length > 0 ? (
+              <>
+                <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    Found <strong>{nominalRollImages.length}</strong> nominal roll images from{' '}
+                    <strong>{[...new Set(imageDetails.map(img => img.centerName))].length}</strong> centers
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {imageDetails.map((imageDetail, index) => (
+                    <div
+                      key={index}
+                      className="relative group cursor-pointer border rounded-lg overflow-hidden hover:shadow-lg transition-shadow bg-white"
+                      onClick={() => setSelectedImage(imageDetail.url)}
+                    >
+                      <img
+                        src={imageDetail.url}
+                        alt={`Nominal roll from ${imageDetail.centerName}`}
+                        className="w-full h-40 object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center">
+                        <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+
+                      <div className="p-3 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <Badge variant="outline" className="text-xs">
+                            {imageDetail.centerName}
+                          </Badge>
+                          <span className="text-xs text-gray-500">
+                            #{index + 1}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-600">
+                          By: {imageDetail.submittedBy}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(imageDetail.submittedAt).toLocaleDateString()} at{' '}
+                          {new Date(imageDetail.submittedAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <FileImage className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500">No nominal roll images found for this event</p>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowNominalRolls(false)
+                  setNominalRollImages([])
+                }}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Viewer Modal */}
+      <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+        <DialogContent className="max-w-5xl max-h-[95vh] p-2">
+          <DialogHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <DialogTitle>Nominal Roll Image</DialogTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedImage(null)}
+              >
+                {/* <X className="h-4 w-4" /> */}
+              </Button>
+            </div>
+          </DialogHeader>
+
+          {selectedImage && (
+            <div className="flex items-center justify-center">
+              <img
+                src={selectedImage}
+                alt="Nominal roll"
+                className="max-w-full max-h-[80vh] object-contain rounded-lg"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Dialog>
   )
 }
