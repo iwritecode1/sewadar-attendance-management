@@ -296,10 +296,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
     setLoading((prev) => ({ ...prev, sewadars: true }))
     try {
-      // Use provided params, with defaults for backward compatibility
+      // Use provided params, with sensible defaults for pagination
+      // Note: For fetching all sewadars for a specific center, use fetchSewadarsForCenter()
       const fetchParams = {
-        limit: 10000, // Set a high limit to fetch all sewadars
         page: 1,   // Default page
+        limit: 50, // Default limit for pagination (prevents loading all sewadars accidentally)
         signal: controller.signal, // Pass abort signal
         ...params  // Override with provided params
       }
@@ -373,7 +374,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         return
       }
       console.error("Failed to fetch events:", error)
-      
+
       // Retry for stats requests if it's a network/timing issue
       if (params?.includeStats && retryCount < 2) {
         setTimeout(() => {
@@ -441,7 +442,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const response = await apiClient.createSewadar(data)
       const success = handleApiResponse(response, "Sewadar created successfully")
       if (success) {
-        await fetchSewadars()
+        // Refresh with current pagination settings
+        await fetchSewadars({ limit: 50, page: 1 })
       }
       return success
     },
@@ -453,7 +455,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const response = await apiClient.updateSewadar(id, data)
       const success = handleApiResponse(response, "Sewadar updated successfully")
       if (success) {
-        await fetchSewadars()
+        // Refresh with current pagination settings
+        await fetchSewadars({ limit: 50, page: 1 })
       }
       return success
     },
@@ -465,7 +468,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const response = await apiClient.deleteSewadar(id)
       const success = handleApiResponse(response, "Sewadar deleted successfully")
       if (success) {
-        await fetchSewadars()
+        // Refresh with current pagination settings
+        await fetchSewadars({ limit: 50, page: 1 })
       }
       return success
     },
@@ -477,7 +481,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       const response = await apiClient.importSewadars(file)
       const success = handleApiResponse(response, response.data?.message || "Sewadars imported successfully")
       if (success) {
-        await fetchSewadars()
+        // Refresh with current pagination settings
+        await fetchSewadars({ limit: 50, page: 1 })
       }
       return success
     },
@@ -546,7 +551,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
             setLoading((prev) => ({ ...prev, sewadars: false }))
           }
         } else {
-          await fetchSewadars()
+          await fetchSewadars({ limit: 50, page: 1 })
         }
       }
       return success
@@ -712,8 +717,15 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   // Refresh functions
   const refreshAll = useCallback(async () => {
-    await Promise.all([fetchSewadars(), fetchEvents(), fetchAttendance(), fetchCenters(), fetchCoordinators()])
-  }, [fetchSewadars, fetchEvents, fetchAttendance, fetchCenters, fetchCoordinators])
+    await Promise.all([
+      fetchEvents(),
+      fetchAttendance(),
+      fetchCenters(),
+      fetchCoordinators()
+    ])
+    // Note: Sewadars are not refreshed here to avoid duplicate calls
+    // Individual pages should handle their own sewadar refreshing
+  }, [fetchEvents, fetchAttendance, fetchCenters, fetchCoordinators])
 
   const refreshSewadars = fetchSewadars
   const refreshEvents = fetchEvents
@@ -724,7 +736,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // Initial data fetch - stagger the requests to avoid race conditions
   useEffect(() => {
     if (!user) return;
-    
+
     const initializeData = async () => {
       try {
         // First fetch basic data that doesn't depend on each other
@@ -732,18 +744,18 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           fetchCenters(),
           fetchCoordinators()
         ])
-        
+
         // Then fetch attendance data
         await fetchAttendance()
-        
+
         // Wait a moment to ensure database operations are complete
         await new Promise(resolve => setTimeout(resolve, 200))
-        
+
         // Then fetch events with stats (after attendance is loaded)
         await fetchEvents({ includeStats: true })
-        
-        // Finally fetch sewadars
-        await fetchSewadars()
+
+        // Skip general sewadars fetch - let individual pages handle their own sewadar fetching
+        // This prevents duplicate API calls on pages like /sewadars that have their own fetch logic
       } catch (error) {
         console.error('Error initializing data:', error)
         // Fallback: try to fetch events without stats first, then with stats
@@ -753,7 +765,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         }, 1000)
       }
     }
-    
+
     initializeData()
   }, [user]);
 

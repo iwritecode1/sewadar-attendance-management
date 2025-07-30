@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
               areaCode: center.areaCode,
               center: center.name,
               centerId: attendanceData.centerId,
-              department: "General", // Default department for temp sewadars
+              department: "GENERAL", // Default department for temp sewadars
               contactNo: tempSewadar.phone || "",
               emergencyContact: "",
               createdAt: new Date(),

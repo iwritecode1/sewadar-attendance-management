@@ -60,7 +60,7 @@ interface SearchSuggestion {
 
 export default function SewadarLookupPage() {
   const { user } = useAuth()
-  const { centers, sewadars, attendance } = useData()
+  const { centers, sewadars, attendance, fetchSewadars } = useData()
   const { toast } = useToast()
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -883,7 +883,7 @@ export default function SewadarLookupPage() {
 
         {/* Search Results */}
         {searchResults.length > 0 && (
-          <Card className="enhanced-card mx-4 md:mx-0" id="search-results">
+          <Card className="enhanced-card" id="search-results">
             <CardHeader>
               {/* Mobile Layout */}
               <div className="block md:hidden">

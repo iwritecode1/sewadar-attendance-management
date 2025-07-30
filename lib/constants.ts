@@ -11,6 +11,7 @@ export const DEPARTMENTS = [
   "ELECTRIC",
   "ENGLISH SATSANG SPEAKER",
   "ENQUIRY",
+  "GENERAL",
   "HORTICULTURE",
   "I.T.",
   "LANGAR",

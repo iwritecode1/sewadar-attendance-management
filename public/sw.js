@@ -14,55 +14,110 @@ const urlsToCache = [
 
 // Install event
 self.addEventListener("install", (event) => {
+  console.log("Service Worker installing...")
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log("Opened cache")
-      return cache.addAll(urlsToCache)
-    }),
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        console.log("Opened cache:", CACHE_NAME)
+        return cache.addAll(urlsToCache)
+      })
+      .then(() => {
+        console.log("All resources cached successfully")
+        // Force the waiting service worker to become the active service worker
+        return self.skipWaiting()
+      })
+      .catch((error) => {
+        console.error("Failed to cache resources:", error)
+      })
   )
 })
 
 // Fetch event
 self.addEventListener("fetch", (event) => {
-  // Skip caching for Next.js internal requests and API calls
+  // Skip caching for Next.js internal requests, API calls, and non-GET requests
   if (
     event.request.url.includes('/_next/') ||
     event.request.url.includes('/api/') ||
     event.request.url.includes('chrome-extension:') ||
-    event.request.method !== 'GET'
+    event.request.url.includes('moz-extension:') ||
+    event.request.method !== 'GET' ||
+    event.request.url.includes('hot-reload') ||
+    event.request.url.includes('webpack')
   ) {
-    return fetch(event.request)
+    return // Let the browser handle these requests normally
   }
 
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      // Return cached version or fetch from network
-      if (response) {
-        return response
-      }
-      return fetch(event.request).catch(() => {
-        // Return offline fallback if available
-        if (event.request.destination === 'document') {
-          return caches.match('/')
+    caches.match(event.request)
+      .then((response) => {
+        // Return cached version if available
+        if (response) {
+          console.log("Serving from cache:", event.request.url)
+          return response
         }
+
+        // Fetch from network
+        return fetch(event.request)
+          .then((response) => {
+            // Check if we received a valid response
+            if (!response || response.status !== 200 || response.type !== 'basic') {
+              return response
+            }
+
+            // Clone the response for caching
+            const responseToCache = response.clone()
+
+            caches.open(CACHE_NAME)
+              .then((cache) => {
+                cache.put(event.request, responseToCache)
+              })
+              .catch((error) => {
+                console.warn("Failed to cache response:", error)
+              })
+
+            return response
+          })
+          .catch((error) => {
+            console.warn("Fetch failed:", error)
+            // Return offline fallback for navigation requests
+            if (event.request.destination === 'document') {
+              return caches.match('/').then((fallback) => {
+                return fallback || new Response('Offline', { status: 503 })
+              })
+            }
+            throw error
+          })
       })
-    }),
+      .catch((error) => {
+        console.error("Cache match failed:", error)
+        return fetch(event.request)
+      })
   )
 })
 
 // Activate event
 self.addEventListener("activate", (event) => {
+  console.log("Service Worker activating...")
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log("Deleting old cache:", cacheName)
-            return caches.delete(cacheName)
-          }
-        }),
-      )
-    }),
+    caches.keys()
+      .then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            if (cacheName !== CACHE_NAME) {
+              console.log("Deleting old cache:", cacheName)
+              return caches.delete(cacheName)
+            }
+          })
+        )
+      })
+      .then(() => {
+        console.log("Service Worker activated successfully")
+        // Claim all clients immediately
+        return self.clients.claim()
+      })
+      .catch((error) => {
+        console.error("Service Worker activation failed:", error)
+      })
   )
 })
 

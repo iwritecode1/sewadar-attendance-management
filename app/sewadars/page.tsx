@@ -66,7 +66,12 @@ export default function SewadarsPage() {
     if (selectedGender !== "all") params.gender = selectedGender
     if (selectedBadgeStatus !== "all") params.badgeStatus = selectedBadgeStatus
 
-    fetchSewadars(params)
+    // Small delay to debounce rapid filter changes
+    const timeoutId = setTimeout(() => {
+      fetchSewadars(params)
+    }, 50)
+
+    return () => clearTimeout(timeoutId)
   }, [searchTerm, selectedCenter, selectedDepartment, selectedGender, selectedBadgeStatus, currentPage, fetchSewadars])
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {

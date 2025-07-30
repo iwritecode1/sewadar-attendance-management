@@ -1,24 +1,59 @@
 // Service Worker registration for PWA
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
+    const isLocalhost = Boolean(
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname === "[::1]" ||
+      window.location.hostname.match(/^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/)
+    )
+
+    // Development mode: unregister service workers to prevent caching issues
+    if (isLocalhost) {
+      navigator.serviceWorker.getRegistrations()
+        .then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister()
+              .then(function(boolean) {
+                console.log("Development: Service worker unregistered:", boolean)
+              })
+              .catch(function(error) {
+                console.warn("Failed to unregister service worker:", error)
+              })
+          }
+        })
+        .catch(function(error) {
+          console.warn("Failed to get service worker registrations:", error)
+        })
+      return
+    }
+
+    // Production mode: register service worker
     navigator.serviceWorker
       .register("/sw.js")
       .then((registration) => {
-        console.log("SW registered: ", registration)
+        console.log("Production: SW registered successfully:", registration.scope)
 
         // Check for updates
         registration.addEventListener("updatefound", () => {
           const newWorker = registration.installing
-          newWorker.addEventListener("statechange", () => {
-            if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-              // New content is available, show update notification
-              showUpdateNotification()
-            }
-          })
+          if (newWorker) {
+            newWorker.addEventListener("statechange", () => {
+              if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+                // New content is available, show update notification
+                showUpdateNotification()
+              }
+            })
+          }
+        })
+
+        // Listen for controlling service worker changes
+        registration.addEventListener("controllerchange", () => {
+          console.log("Service worker controller changed")
         })
       })
       .catch((registrationError) => {
-        console.log("SW registration failed: ", registrationError)
+        console.error("Production: SW registration failed:", registrationError)
       })
   })
 }
@@ -112,6 +147,58 @@ window.addEventListener("appinstalled", () => {
 if (window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone) {
   console.log("App is running in standalone mode")
   // Add any PWA-specific functionality here
+}
+
+// Global function to manually unregister service workers (for debugging)
+window.unregisterServiceWorkers = function() {
+  if ("serviceWorker" in navigator) {
+    console.log("Starting manual service worker cleanup...")
+    
+    navigator.serviceWorker.getRegistrations()
+      .then(function(registrations) {
+        const unregisterPromises = registrations.map(registration => 
+          registration.unregister()
+            .then(boolean => {
+              console.log("Service worker unregistered:", registration.scope, boolean)
+              return boolean
+            })
+            .catch(error => {
+              console.error("Failed to unregister service worker:", error)
+              return false
+            })
+        )
+        
+        return Promise.all(unregisterPromises)
+      })
+      .then(() => {
+        // Clear caches after unregistering service workers
+        if ('caches' in window) {
+          return caches.keys().then(function(names) {
+            const deletePromises = names.map(name => 
+              caches.delete(name)
+                .then(success => {
+                  console.log("Cache deleted:", name, success)
+                  return success
+                })
+                .catch(error => {
+                  console.error("Failed to delete cache:", name, error)
+                  return false
+                })
+            )
+            return Promise.all(deletePromises)
+          })
+        }
+      })
+      .then(() => {
+        console.log("✅ All service workers and caches cleared successfully!")
+        console.log("🔄 Please refresh the page to complete the cleanup.")
+      })
+      .catch(error => {
+        console.error("❌ Error during cleanup:", error)
+      })
+  } else {
+    console.log("Service workers not supported in this browser")
+  }
 }
 
 // iOS PWA detection and install guidance
