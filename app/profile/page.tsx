@@ -135,7 +135,7 @@ export default function ProfilePage() {
       <div className="space-y-4 md:space-y-6 px-0 md:px-0">
         {/* Header */}
         <div className="px-4 md:px-0">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Profile</h1>
+          <h1 className="text-xl md:text-2xl text-gray-900">Profile</h1>
           <p className="text-gray-600 mt-1 text-sm md:text-base">Manage your account settings</p>
         </div>
 
@@ -209,7 +209,7 @@ export default function ProfilePage() {
                     <User className="h-5 w-5 text-gray-400" />
                     <div>
                       <p className="text-sm text-gray-600">Full Name</p>
-                      <p className="font-medium">{user.name}</p>
+                      <p>{user.name}</p>
                     </div>
                   </div>
 
@@ -217,7 +217,7 @@ export default function ProfilePage() {
                     <User className="h-5 w-5 text-gray-400" />
                     <div>
                       <p className="text-sm text-gray-600">Username</p>
-                      <p className="font-medium">{user.username}</p>
+                      <p>{user.username}</p>
                     </div>
                   </div>
 
@@ -238,7 +238,7 @@ export default function ProfilePage() {
                       <Building2 className="h-5 w-5 text-gray-400" />
                       <div>
                         <p className="text-sm text-gray-600">Center</p>
-                        <p className="font-medium">{user.centerName}</p>
+                        <p>{user.centerName}</p>
                       </div>
                     </div>
                   )}
@@ -247,7 +247,7 @@ export default function ProfilePage() {
                     <Building2 className="h-5 w-5 text-gray-400" />
                     <div>
                       <p className="text-sm text-gray-600">Area</p>
-                      <p className="font-medium">{user.area}</p>
+                      <p>{user.area}</p>
                     </div>
                   </div>
 
@@ -256,7 +256,7 @@ export default function ProfilePage() {
                       <Calendar className="h-5 w-5 text-gray-400" />
                       <div>
                         <p className="text-sm text-gray-600">Member Since</p>
-                        <p className="font-medium">{formatDate(user.createdAt)}</p>
+                        <p>{formatDate(user.createdAt)}</p>
                       </div>
                     </div>
                   )}

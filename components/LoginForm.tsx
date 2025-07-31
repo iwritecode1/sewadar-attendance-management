@@ -56,7 +56,7 @@ export default function LoginForm() {
 
         <Card className="enhanced-card shadow-2xl">
           <CardHeader className="text-center pb-6">
-            <CardTitle className="text-2xl font-bold text-gray-900">Welcome Back</CardTitle>
+            <CardTitle className="text-2xl text-gray-900">Welcome Back</CardTitle>
             <CardDescription className="text-gray-600">Sign in to your account to continue</CardDescription>
           </CardHeader>
           <CardContent>

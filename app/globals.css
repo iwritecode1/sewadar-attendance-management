@@ -77,6 +77,13 @@
   @apply enhanced-card p-6;
 }
 
+/* Mobile chart container - no padding */
+@media (max-width: 640px) {
+  .chart-container {
+    padding: 0;
+  }
+}
+
 /* PWA specific styles */
 @media (display-mode: standalone) {
   body {
@@ -302,4 +309,62 @@
 .instructions-card {
   background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
   border: 1px solid #bfdbfe;
+}
+
+/* Participant card mobile optimization */
+.participant-card {
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.participant-card:hover {
+  background-color: #f9fafb;
+}
+
+/* Mobile-specific participant card styling */
+@media (max-width: 640px) {
+  .participant-card {
+    margin-bottom: 0.75rem;
+  }
+  
+  .participant-card .truncate {
+    max-width: 100%;
+  }
+  
+  /* Ensure proper spacing for badges on mobile */
+  .participant-card .space-x-1 > * + * {
+    margin-left: 0.25rem;
+  }
+  
+  /* Make sure text doesn't overflow */
+  .participant-card h4 {
+    font-size: 1rem;
+    line-height: 1.25;
+  }
+  
+  .participant-card p {
+    font-size: 0.875rem;
+    line-height: 1.25;
+    margin-top: 0.125rem;
+  }
+  
+  /* Badge styling for mobile */
+  .participant-card .text-xs {
+    font-size: 0.75rem;
+    line-height: 1;
+    padding: 0.125rem 0.375rem;
+  }
+  
+  /* Center name with building icon */
+  .participant-card .flex.items-center.text-xs {
+    margin-top: 0.25rem;
+  }
+  
+  /* Badge number styling */
+  .participant-card .font-mono {
+    background-color: #f3f4f6;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    display: inline-block;
+  }
 }

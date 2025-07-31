@@ -57,8 +57,8 @@ export default function Layout({ children }: LayoutProps) {
                 key={item.name}
                 href={item.href}
                 className={`flex items-center px-3 py-3 rounded-lg text-sm font-medium transition-colors ${pathname === item.href
-                    ? "bg-blue-50 text-blue-600 border-l-4 border-blue-600"
-                    : "text-gray-600 hover:bg-gray-50"
+                  ? "bg-blue-50 text-blue-600 border-l-4 border-blue-600"
+                  : "text-gray-600 hover:bg-gray-50"
                   }`}
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -90,7 +90,7 @@ export default function Layout({ children }: LayoutProps) {
                     <img src="/icon-192x192.png" alt="Logo" className="w-12 h-12" />
                   </div>
                   <div>
-                    <h1 className="font-bold text-gray-900">Sewadar Attendance Management</h1>
+                    <h1 className="text-gray-900">Sewadar Attendance Management</h1>
                     {/* <p className="text-sm text-gray-600">Sewadar Attendance Management</p> */}
                   </div>
                 </div>
@@ -104,8 +104,8 @@ export default function Layout({ children }: LayoutProps) {
                       key={item.name}
                       href={item.href}
                       className={`group flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${pathname === item.href
-                          ? "bg-blue-50 text-blue-600 shadow-sm border-l-4 border-blue-600"
-                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                        ? "bg-blue-50 text-blue-600 shadow-sm border-l-4 border-blue-600"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                         }`}
                     >
                       <item.icon
@@ -132,7 +132,7 @@ export default function Layout({ children }: LayoutProps) {
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate pl-2">{user.name}</p>
+                        <p className="text-sm text-gray-900 truncate pl-2">{user.name}</p>
                         <div className="flex items-center space-x-2">
                           <span
                             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${user.role === "admin" ? "bg-purple-100 text-purple-800" : "bg-green-100 text-green-800"
@@ -142,7 +142,7 @@ export default function Layout({ children }: LayoutProps) {
                           </span>
                         </div>
                         {user.centerName && <p className="text-xs text-gray-600 truncate mt-1 pl-2">{user.centerName}</p>}
-                        <p className="text-xs text-blue-600 font-medium pl-2">AREA {user.area}</p>
+                        <p className="text-xs text-blue-600 font-medium pl-2">{user.area}</p>
                       </div>
                     </div>
                     <Button

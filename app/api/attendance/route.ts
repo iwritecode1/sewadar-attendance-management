@@ -333,6 +333,7 @@ export async function GET(request: NextRequest) {
     const records = await AttendanceRecord.find(query)
       .populate("eventId", "place department fromDate toDate")
       .populate("submittedBy", "name")
+      .populate("sewadars", "name badgeNumber fatherHusbandName gender badgeStatus department contactNo")
       .sort({ submittedAt: -1 })
       .skip(skip)
       .limit(limit)

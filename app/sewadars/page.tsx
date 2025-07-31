@@ -439,7 +439,7 @@ export default function SewadarsPage() {
       <div className="space-y-4 md:space-y-6 px-2 md:px-0">
         <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Manage Sewadars</h1>
+            <h1 className="text-xl md:text-2xl text-gray-900">Manage Sewadars</h1>
             <p className="text-gray-600 mt-1 text-sm md:text-base">
               {user?.role === "admin" ? `All Sewadars in ${user.area} Area` : `Sewadars from ${user?.centerName}`}
             </p>
@@ -965,7 +965,7 @@ export default function SewadarsPage() {
                     <Users className="h-5 w-5 text-blue-600" />
                     <span className="text-sm font-medium text-gray-600">Total</span>
                   </div>
-                  <p className="text-2xl font-bold text-gray-900">{pagination.sewadars?.total || sewadars.length}</p>
+                  <p className="text-2xl text-gray-900">{pagination.sewadars?.total || sewadars.length}</p>
                 </div>
                 <div className="text-center space-y-2">
                   <div className="flex items-center justify-center space-x-2">
@@ -974,7 +974,7 @@ export default function SewadarsPage() {
                     </div>
                     <span className="text-sm font-medium text-gray-600">Male</span>
                   </div>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-2xl text-gray-900">
                     {pagination.sewadars?.maleCount || sewadars.filter((s) => s.gender === "MALE").length}
                   </p>
                 </div>
@@ -985,7 +985,7 @@ export default function SewadarsPage() {
                     </div>
                     <span className="text-sm font-medium text-gray-600">Female</span>
                   </div>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-2xl text-gray-900">
                     {pagination.sewadars?.femaleCount || sewadars.filter((s) => s.gender === "FEMALE").length}
                   </p>
                 </div>
@@ -996,7 +996,7 @@ export default function SewadarsPage() {
                     </div>
                     <span className="text-sm font-medium text-gray-600">Permanent</span>
                   </div>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-2xl text-gray-900">
                     {pagination.sewadars?.permanentCount || sewadars.filter((s) => s.badgeStatus === "PERMANENT").length}
                   </p>
                 </div>
@@ -1012,7 +1012,7 @@ export default function SewadarsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Sewadars</p>
-                  <p className="text-2xl font-bold text-gray-900">{pagination.sewadars?.total || sewadars.length}</p>
+                  <p className="text-2xl text-gray-900">{pagination.sewadars?.total || sewadars.length}</p>
                 </div>
                 <Users className="h-8 w-8 text-blue-600" />
               </div>
@@ -1024,7 +1024,7 @@ export default function SewadarsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Male</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-2xl text-gray-900">
                     {pagination.sewadars?.maleCount || sewadars.filter((s) => s.gender === "MALE").length}
                   </p>
                 </div>
@@ -1040,7 +1040,7 @@ export default function SewadarsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Female</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-2xl text-gray-900">
                     {pagination.sewadars?.femaleCount || sewadars.filter((s) => s.gender === "FEMALE").length}
                   </p>
                 </div>
@@ -1056,7 +1056,7 @@ export default function SewadarsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Permanent</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-2xl text-gray-900">
                     {pagination.sewadars?.permanentCount || sewadars.filter((s) => s.badgeStatus === "PERMANENT").length}
                   </p>
                 </div>
@@ -1071,7 +1071,7 @@ export default function SewadarsPage() {
         {/* Sewadars Table */}
         <Card className="enhanced-card">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+            <CardTitle className="flex items-center justify-between text-base md:text-lg">
               <span>Sewadars ({pagination.sewadars?.total || sewadars.length})</span>
               <Badge variant="secondary" className="ml-2">
                 {user?.area} Area
@@ -1190,7 +1190,7 @@ export default function SewadarsPage() {
                           <TableCell className="w-40">{sewadar.fatherHusbandName}</TableCell>
                           <TableCell className="w-16 text-center">{sewadar.age || "-"}</TableCell>
                           {user?.role === "admin" && <TableCell className="w-24 whitespace-nowrap text-sm">{sewadar.center}</TableCell>}
-                          <TableCell className="w-32 whitespace-nowrap text-sm">{sewadar.department}</TableCell>
+                          <TableCell className="w-32 text-sm">{sewadar.department}</TableCell>
                           <TableCell className="w-24">
                             <Badge variant={sewadar.badgeStatus === "PERMANENT" ? "default" : "outline"}>
                               {sewadar.badgeStatus}

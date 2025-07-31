@@ -442,7 +442,7 @@ export default function AttendancePage() {
     <Layout>
       <div className="space-y-4 md:space-y-6 px-2 md:px-0">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Add Attendance</h1>
+          <h1 className="text-xl md:text-2xl text-gray-900">Add Attendance</h1>
           <p className="text-gray-600 mt-1 text-sm md:text-base">
             Submit attendance for sewa events
           </p>
@@ -452,9 +452,9 @@ export default function AttendancePage() {
         {user?.role === "admin" && (
           <Card className="enhanced-card">
             <CardHeader>
-              <CardTitle className="flex items-center">
+              <CardTitle className="flex items-center text-base md:text-lg">
                 <Building2 className="mr-2 h-5 w-5" />
-                Select Center *
+                Select Center
               </CardTitle>
               <CardDescription>
                 Choose the center for which you want to add attendance
@@ -470,7 +470,7 @@ export default function AttendancePage() {
                     disabled={loading.centers}
                   >
                     <SelectTrigger className="mt-1">
-                      <SelectValue 
+                      <SelectValue
                         placeholder={
                           loading.centers ? (
                             <span className="flex items-center">
@@ -480,7 +480,7 @@ export default function AttendancePage() {
                           ) : (
                             "Select a center"
                           )
-                        } 
+                        }
                       />
                     </SelectTrigger>
                     <SelectContent>
@@ -536,9 +536,9 @@ export default function AttendancePage() {
           (user?.role === "admin" && selectedCenter)) && (
             <Card className="enhanced-card">
               <CardHeader>
-                <CardTitle className="flex items-center">
+                <CardTitle className="flex items-center text-base md:text-lg">
                   <Calendar className="mr-2 h-5 w-5" />
-                  Select Sewa *
+                  Select Sewa
                 </CardTitle>
                 <CardDescription>
                   Choose an existing event or create a new one
@@ -546,7 +546,7 @@ export default function AttendancePage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="event">Select Event *</Label>
+                  <Label htmlFor="event">Sewa *</Label>
                   <div className="mt-1">
                     <SearchableEventSelect
                       events={events}
@@ -654,9 +654,9 @@ export default function AttendancePage() {
               {/* Searchable Sewadar Selection */}
               <Card className="enhanced-card">
                 <CardHeader>
-                  <CardTitle className="flex items-center">
+                  <CardTitle className="flex items-center text-base md:text-lg">
                     <Users className="mr-2 h-5 w-5" />
-                    Select Sewadars *
+                    Select Sewadars
                   </CardTitle>
                   <CardDescription>
                     Search and select sewadars from{" "}
@@ -1215,7 +1215,7 @@ export default function AttendancePage() {
         {user?.role === "admin" && !selectedCenter && (
           <Card className="enhanced-card bg-blue-50 border-blue-200">
             <CardHeader>
-              <CardTitle className="text-blue-900">Getting Started</CardTitle>
+              <CardTitle className="text-blue-900 text-base md:text-lg">Getting Started</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm text-blue-800">
               <p>

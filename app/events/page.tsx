@@ -128,8 +128,12 @@ export default function EventsPage() {
     attendance.forEach(record => {
       // Add sewadars (includes both regular and formerly temporary sewadars)
       if (record.sewadars && Array.isArray(record.sewadars)) {
-        record.sewadars.forEach((sewadarId: string) => {
-          uniqueSewadarIds.add(sewadarId)
+        record.sewadars.forEach((sewadar: any) => {
+          // Handle both string IDs and sewadar objects
+          const sewadarId = typeof sewadar === 'string' ? sewadar : sewadar._id
+          if (sewadarId) {
+            uniqueSewadarIds.add(sewadarId)
+          }
         })
       }
     })
@@ -146,7 +150,7 @@ export default function EventsPage() {
       <div className="space-y-4 md:space-y-6 px-2 md:px-0">
         <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Manage Sewa Events</h1>
+            <h1 className="text-xl md:text-2xl text-gray-900">Manage Sewa Events</h1>
             <p className="text-gray-600 mt-1 text-sm md:text-base">
               Create and manage sewa events for {user.area} Area
             </p>
@@ -334,28 +338,28 @@ export default function EventsPage() {
                     <Calendar className="h-5 w-5 text-blue-600" />
                     <span className="text-sm font-medium text-gray-600">Events</span>
                   </div>
-                  <p className="text-2xl font-bold text-gray-900">{pagination.events?.total || events.length}</p>
+                  <p className="text-2xl text-gray-900">{pagination.events?.total || events.length}</p>
                 </div>
                 <div className="text-center space-y-2">
                   <div className="flex items-center justify-center space-x-2">
                     <MapPin className="h-5 w-5 text-green-600" />
                     <span className="text-sm font-medium text-gray-600">Places</span>
                   </div>
-                  <p className="text-2xl font-bold text-gray-900">{places.length}</p>
+                  <p className="text-2xl text-gray-900">{places.length}</p>
                 </div>
                 <div className="text-center space-y-2">
                   <div className="flex items-center justify-center space-x-2">
                     <Building className="h-5 w-5 text-purple-600" />
                     <span className="text-sm font-medium text-gray-600">Departments</span>
                   </div>
-                  <p className="text-2xl font-bold text-gray-900">{departments.length}</p>
+                  <p className="text-2xl text-gray-900">{departments.length}</p>
                 </div>
                 <div className="text-center space-y-2">
                   <div className="flex items-center justify-center space-x-2">
                     <Users className="h-5 w-5 text-orange-600" />
                     <span className="text-sm font-medium text-gray-600">Sewadars</span>
                   </div>
-                  <p className="text-2xl font-bold text-gray-900">{getUniqueSewadarsCount()}</p>
+                  <p className="text-2xl text-gray-900">{getUniqueSewadarsCount()}</p>
                 </div>
               </div>
             </CardContent>
@@ -369,7 +373,7 @@ export default function EventsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Events</p>
-                  <p className="text-2xl font-bold text-gray-900">{pagination.events?.total || events.length}</p>
+                  <p className="text-2xl text-gray-900">{pagination.events?.total || events.length}</p>
                 </div>
                 <Calendar className="h-8 w-8 text-blue-600" />
               </div>
@@ -381,7 +385,7 @@ export default function EventsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Sewa Places</p>
-                  <p className="text-2xl font-bold text-gray-900">{places.length}</p>
+                  <p className="text-2xl text-gray-900">{places.length}</p>
                 </div>
                 <MapPin className="h-8 w-8 text-green-600" />
               </div>
@@ -393,7 +397,7 @@ export default function EventsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Departments</p>
-                  <p className="text-2xl font-bold text-gray-900">{departments.length}</p>
+                  <p className="text-2xl text-gray-900">{departments.length}</p>
                 </div>
                 <Building className="h-8 w-8 text-purple-600" />
               </div>
@@ -405,7 +409,7 @@ export default function EventsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Unique Sewadars</p>
-                  <p className="text-2xl font-bold text-gray-900">{getUniqueSewadarsCount()}</p>
+                  <p className="text-2xl text-gray-900">{getUniqueSewadarsCount()}</p>
                 </div>
                 <Users className="h-8 w-8 text-orange-600" />
               </div>
@@ -416,7 +420,7 @@ export default function EventsPage() {
         {/* Events Table */}
         <Card className="enhanced-card">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
+            <CardTitle className="flex items-center justify-between text-base md:text-lg">
               <span>Sewa Events ({pagination.events?.total || events.length})</span>
               <Badge variant="secondary" className="ml-2">
                 {user.area} Area
@@ -505,8 +509,8 @@ export default function EventsPage() {
                   <Table className="enhanced-table">
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-40">Place</TableHead>
-                        <TableHead className="w-32">Department</TableHead>
+                        <TableHead className="w-32">Place</TableHead>
+                        <TableHead className="w-40">Department</TableHead>
                         <TableHead className="w-32">Duration</TableHead>
                         <TableHead className="w-24">Sewadars</TableHead>
                         {/* <TableHead className="w-24">Centers</TableHead> */}
@@ -521,8 +525,8 @@ export default function EventsPage() {
                           className={`cursor-pointer hover:bg-blue-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-gray-100"}`}
                           onClick={() => setViewingEvent(event._id)}
                         >
-                          <TableCell className="font-medium w-40">{event.place}</TableCell>
-                          <TableCell className="w-32">{event.department}</TableCell>
+                          <TableCell className="w-32">{event.place}</TableCell>
+                          <TableCell className="w-40">{event.department}</TableCell>
                           <TableCell className="w-32 text-sm">
                             <div>
                               <div>{formatDate(event.fromDate)}</div>

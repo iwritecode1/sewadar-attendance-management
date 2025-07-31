@@ -193,7 +193,7 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
             {/* Basic Information Card */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
+                <CardTitle className="flex items-center justify-between text-base md:text-lg">
                   <span>Basic Information</span>
                   <div className="flex space-x-2">
                     <Badge variant={sewadar.gender === "MALE" ? "default" : "secondary"}>{sewadar.gender}</Badge>
@@ -323,7 +323,7 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                 {/* Desktop Layout - Side by Side */}
                 <div className="hidden md:flex items-center justify-between">
                   <div>
-                    <CardTitle className="flex items-center">
+                    <CardTitle className="flex items-center text-base md:text-lg">
                       <Clock className="mr-2 h-5 w-5" />
                       Attendance History
                     </CardTitle>
@@ -355,7 +355,7 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-sm text-blue-600">Total Events</p>
-                            <p className="text-2xl font-bold text-blue-900">{attendanceHistory.length}</p>
+                            <p className="text-2xl text-blue-900">{attendanceHistory.length}</p>
                           </div>
                           <Users className="h-8 w-8 text-blue-600" />
                         </div>
@@ -365,7 +365,7 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-sm text-green-600">Total Attendance</p>
-                            <p className="text-2xl font-bold text-green-900">
+                            <p className="text-2xl text-green-900">
                               {attendanceHistory.reduce((totalDays, record) => {
                                 if (!record.eventId?.fromDate || !record.eventId?.toDate) return totalDays
                                 const fromDate = new Date(record.eventId.fromDate)
@@ -384,7 +384,7 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-sm text-purple-600">Last Event</p>
-                            <p className="text-lg font-bold text-purple-900">
+                            <p className="text-lg text-purple-900">
                               {attendanceHistory[0]?.eventId?.fromDate
                                 ? new Date(attendanceHistory[0].eventId.fromDate).toLocaleDateString('en-GB', {
                                   day: '2-digit',

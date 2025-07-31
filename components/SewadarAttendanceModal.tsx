@@ -182,10 +182,10 @@ export default function SewadarAttendanceModal({ isOpen, onClose, sewadar }: Sew
 
           {/* Desktop Header */}
           <div className="hidden md:block">
-            <DialogTitle className="flex items-center justify-between">
+            <DialogTitle className="flex items-center justify-between mb-1">
               <div className="flex items-center">
                 <User className="mr-2 h-5 w-5" />
-                <div>
+                <div className="flex items-center">
                   <span>{sewadar.name}</span>
                   <span className="ml-2 text-sm font-mono text-gray-600">({sewadar.badgeNumber})</span>
                 </div>
@@ -205,15 +205,15 @@ export default function SewadarAttendanceModal({ isOpen, onClose, sewadar }: Sew
           {attendanceStats && (
             <div className="grid grid-cols-3 gap-2 md:gap-4">
               <div className="text-center p-3 md:p-4 bg-blue-50 rounded-lg">
-                <div className="text-xl md:text-2xl font-bold text-blue-600">{attendanceStats.totalEvents}</div>
+                <div className="text-xl md:text-2xl text-blue-600">{attendanceStats.totalEvents}</div>
                 <div className="text-xs md:text-sm text-blue-800">Events</div>
               </div>
               <div className="text-center p-3 md:p-4 bg-green-50 rounded-lg">
-                <div className="text-xl md:text-2xl font-bold text-green-600">{attendanceStats.totalDays}</div>
+                <div className="text-xl md:text-2xl text-green-600">{attendanceStats.totalDays}</div>
                 <div className="text-xs md:text-sm text-green-800">Days</div>
               </div>
               <div className="text-center p-3 md:p-4 bg-purple-50 rounded-lg">
-                <div className="text-lg md:text-xl font-bold text-purple-600">
+                <div className="text-lg md:text-xl text-purple-600">
                   {attendanceRecords[0]?.eventId?.fromDate
                     ? new Date(attendanceRecords[0].eventId.fromDate).toLocaleDateString('en-GB', {
                       day: '2-digit',
@@ -262,7 +262,7 @@ export default function SewadarAttendanceModal({ isOpen, onClose, sewadar }: Sew
                   {attendanceRecords.map((record) => (
                     <div key={record._id} className="p-3 border rounded-lg hover:bg-gray-50">
                       <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-medium text-sm">{record.eventId?.place || 'N/A'}</h4>
+                        <h4 className="text-sm">{record.eventId?.place || 'N/A'}</h4>
                         <Badge variant="outline" className="text-xs">
                           {record.eventId?.fromDate ? formatDate(record.eventId.fromDate) : 'Invalid Date'}
                         </Badge>

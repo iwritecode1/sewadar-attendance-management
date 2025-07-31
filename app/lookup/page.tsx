@@ -10,13 +10,14 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
-import { Search, User, Calendar, Download, RefreshCw, FileText, X, Filter, BarChart3, FileSpreadsheet } from "lucide-react"
+import { Search, User, Calendar, Download, RefreshCw, FileText, X, Filter, BarChart3, FileSpreadsheet, ChevronDown, ChevronUp } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import SewadarAttendanceModal from "@/components/SewadarAttendanceModal"
 import * as XLSX from "xlsx"
 import { apiClient } from "@/lib/api-client"
 import { DEPARTMENTS } from "@/lib/constants"
 import { formatDate } from "@/lib/date-utils"
+import { Badge } from "@/components/ui/badge"
 
 interface Sewadar {
   _id: string
@@ -74,6 +75,8 @@ export default function SewadarLookupPage() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([])
   const [recentSearches, setRecentSearches] = useState<string[]>([])
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1)
+  const [hasSearched, setHasSearched] = useState(false)
 
   // Request cancellation
   const [currentSearchController, setCurrentSearchController] = useState<AbortController | null>(null)
@@ -84,6 +87,8 @@ export default function SewadarLookupPage() {
   const [attendanceFilterCenter, setAttendanceFilterCenter] = useState(user?.role === "admin" ? "all" : (user?.centerId || "all"))
   const [attendanceFilterOperator, setAttendanceFilterOperator] = useState("less_than")
   const [attendanceFilterCount, setAttendanceFilterCount] = useState("")
+  const [genderFilter, setGenderFilter] = useState("all")
+  const [showExamples, setShowExamples] = useState(false)
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
@@ -101,6 +106,19 @@ export default function SewadarLookupPage() {
     setCurrentPage(1)
     setTotalResults(searchResults.length)
   }, [searchResults])
+
+  // Scroll selected suggestion into view
+  useEffect(() => {
+    if (selectedSuggestionIndex >= 0 && showSuggestions) {
+      const suggestionElement = document.getElementById(`suggestion-${selectedSuggestionIndex}`)
+      if (suggestionElement) {
+        suggestionElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+        })
+      }
+    }
+  }, [selectedSuggestionIndex, showSuggestions])
 
   // Cleanup: Cancel any pending requests when component unmounts
   useEffect(() => {
@@ -124,26 +142,7 @@ export default function SewadarLookupPage() {
     }
   }
 
-  // Debounced search function
-  const debouncedSearch = useCallback(
-    (() => {
-      let timeoutId: NodeJS.Timeout
-      return (searchValue: string) => {
-        clearTimeout(timeoutId)
-        timeoutId = setTimeout(() => {
-          if (searchValue.trim().length >= 2) {
-            handleSearch(searchValue)
-          } else if (searchValue.trim().length === 0) {
-            // Clear results when search is empty
-            setSearchResults([])
-            setSelectedSewadar(null)
-            setAttendanceRecords([])
-          }
-        }, 500) // 500ms delay
-      }
-    })(),
-    [centers] // Dependencies for the search function
-  )
+
 
   // Load recent searches and generate suggestions
   useEffect(() => {
@@ -156,43 +155,45 @@ export default function SewadarLookupPage() {
       }
     }
     generateSearchSuggestions()
-  }, [centers, sewadars])
+  }, [centers, user])
 
   // Generate search suggestions based on centers and departments
   const generateSearchSuggestions = () => {
     const suggestions: SearchSuggestion[] = []
 
-    // Add center suggestions with counts
-    centers.forEach((center) => {
-      const centerSewadarCount = sewadars.filter(s => s.centerId === center._id).length
-      if (centerSewadarCount > 0) {
+    // Add center suggestions - only for admin users or their own center for coordinators
+    if (user?.role === "admin") {
+      // Admin can see all centers
+      centers.forEach((center) => {
         suggestions.push({
           type: "center",
           value: center.name,
           label: `Center: ${center.name}`,
-          count: centerSewadarCount,
-        })
-      }
-    })
-
-    // Add department suggestions with counts
-    const departmentCounts: Record<string, number> = {}
-    sewadars.forEach((sewadar) => {
-      if (sewadar.department) {
-        departmentCounts[sewadar.department] = (departmentCounts[sewadar.department] || 0) + 1
-      }
-    })
-
-    Object.entries(departmentCounts)
-      .sort(([, a], [, b]) => b - a)
-      .forEach(([dept, count]) => {
-        suggestions.push({
-          type: "department",
-          value: dept,
-          label: `Department: ${dept}`,
-          count,
+          count: 0, // We don't have counts without pre-loading all sewadars
         })
       })
+    } else if (user?.centerId) {
+      // Center coordinators only see their own center
+      const userCenter = centers.find(center => center.code === user.centerId)
+      if (userCenter) {
+        suggestions.push({
+          type: "center",
+          value: userCenter.name,
+          label: `Center: ${userCenter.name}`,
+          count: 0,
+        })
+      }
+    }
+
+    // Add department suggestions from constants
+    DEPARTMENTS.forEach((dept) => {
+      suggestions.push({
+        type: "department",
+        value: dept,
+        label: `Department: ${dept}`,
+        count: 0, // We don't have counts without pre-loading all sewadars
+      })
+    })
 
     setSearchSuggestions(suggestions)
   }
@@ -204,15 +205,12 @@ export default function SewadarLookupPage() {
     localStorage.setItem("sewadar-lookup-recent-searches", JSON.stringify(updated))
   }
 
-  // Search sewadars
-  const handleSearch = async (searchValue?: string) => {
+  // Unified search and filter function
+  const handleSearchAndFilter = async (searchValue?: string) => {
     const term = searchValue || searchTerm
-    if (!term.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a search term",
-        variant: "destructive",
-      })
+
+    // Need either search term or attendance filter
+    if (!term.trim() && !attendanceFilterCount) {
       return
     }
 
@@ -229,79 +227,133 @@ export default function SewadarLookupPage() {
     setShowSuggestions(false)
 
     try {
-      // Determine search parameters based on the search term
       let searchParams: any = {}
 
-      // Check if it's a center search
-      const centerMatch = centers.find(c =>
-        c.name.toLowerCase().includes(term.toLowerCase()) ||
-        term.toLowerCase().includes(c.name.toLowerCase())
-      )
+      // Handle search term if provided
+      if (term.trim()) {
+        // For admin users, check center and department matches
+        if (user?.role === "admin") {
+          // Check if it's a center search
+          const centerMatch = centers.find(c =>
+            c.name.toLowerCase().includes(term.toLowerCase()) ||
+            term.toLowerCase().includes(c.name.toLowerCase())
+          )
 
-      // Check if it's a department search
-      const departmentMatch = DEPARTMENTS.find(d =>
-        d.toLowerCase().includes(term.toLowerCase()) ||
-        term.toLowerCase().includes(d.toLowerCase())
-      )
+          // Check if it's a department search
+          const departmentMatch = DEPARTMENTS.find(d =>
+            d.toLowerCase().includes(term.toLowerCase()) ||
+            term.toLowerCase().includes(d.toLowerCase())
+          )
 
-      if (centerMatch) {
-        searchParams.centerId = centerMatch.code
-      } else if (departmentMatch) {
-        searchParams.department = departmentMatch
-      } else {
-        // General search by name, badge number, or father/husband name
-        searchParams.search = term
+          if (centerMatch) {
+            searchParams.centerId = centerMatch.code
+          } else if (departmentMatch) {
+            searchParams.department = departmentMatch
+          } else {
+            // General search by name, badge number, or father/husband name
+            searchParams.search = term
+          }
+        } else {
+          // For center coordinators, only check department matches
+          const departmentMatch = DEPARTMENTS.find(d =>
+            d.toLowerCase().includes(term.toLowerCase()) ||
+            term.toLowerCase().includes(d.toLowerCase())
+          )
+
+          if (departmentMatch) {
+            searchParams.department = departmentMatch
+          } else {
+            // General search by name, badge number, or father/husband name only
+            searchParams.search = term
+          }
+        }
+      }
+
+      // Add center filter if not "all" (and not already set by center search)
+      if (attendanceFilterCenter !== "all" && !searchParams.centerId) {
+        searchParams.centerId = attendanceFilterCenter
+      }
+
+      // For center coordinators, always scope to their center (unless they're searching for a specific center)
+      if (user?.role !== "admin" && user?.centerId && !searchParams.centerId) {
+        searchParams.centerId = user.centerId
+      }
+
+      // Add gender filter if not "all"
+      if (genderFilter !== "all") {
+        searchParams.gender = genderFilter
       }
 
       const response = await apiClient.getSewadars({
         ...searchParams,
         limit: 10000,
-        signal: controller.signal, // Pass abort signal to API call
+        signal: controller.signal,
       })
 
-      // Check if request was aborted
       if (controller.signal.aborted) {
         return
       }
 
       if (response.success) {
-        setSearchResults(response.data || [])
-        saveToRecentSearches(term)
+        let results = response.data || []
 
-        if (response.data?.length === 0) {
-          toast({
-            title: "No Results",
-            description: "No sewadars found matching your search",
+        // Apply attendance filtering if specified
+        if (attendanceFilterCount) {
+          const targetCount = parseInt(attendanceFilterCount)
+          const targetCenterId = attendanceFilterCenter !== "all" ? attendanceFilterCenter : undefined
+
+          results = results.filter(sewadar => {
+            if (controller.signal.aborted) {
+              return false
+            }
+
+            const attendanceCount = getSewadarAttendanceCount(sewadar._id, targetCenterId)
+
+            switch (attendanceFilterOperator) {
+              case "less_than":
+                return attendanceCount < targetCount
+              case "less_than_equal":
+                return attendanceCount <= targetCount
+              case "equal":
+                return attendanceCount === targetCount
+              case "greater_than_equal":
+                return attendanceCount >= targetCount
+              case "greater_than":
+                return attendanceCount > targetCount
+              default:
+                return false
+            }
           })
-        } else {
-          toast({
-            title: "Search Complete",
-            description: `Found ${response.data?.length} sewadar(s)`,
-          })
+        }
+
+        setSearchResults(results)
+        setHasSearched(true)
+
+        if (term.trim()) {
+          saveToRecentSearches(term)
         }
       } else {
         throw new Error(response.error || "Search failed")
       }
     } catch (error: any) {
-      // Don't show error if request was aborted
       if (error.name === 'AbortError' || controller.signal.aborted) {
         return
       }
 
       console.error("Search error:", error)
-      toast({
-        title: "Search Failed",
-        description: error.message || "Failed to search sewadars",
-        variant: "destructive",
-      })
       setSearchResults([])
+      setHasSearched(true)
     } finally {
-      // Only update loading state if request wasn't aborted
       if (!controller.signal.aborted) {
         setIsSearching(false)
         setCurrentSearchController(null)
       }
     }
+  }
+
+  // Legacy search function for backward compatibility
+  const handleSearch = async (searchValue?: string) => {
+    await handleSearchAndFilter(searchValue)
   }
 
   // Clear search
@@ -311,6 +363,11 @@ export default function SewadarLookupPage() {
     setSelectedSewadar(null)
     setAttendanceRecords([])
     setShowSuggestions(false)
+    setAttendanceFilterCenter(user?.role === "admin" ? "all" : (user?.centerId || "all"))
+    setGenderFilter("all")
+    setAttendanceFilterOperator("less_than")
+    setAttendanceFilterCount("")
+    setHasSearched(false)
     searchInputRef.current?.focus()
   }
 
@@ -318,6 +375,7 @@ export default function SewadarLookupPage() {
   const handleSuggestionClick = (suggestion: SearchSuggestion) => {
     setSearchTerm(suggestion.value)
     setShowSuggestions(false)
+    setSelectedSuggestionIndex(-1)
     handleSearch(suggestion.value)
   }
 
@@ -330,7 +388,10 @@ export default function SewadarLookupPage() {
 
       // Check sewadars (includes both regular and formerly temporary sewadars)
       if (record.sewadars && Array.isArray(record.sewadars)) {
-        hasSewadar = record.sewadars.includes(sewadarId)
+        // The sewadars array contains sewadar objects, not just IDs
+        hasSewadar = record.sewadars.some(sewadar =>
+          typeof sewadar === 'string' ? sewadar === sewadarId : sewadar._id === sewadarId
+        )
       }
 
       if (!hasSewadar) return false
@@ -359,11 +420,6 @@ export default function SewadarLookupPage() {
   // Handle attendance filter
   const handleAttendanceFilter = async () => {
     if (!attendanceFilterCount) {
-      toast({
-        title: "Error",
-        description: "Please enter an attendance count",
-        variant: "destructive",
-      })
       return
     }
 
@@ -385,19 +441,26 @@ export default function SewadarLookupPage() {
 
       // First, fetch ALL sewadars with a high limit to overcome the default 50 limit
       // We need to get all sewadars to properly filter by attendance count
-      const response = await apiClient.getSewadars({
+      let searchParams: any = {
         centerId: targetCenterId,
         limit: 10000, // Use a very high limit to get all sewadars
         signal: controller.signal,
-      });
-      
+      }
+
+      // Add gender filter if not "all"
+      if (genderFilter !== "all") {
+        searchParams.gender = genderFilter
+      }
+
+      const response = await apiClient.getSewadars(searchParams);
+
       if (!response.success || !response.data) {
         throw new Error(response.error || "Failed to fetch sewadars");
       }
-      
+
       // Now we have all the sewadars, filter them by attendance count
       const allSewadars = response.data;
-      
+
       // Filter sewadars based on attendance count
       const filteredSewadars = allSewadars.filter(sewadar => {
         // Check if request was aborted during filtering
@@ -433,29 +496,7 @@ export default function SewadarLookupPage() {
       // Clear search term since this is a filter operation
       setSearchTerm("")
 
-      if (filteredSewadars.length === 0) {
-        toast({
-          title: "No Results",
-          description: "No sewadars found matching your attendance criteria",
-        })
-      } else {
-        const centerName = attendanceFilterCenter === "all"
-          ? "all centers"
-          : centers.find(c => c.code === attendanceFilterCenter)?.name || "selected center"
-
-        const operatorText = {
-          less_than: "less than",
-          less_than_equal: "less than or equal to",
-          equal: "equal to",
-          greater_than_equal: "greater than or equal to",
-          greater_than: "greater than"
-        }[attendanceFilterOperator]
-
-        toast({
-          title: "Filter Applied",
-          description: `Found ${filteredSewadars.length} sewadar(s) with ${operatorText} ${attendanceFilterCount} attendance(s) in ${centerName}`,
-        })
-      }
+      // Results are displayed in the UI, no need for toast notifications
     } catch (error: any) {
       // Don't show error if request was aborted
       if (error.name === 'AbortError' || controller.signal.aborted) {
@@ -463,11 +504,6 @@ export default function SewadarLookupPage() {
       }
 
       console.error("Filter error:", error)
-      toast({
-        title: "Filter Failed",
-        description: error.message || "Failed to filter sewadars by attendance",
-        variant: "destructive",
-      })
       setSearchResults([])
     } finally {
       // Only update loading state if request wasn't aborted
@@ -587,12 +623,49 @@ export default function SewadarLookupPage() {
     }
   }
 
-  // Handle Enter key in search
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSearch()
-    } else if (e.key === "Escape") {
-      setShowSuggestions(false)
+  // Handle keyboard navigation in search
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!showSuggestions || filteredSuggestions.length === 0) {
+      if (e.key === "Enter") {
+        e.preventDefault()
+        handleSearch()
+      } else if (e.key === "Escape") {
+        setShowSuggestions(false)
+        setSelectedSuggestionIndex(-1)
+      }
+      return
+    }
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault()
+        setSelectedSuggestionIndex(prev =>
+          prev < filteredSuggestions.length - 1 ? prev + 1 : 0
+        )
+        break
+      case "ArrowUp":
+        e.preventDefault()
+        setSelectedSuggestionIndex(prev =>
+          prev > 0 ? prev - 1 : filteredSuggestions.length - 1
+        )
+        break
+      case "Enter":
+        e.preventDefault()
+        if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < filteredSuggestions.length) {
+          handleSuggestionClick(filteredSuggestions[selectedSuggestionIndex])
+        } else {
+          handleSearch()
+        }
+        break
+      case "Escape":
+        e.preventDefault()
+        setShowSuggestions(false)
+        setSelectedSuggestionIndex(-1)
+        break
+      default:
+        // Reset selection when typing
+        setSelectedSuggestionIndex(-1)
+        break
     }
   }
 
@@ -601,6 +674,7 @@ export default function SewadarLookupPage() {
     if (searchSuggestions.length > 0 && !searchTerm) {
       setShowSuggestions(true)
     }
+    setSelectedSuggestionIndex(-1)
   }
 
   // Handle input blur (with delay to allow suggestion clicks)
@@ -637,73 +711,58 @@ export default function SewadarLookupPage() {
     <Layout>
       <div className="space-y-4 md:space-y-6 px-2 md:px-0">
         <div className="px-2 md:px-0">
-          <h1 className="text-xl md:text-3xl font-bold text-gray-900">Sewadar Lookup</h1>
+          <h1 className="text-xl md:text-2xl text-gray-900">Sewadar Lookup</h1>
           <p className="text-gray-600 mt-1 text-sm md:text-base">Search and view sewadar attendance records</p>
         </div>
 
-        {/* Search Section */}
+        {/* Search & Filter Sewadars */}
         <Card className="enhanced-card">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center text-base md:text-lg">
               <Search className="mr-2 h-4 w-4 md:h-5 md:w-5" />
-              Search Sewadars
+              Search & Filter Sewadars
             </CardTitle>
-            <CardDescription className="text-sm">Search by Badge Number, Name, Father/Husband Name, Department or Center.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {/* Search Input */}
             <div className="relative">
-              <div className="flex space-x-2">
-                <div className="flex-1 relative">
-                  <Input
-                    ref={searchInputRef}
-                    id="search"
-                    placeholder="Enter Badge Number, Name, Father/Husband Name, Department or Center"
-                    value={searchTerm}
-                    onChange={(e) => {
-                      const value = e.target.value
-                      setSearchTerm(value)
-                      // Clear selected sewadar and attendance when search term changes
-                      setSelectedSewadar(null)
-                      setAttendanceRecords([])
+              <Input
+                ref={searchInputRef}
+                id="search"
+                placeholder="Enter Badge Number, Name, Father/Husband Name, Department or Center"
+                value={searchTerm}
+                onChange={(e) => {
+                  const value = e.target.value
+                  setSearchTerm(value)
+                  // Clear selected sewadar and attendance when search term changes
+                  setSelectedSewadar(null)
+                  setAttendanceRecords([])
+                  setSelectedSuggestionIndex(-1)
 
-                      // Trigger debounced search
-                      debouncedSearch(value)
-
-                      if (value.length > 0) {
-                        setShowSuggestions(true)
-                      } else {
-                        setShowSuggestions(false)
-                      }
-                    }}
-                    onKeyPress={handleKeyPress}
-                    onFocus={handleInputFocus}
-                    onBlur={handleInputBlur}
-                    className="w-full pr-10"
-                  />
-                  {searchTerm && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                      onClick={handleClearSearch}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
+                  // Clear results when search is empty
+                  if (value.trim().length === 0) {
+                    setSearchResults([])
+                    setShowSuggestions(false)
+                  } else {
+                    setShowSuggestions(true)
+                  }
+                }}
+                onKeyDown={handleKeyDown}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
+                className="w-full pr-10"
+                autoComplete="off"
+              />
+              {searchTerm && (
                 <Button
-                  onClick={() => handleSearch()}
-                  disabled={isSearching}
-                  className="hidden md:flex rssb-primary"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                  onClick={handleClearSearch}
                 >
-                  {isSearching ? (
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Search className="mr-2 h-4 w-4" />
-                  )}
-                  {isSearching ? "Searching..." : "Search"}
+                  <X className="h-4 w-4" />
                 </Button>
-              </div>
+              )}
 
               {/* Search Suggestions */}
               {showSuggestions && filteredSuggestions.length > 0 && (
@@ -716,15 +775,28 @@ export default function SewadarLookupPage() {
                       {filteredSuggestions.map((suggestion, index) => (
                         <button
                           key={index}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded-md flex items-center justify-between group"
+                          id={`suggestion-${index}`}
+                          className={`w-full text-left px-3 py-2 text-sm rounded-md flex items-center justify-between group transition-colors ${index === selectedSuggestionIndex
+                            ? "bg-blue-50 border border-blue-200"
+                            : "hover:bg-gray-50"
+                            }`}
                           onClick={() => handleSuggestionClick(suggestion)}
+                          onMouseEnter={() => setSelectedSuggestionIndex(index)}
                         >
                           <div className="flex items-center">
-                            <span className="text-gray-600">{suggestion.label}</span>
+                            <span className={`${index === selectedSuggestionIndex ? "text-blue-700" : "text-gray-600"
+                              }`}>
+                              {suggestion.label}
+                            </span>
                           </div>
-                          <span className="text-xs text-gray-400 group-hover:text-gray-600">
-                            {suggestion.count}
-                          </span>
+                          {suggestion.count > 0 && (
+                            <span className={`text-xs ${index === selectedSuggestionIndex
+                              ? "text-blue-500"
+                              : "text-gray-400 group-hover:text-gray-600"
+                              }`}>
+                              {suggestion.count}
+                            </span>
+                          )}
                         </button>
                       ))}
                     </div>
@@ -743,6 +815,7 @@ export default function SewadarLookupPage() {
                               onClick={() => {
                                 setSearchTerm(search)
                                 setShowSuggestions(false)
+                                setSelectedSuggestionIndex(-1)
                                 handleSearch(search)
                               }}
                             >
@@ -756,129 +829,150 @@ export default function SewadarLookupPage() {
                 </div>
               )}
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Attendance Filters */}
-        <Card className="enhanced-card">
-          <CardHeader className="pb-4">
-            <div className="flex flex-col space-y-3 md:space-y-0 md:flex-row md:items-center md:justify-between">
-              <div>
-                <CardTitle className="flex items-center text-base md:text-lg">
-                  <BarChart3 className="mr-2 h-4 w-4 md:h-5 md:w-5" />
-                  Attendance Filters
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  {user?.role === "admin"
-                    ? "Find sewadars based on their attendance count for specific centers"
-                    : "Find sewadars based on their attendance count in your center"
-                  }
-                </CardDescription>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAttendanceFilters(!showAttendanceFilters)}
-                className="w-full md:w-auto"
-              >
-                <Filter className="mr-2 h-4 w-4" />
-                {showAttendanceFilters ? "Hide Filters" : "Show Filters"}
-              </Button>
-            </div>
-          </CardHeader>
-          {showAttendanceFilters && (
-            <CardContent className="space-y-4">
-              <div className={`grid grid-cols-1 gap-3 md:gap-4 ${user?.role === "admin" ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
-                {/* Center selection - only for admin users */}
-                {user?.role === "admin" && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Center
-                    </label>
-                    <Select value={attendanceFilterCenter} onValueChange={setAttendanceFilterCenter}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select center" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Centers</SelectItem>
-                        {centers.map((center) => (
-                          <SelectItem key={center._id} value={center.code}>
-                            {center.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
+            {/* Filter Row */}
+            <div className={`grid grid-cols-1 gap-3 items-end ${user?.role === "admin" ? "md:grid-cols-5" : "md:grid-cols-4"}`}>
+              {/* Center - Only show for admin users */}
+              {user?.role === "admin" && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Condition
+                    Center
                   </label>
-                  <Select value={attendanceFilterOperator} onValueChange={setAttendanceFilterOperator}>
+                  <Select value={attendanceFilterCenter} onValueChange={setAttendanceFilterCenter}>
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder="All Centers" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="less_than">Less than</SelectItem>
-                      <SelectItem value="less_than_equal">Less than or equal to</SelectItem>
-                      <SelectItem value="equal">Equal to</SelectItem>
-                      <SelectItem value="greater_than_equal">Greater than or equal to</SelectItem>
-                      <SelectItem value="greater_than">Greater than</SelectItem>
+                      <SelectItem value="all">All Centers</SelectItem>
+                      {centers.map((center) => (
+                        <SelectItem key={center._id} value={center.code}>
+                          {center.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Attendance Count
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    placeholder="Enter count"
-                    value={attendanceFilterCount}
-                    onChange={(e) => setAttendanceFilterCount(e.target.value)}
-                  />
-                </div>
-
-                <div className="flex items-end">
-                  <Button
-                    onClick={handleAttendanceFilter}
-                    disabled={!attendanceFilterCount || isSearching}
-                    className="w-full rssb-primary text-sm"
-                  >
-                    {isSearching ? (
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <BarChart3 className="mr-2 h-4 w-4" />
-                    )}
-                    <span className="hidden sm:inline">{isSearching ? "Filtering..." : "Apply Filter"}</span>
-                    <span className="sm:hidden">{isSearching ? "..." : "Apply"}</span>
-                  </Button>
-                </div>
+              {/* Gender */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Gender
+                </label>
+                <Select value={genderFilter} onValueChange={setGenderFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="MALE">Male</SelectItem>
+                    <SelectItem value="FEMALE">Female</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4">
-                <h4 className="font-medium text-blue-900 mb-2 text-sm md:text-base">Filter Examples:</h4>
-                <ul className="text-xs md:text-sm text-blue-800 space-y-1">
-                  {user?.role === "admin" ? (
-                    <>
-                      <li>• Find sewadars with less than 5 attendances in HISAR-I center</li>
-                      <li>• Find sewadars with exactly 0 attendances across all centers</li>
-                      <li>• Find sewadars with more than 10 attendances in a specific center</li>
-                    </>
+              {/* Condition */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Condition
+                </label>
+                <Select value={attendanceFilterOperator} onValueChange={setAttendanceFilterOperator}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="less_than">Less than</SelectItem>
+                    <SelectItem value="less_than_equal">Less than or equal to</SelectItem>
+                    <SelectItem value="equal">Equal to</SelectItem>
+                    <SelectItem value="greater_than_equal">Greater than or equal to</SelectItem>
+                    <SelectItem value="greater_than">Greater than</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Attendance Count */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Attendance Count
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="Enter count"
+                  value={attendanceFilterCount}
+                  onChange={(e) => setAttendanceFilterCount(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      handleSearchAndFilter()
+                    }
+                  }}
+                />
+              </div>
+
+              {/* Find Button */}
+              <div>
+                <Button
+                  onClick={() => handleSearchAndFilter()}
+                  disabled={isSearching || (!searchTerm.trim() && !attendanceFilterCount)}
+                  className="w-full rssb-primary"
+                >
+                  {isSearching ? (
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <>
-                      <li>• Find sewadars with less than 5 attendance days in your center</li>
-                      <li>• Find sewadars with exactly 0 attendances in your center</li>
-                      <li>• Find sewadars with more than 10 attendance days in your center</li>
-                    </>
+                    <Search className="mr-2 h-4 w-4" />
                   )}
-                </ul>
+                  Find
+                </Button>
               </div>
-            </CardContent>
-          )}
+            </div>
+
+            {/* Show Usage Examples Button */}
+            <div className="mt-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowExamples(!showExamples)}
+                className="text-xs text-gray-500 hover:text-gray-700 p-0 h-auto font-medium"
+              >
+                <span className="mr-1">Show Usage Examples</span>
+                {showExamples ? (
+                  <ChevronUp className="h-3 w-3" />
+                ) : (
+                  <ChevronDown className="h-3 w-3" />
+                )}
+              </Button>
+            </div>
+
+            {/* Usage Examples - Expandable */}
+            {showExamples && (
+              <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-medium text-blue-900 mb-3 text-sm">Search Examples:</h4>
+                <ul className="text-xs text-blue-800 space-y-2 mb-4">
+                  <li>• <strong>By Name:</strong> "Rajesh Kumar" or "Priya"</li>
+                  <li>• <strong>By Badge Number:</strong> "HI5228GA0001" or "5228G"</li>
+                  <li>• <strong>By Father/Husband Name:</strong> "Ram Singh"</li>
+                  <li>• <strong>By Department:</strong> "LANGAR" or "SECURITY"</li>
+                  <li>• <strong>By Center:</strong> "HISSAR-I" or "BARWALA"</li>
+                </ul>
+
+                <h4 className="font-medium text-blue-900 mb-3 text-sm">Filter Examples:</h4>
+                <ul className="text-xs text-blue-800 space-y-2">
+                  <li>• <strong>Low Attendance:</strong> Find sewadars with less than 10 attendance days</li>
+                  <li>• <strong>No Attendance:</strong> Find sewadars with exactly 0 attendances</li>
+                  <li>• <strong>High Attendance:</strong> Find sewadars with more than 20 attendance days</li>
+                  <li>• <strong>Gender Filter:</strong> Filter by Male or Female sewadars</li>
+                  <li>• <strong>Center Filter:</strong> Filter by specific center or all centers</li>
+                </ul>
+
+                <div className="mt-4 p-3 bg-blue-100 rounded-md">
+                  <p className="text-xs text-blue-900">
+                    <strong>💡 Pro Tip:</strong> You can combine search terms with filters. For example, search for "Rajesh" and filter by attendance less than 5 to find all Rajesh sewadars with low attendance.
+                  </p>
+                </div>
+              </div>
+            )}
+          </CardContent>
         </Card>
 
         {/* Search Results */}
@@ -979,7 +1073,7 @@ export default function SewadarLookupPage() {
                           {sewadar.badgeNumber}
                         </code>
                       </div>
-                      
+
                       {/* Father name and age */}
                       <div className="text-xs text-gray-600">
                         <p className="truncate">{sewadar.fatherHusbandName}</p>
@@ -987,7 +1081,7 @@ export default function SewadarLookupPage() {
                           <p className="text-gray-500 mt-1">Age: {sewadar.age}</p>
                         )}
                       </div>
-                      
+
                       {/* Center and attendance badges */}
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
@@ -1013,12 +1107,12 @@ export default function SewadarLookupPage() {
                   <TableHeader>
                     <TableRow className="border-b">
                       <TableHead className="w-[15%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Badge Number</TableHead>
-                      <TableHead className="w-[15%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Name</TableHead>
+                      <TableHead className="w-[20%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Name</TableHead>
                       <TableHead className="w-[15%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Father/Husband</TableHead>
-                      <TableHead className="w-[10%] py-3 px-4 font-semibold text-center bg-gray-50 border-b">Gender</TableHead>
+                      <TableHead className="w-[10%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Gender</TableHead>
                       <TableHead className="w-[15%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Center</TableHead>
-                      <TableHead className="w-[15%] py-3 px-4 font-semibold text-center bg-gray-50 border-b">Attendance</TableHead>
-                      <TableHead className="w-[10%] py-3 px-4 font-semibold text-center bg-gray-50 border-b">Status</TableHead>
+                      <TableHead className="w-[10%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Attendance</TableHead>
+                      <TableHead className="w-[10%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Status</TableHead>
                       <TableHead className="w-[10%] py-3 px-4 font-semibold text-center bg-gray-50 border-b">Action</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1029,31 +1123,23 @@ export default function SewadarLookupPage() {
                         className={selectedSewadar?._id === sewadar._id ? "bg-blue-50" : index % 2 === 0 ? "bg-white" : "bg-gray-50"}
                       >
                         <TableCell className="font-mono text-sm py-3 px-4 text-left border-b border-gray-100">{sewadar.badgeNumber}</TableCell>
-                        <TableCell className="font-medium py-3 px-4 text-left border-b border-gray-100">{sewadar.name}</TableCell>
+                        <TableCell className="py-3 px-4 text-left border-b border-gray-100">{sewadar.name}</TableCell>
                         <TableCell className="py-3 px-4 text-left border-b border-gray-100">{sewadar.fatherHusbandName}</TableCell>
-                        <TableCell className="text-center py-3 px-4 border-b border-gray-100">
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${sewadar.gender === "MALE" ? "bg-blue-100 text-blue-800" : "bg-pink-100 text-pink-800"
-                              }`}
-                          >
+                        <TableCell className="text-left py-3 px-4 border-b border-gray-100">
+                          <Badge variant={sewadar.gender === "MALE" ? "default" : "outline"} className="text-xs">
                             {sewadar.gender}
-                          </span>
+                          </Badge>
                         </TableCell>
                         <TableCell className="py-3 px-4 text-left border-b border-gray-100">{sewadar.center}</TableCell>
-                        <TableCell className="text-center py-3 px-4 border-b border-gray-100">
+                        <TableCell className="text-left py-3 px-4 border-b border-gray-100">
                           <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             {getSewadarAttendanceCount(sewadar._id)} days
                           </span>
                         </TableCell>
-                        <TableCell className="text-center py-3 px-4 border-b border-gray-100">
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${sewadar.badgeStatus === "PERMANENT"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-yellow-100 text-yellow-800"
-                              }`}
-                          >
+                        <TableCell className="text-left py-3 px-4 border-b border-gray-100">
+                          <Badge variant={sewadar.badgeStatus === "PERMANENT" ? "default" : "outline"} className="text-xs">
                             {sewadar.badgeStatus}
-                          </span>
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-center py-3 px-4 border-b border-gray-100">
                           <Button
@@ -1196,7 +1282,43 @@ export default function SewadarLookupPage() {
           </Card>
         )}
 
-
+        {/* No Results Found */}
+        {hasSearched && searchResults.length === 0 && (
+          <Card className="enhanced-card">
+            <CardContent className="text-center py-12">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                  <Search className="w-8 h-8 text-gray-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Sewadar Found</h3>
+                  <p className="text-gray-600 text-sm max-w-md">
+                    No sewadars match your search criteria. Try adjusting your search terms or filters.
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 mt-6">
+                  <Button variant="outline" onClick={handleClearSearch}>
+                    <X className="mr-2 h-4 w-4" />
+                    Clear All Filters
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearchTerm("")
+                      setAttendanceFilterCount("")
+                      setGenderFilter("all")
+                      setAttendanceFilterCenter(user?.role === "admin" ? "all" : (user?.centerId || "all"))
+                      setAttendanceFilterOperator("less_than")
+                    }}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Reset Filters
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Sewadar Attendance Modal */}
         <SewadarAttendanceModal

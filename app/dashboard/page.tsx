@@ -141,7 +141,7 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 md:px-0">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Dashboard</h1>
+            <h1 className="text-xl md:text-2xl text-gray-900">Dashboard</h1>
             <p className="text-gray-600 mt-1 text-sm md:text-base">Overview & Analytics</p>
           </div>
           <div className="mt-4 sm:mt-0">
@@ -172,21 +172,21 @@ export default function Dashboard() {
                     <Calendar className="h-4 w-4 text-purple-600" />
                     <span className="text-xs font-medium text-gray-600">Events</span>
                   </div>
-                  <p className="text-xl font-bold text-gray-900">{overview.eventCount}</p>
+                  <p className="text-2xl text-gray-900">{overview.eventCount}</p>
                 </div>
                 <div className="text-center space-y-1">
                   <div className="flex items-center justify-center space-x-1">
                     <Users className="h-4 w-4 text-green-600" />
                     <span className="text-xs font-medium text-gray-600">Sewadars</span>
                   </div>
-                  <p className="text-xl font-bold text-gray-900">{overview.sewadarCount}</p>
+                  <p className="text-2xl text-gray-900">{overview.sewadarCount}</p>
                 </div>
                 <div className="text-center space-y-1">
                   <div className="flex items-center justify-center space-x-1">
                     <TrendingUp className="h-4 w-4 text-orange-600" />
                     <span className="text-xs font-medium text-gray-600">Attendance</span>
                   </div>
-                  <p className="text-2xl font-bold text-gray-900">{overview.totalAttendance}</p>
+                  <p className="text-2xl text-gray-900">{overview.totalAttendance}</p>
                 </div>
               </div>
             </CardContent>
@@ -201,14 +201,14 @@ export default function Dashboard() {
                     <Building className="h-5 w-5 text-blue-600" />
                     <span className="text-sm font-medium text-gray-600">Centers</span>
                   </div>
-                  <p className="text-xl font-bold text-gray-900">{overview.centerCount}</p>
+                  <p className="text-2xl text-gray-900">{overview.centerCount}</p>
                 </div>
                 <div className="text-center space-y-2">
                   <div className="flex items-center justify-center space-x-2">
                     <Activity className="h-5 w-5 text-indigo-600" />
                     <span className="text-sm font-medium text-gray-600">Coordinators</span>
                   </div>
-                  <p className="text-2xl font-bold text-gray-900">{overview.coordinatorCount}</p>
+                  <p className="text-2xl text-gray-900">{overview.coordinatorCount}</p>
                 </div>
               </div>
             </CardContent>
@@ -224,7 +224,7 @@ export default function Dashboard() {
               <Users className="h-5 w-5 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{overview.sewadarCount}</div>
+              <div className="text-3xl text-gray-900">{overview.sewadarCount}</div>
               <p className="text-xs text-gray-500 mt-1">Registered</p>
             </CardContent>
           </Card>
@@ -235,8 +235,8 @@ export default function Dashboard() {
               <Building className="h-5 w-5 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{overview.centerCount}</div>
-              <p className="text-xs text-gray-500 mt-1">Active in {user.area}</p>
+              <div className="text-3xl text-gray-900">{overview.centerCount}</div>
+              <p className="text-xs text-gray-500 mt-1">Active</p>
             </CardContent>
           </Card>
 
@@ -246,7 +246,7 @@ export default function Dashboard() {
               <Activity className="h-5 w-5 text-indigo-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{overview.coordinatorCount}</div>
+              <div className="text-3xl text-gray-900">{overview.coordinatorCount}</div>
               <p className="text-xs text-gray-500 mt-1">Active</p>
             </CardContent>
           </Card>
@@ -257,7 +257,7 @@ export default function Dashboard() {
               <Calendar className="h-5 w-5 text-purple-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{overview.eventCount}</div>
+              <div className="text-3xl text-gray-900">{overview.eventCount}</div>
               <p className="text-xs text-gray-500 mt-1">Sewa Jatha</p>
             </CardContent>
           </Card>
@@ -268,7 +268,7 @@ export default function Dashboard() {
               <TrendingUp className="h-5 w-5 text-orange-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-gray-900">{overview.totalAttendance}</div>
+              <div className="text-3xl text-gray-900">{overview.totalAttendance}</div>
               <p className="text-xs text-gray-500 mt-1">Sewadars</p>
             </CardContent>
           </Card>
@@ -395,7 +395,7 @@ export default function Dashboard() {
                           <Calendar className="h-5 w-5 text-blue-600" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h3 className="font-medium text-gray-900 text-sm truncate">{event.place}</h3>
+                          <h3 className="text-gray-900 text-sm truncate">{event.place}</h3>
                           <p className="text-sm text-gray-600 truncate">{event.department}</p>
                         </div>
                       </div>
@@ -436,7 +436,7 @@ export default function Dashboard() {
                         <Calendar className="h-6 w-6 text-blue-600" />
                       </div>
                       <div>
-                        <h3 className="font-medium text-gray-900">{event.place}</h3>
+                        <h3 className="text-gray-900">{event.place}</h3>
                         <p className="text-sm text-gray-600">{event.department}</p>
                         <p className="text-xs text-gray-500">Created by {event.createdBy.name}</p>
                       </div>

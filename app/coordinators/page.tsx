@@ -182,7 +182,7 @@ export default function CoordinatorsPage() {
       <div className="space-y-6">
         <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between px-2 md:px-0">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Manage Coordinators</h1>
+            <h1 className="text-xl md:text-2xl text-gray-900">Manage Coordinators</h1>
             <p className="text-gray-600 mt-1 text-sm md:text-base">Manage center coordinators in {user.area} Area</p>
           </div>
           <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
@@ -319,28 +319,28 @@ export default function CoordinatorsPage() {
                     <Users className="h-5 w-5 text-blue-600" />
                     <span className="text-sm font-medium text-gray-600">Total</span>
                   </div>
-                  <p className="text-2xl font-bold text-gray-900">{coordinators.length}</p>
+                  <p className="text-2xl text-gray-900">{coordinators.length}</p>
                 </div>
                 <div className="text-center space-y-2">
                   <div className="flex items-center justify-center space-x-2">
                     <CheckCircle className="h-5 w-5 text-green-600" />
                     <span className="text-sm font-medium text-gray-600">Active</span>
                   </div>
-                  <p className="text-2xl font-bold text-green-600">{coordinators.filter((c) => c.isActive).length}</p>
+                  <p className="text-2xl text-green-600">{coordinators.filter((c) => c.isActive).length}</p>
                 </div>
                 <div className="text-center space-y-2">
                   <div className="flex items-center justify-center space-x-2">
                     <XCircle className="h-5 w-5 text-red-600" />
                     <span className="text-sm font-medium text-gray-600">Inactive</span>
                   </div>
-                  <p className="text-2xl font-bold text-red-600">{coordinators.filter((c) => !c.isActive).length}</p>
+                  <p className="text-2xl text-red-600">{coordinators.filter((c) => !c.isActive).length}</p>
                 </div>
                 <div className="text-center space-y-2">
                   <div className="flex items-center justify-center space-x-2">
                     <Building2 className="h-5 w-5 text-purple-600" />
                     <span className="text-sm font-medium text-gray-600">Centers</span>
                   </div>
-                  <p className="text-2xl font-bold text-purple-600">
+                  <p className="text-2xl text-purple-600">
                     {new Set(coordinators.filter((c) => c.isActive).map((c) => c.centerId)).size}
                   </p>
                 </div>
@@ -356,7 +356,7 @@ export default function CoordinatorsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Total Coordinators</p>
-                  <p className="text-2xl font-bold text-gray-900">{coordinators.length}</p>
+                  <p className="text-2xl text-gray-900">{coordinators.length}</p>
                 </div>
                 <Users className="h-8 w-8 text-blue-600" />
               </div>
@@ -368,7 +368,7 @@ export default function CoordinatorsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Active</p>
-                  <p className="text-2xl font-bold text-green-600">{coordinators.filter((c) => c.isActive).length}</p>
+                  <p className="text-2xl text-green-600">{coordinators.filter((c) => c.isActive).length}</p>
                 </div>
                 <CheckCircle className="h-8 w-8 text-green-600" />
               </div>
@@ -380,7 +380,7 @@ export default function CoordinatorsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Inactive</p>
-                  <p className="text-2xl font-bold text-red-600">{coordinators.filter((c) => !c.isActive).length}</p>
+                  <p className="text-2xl text-red-600">{coordinators.filter((c) => !c.isActive).length}</p>
                 </div>
                 <XCircle className="h-8 w-8 text-red-600" />
               </div>
@@ -392,7 +392,7 @@ export default function CoordinatorsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Centers Covered</p>
-                  <p className="text-2xl font-bold text-purple-600">
+                  <p className="text-2xl text-purple-600">
                     {new Set(coordinators.filter((c) => c.isActive).map((c) => c.centerId)).size}
                   </p>
                 </div>
@@ -454,7 +454,7 @@ export default function CoordinatorsPage() {
         {/* Coordinators Table */}
         <Card className="enhanced-card">
           <CardHeader>
-            <CardTitle>Coordinators ({filteredCoordinators.length})</CardTitle>
+            <CardTitle className=" text-base md:text-lg">Coordinators ({filteredCoordinators.length})</CardTitle>
             <CardDescription>Manage center coordinators and their access</CardDescription>
           </CardHeader>
           <CardContent>

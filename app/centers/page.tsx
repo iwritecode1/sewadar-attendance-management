@@ -120,7 +120,7 @@ export default function CentersPage() {
       <div className="space-y-6">
         <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between px-2 md:px-0">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Manage Centers</h1>
+            <h1 className="text-xl md:text-2xl text-gray-900">Manage Centers</h1>
             <p className="text-gray-600 mt-1 text-sm md:text-base">Create and manage centers in {user.area} Area</p>
           </div>
           <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
@@ -329,7 +329,7 @@ export default function CentersPage() {
         {/* Instructions */}
         <Card className="enhanced-card bg-blue-50 border-blue-200">
           <CardHeader>
-            <CardTitle className="text-blue-900">Center Management Guidelines</CardTitle>
+            <CardTitle className="text-blue-900  text-base md:text-lg">Center Management Guidelines</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-blue-800">
             <p>• Each center must have a unique 4-digit code (e.g., 5228, 5229, 5230)</p>

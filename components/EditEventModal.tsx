@@ -60,19 +60,39 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
     if (eventId && isOpen) {
       const eventAttendanceRecords = attendance.filter(record => record.eventId._id === eventId)
       setEventAttendance(eventAttendanceRecords)
+
+      // Ensure sewadars are fetched if we have attendance records but no sewadars
+      if (eventAttendanceRecords.length > 0 && sewadars.length === 0) {
+        fetchSewadars()
+      }
     }
-  }, [eventId, isOpen, attendance])
+  }, [eventId, isOpen, attendance, sewadars.length, fetchSewadars])
 
   // Get all sewadars who attended this event
   const getEventSewadars = () => {
     const allSewadars: any[] = []
 
     eventAttendance.forEach(record => {
-      // Add regular sewadars - these are IDs, so we need to look up the full sewadar details
+      // Add regular sewadars - these could be IDs or full objects
       if (record.sewadars && Array.isArray(record.sewadars)) {
-        record.sewadars.forEach((sewadarId: string) => {
-          // Look up the full sewadar details from the sewadars array
-          const fullSewadar = sewadars.find(s => s._id === sewadarId)
+        record.sewadars.forEach((sewadarItem: any) => {
+          // Handle both cases: sewadarItem could be a string ID or a full sewadar object
+          let sewadarId: string
+          let fullSewadar: any = null
+
+          if (typeof sewadarItem === 'string') {
+            // It's an ID, look up the full sewadar details
+            sewadarId = sewadarItem
+            fullSewadar = sewadars.find(s => s._id === sewadarId)
+          } else if (sewadarItem && typeof sewadarItem === 'object' && sewadarItem._id) {
+            // It's already a full sewadar object
+            sewadarId = sewadarItem._id
+            fullSewadar = sewadarItem
+          } else {
+            console.warn('Invalid sewadar item in attendance record:', sewadarItem)
+            return
+          }
+
           if (fullSewadar) {
             allSewadars.push({
               ...fullSewadar,
@@ -80,11 +100,37 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
               attendanceRecordId: record._id,
               isTemp: false
             })
+          } else {
+            // If sewadar details not found, create a placeholder with available info
+            console.warn(`Sewadar with ID ${sewadarId} not found in sewadars array`)
+            const shortId = sewadarId && typeof sewadarId === 'string' ? sewadarId.slice(-6) : 'Unknown'
+            allSewadars.push({
+              _id: sewadarId,
+              name: `Unknown Sewadar (${shortId})`,
+              fatherHusbandName: 'Unknown',
+              badgeNumber: 'Unknown',
+              centerName: record.centerName,
+              attendanceRecordId: record._id,
+              isTemp: false,
+              gender: 'MALE',
+              badgeStatus: 'UNKNOWN'
+            })
           }
         })
       }
 
-      // Temporary sewadars are now stored as actual sewadars with badgeStatus: "TEMPORARY"
+      // Handle temporary sewadars if they exist in the record
+      if (record.tempSewadars && Array.isArray(record.tempSewadars)) {
+        record.tempSewadars.forEach((tempSewadar: any) => {
+          allSewadars.push({
+            ...tempSewadar,
+            _id: tempSewadar._id || `temp-${Date.now()}-${Math.random()}`,
+            centerName: record.centerName,
+            attendanceRecordId: record._id,
+            isTemp: true
+          })
+        })
+      }
     })
 
     return allSewadars
@@ -154,8 +200,15 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
       const attendanceRecord = eventAttendance.find(record => record._id === attendanceRecordId)
       if (!attendanceRecord) return
 
-      // Remove from sewadars (all sewadars are now stored in the sewadars array)
-      const updatedSewadarIds = attendanceRecord.sewadars.filter((id: string) => id !== sewadarId)
+      // Remove from sewadars - handle both string IDs and full objects
+      const updatedSewadarIds = attendanceRecord.sewadars.filter((item: any) => {
+        // Handle both cases: item could be a string ID or a full sewadar object
+        const itemId = typeof item === 'string' ? item : (item && item._id ? item._id : null)
+        return itemId !== sewadarId
+      }).map((item: any) => {
+        // Ensure we return string IDs for the API call
+        return typeof item === 'string' ? item : (item && item._id ? item._id : item)
+      })
 
       // Check if this would leave the attendance record empty
       const wouldBeEmpty = updatedSewadarIds.length === 0
@@ -182,12 +235,15 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
       } else {
         // Update the attendance record with remaining participants
         const formData = new FormData()
-        
-        // Add sewadar IDs
+
+        // Add sewadar IDs - ensure they are strings
         updatedSewadarIds.forEach(id => {
-          formData.append('sewadarIds[]', id)
+          const stringId = typeof id === 'string' ? id : String(id)
+          if (stringId && stringId !== 'null' && stringId !== 'undefined') {
+            formData.append('sewadarIds[]', stringId)
+          }
         })
-        
+
         // Add empty temp sewadars (no longer used)
         formData.append('tempSewadars', JSON.stringify([]))
 
@@ -209,7 +265,8 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
 
       // Refresh attendance data
       await fetchAttendance()
-      onSuccess()
+      // Don't call onSuccess() here as it closes the modal
+      // onSuccess() should only be called when updating event details, not when managing participants
 
     } catch (error: any) {
       console.error("Remove sewadar error:", error)
@@ -334,74 +391,76 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search participants by name, badge number, or center"
+                placeholder="Search participants..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 text-sm"
               />
             </div>
 
             {/* Participants List */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center justify-between text-sm md:text-base">
                   <span>Event Participants</span>
-                  <Badge variant="secondary">{filteredEventSewadars.length} of {eventSewadars.length}</Badge>
+                  <Badge variant="secondary" className="text-xs">{filteredEventSewadars.length} of {eventSewadars.length}</Badge>
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-xs md:text-sm">
                   Manage sewadars participating in this event
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-0">
                 {filteredEventSewadars.length > 0 ? (
                   <div className="space-y-3">
                     {filteredEventSewadars.map((sewadar) => (
                       <div
                         key={`${sewadar.attendanceRecordId}-${sewadar._id}`}
-                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                        className="relative p-4 border rounded-lg hover:bg-gray-50 hover:shadow-sm transition-all duration-200"
                       >
-                        <div className="flex items-center space-x-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <Users className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <h4 className="font-medium text-gray-900">
+                        {/* Header row with name and remove button */}
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-lg text-gray-900 leading-tight">
                               {sewadar.name || 'Unknown Name'}
                             </h4>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-gray-500 mt-1">
                               {sewadar.fatherHusbandName || sewadar.fatherName || 'Unknown Father/Husband'}
                             </p>
-                            <div className="flex items-center space-x-2 mt-1">
-                              <Badge variant="outline" className="text-xs">
-                                {sewadar.badgeNumber || sewadar.tempBadge || 'No Badge'}
-                              </Badge>
-                              <Badge variant="secondary" className="text-xs">
-                                <Building className="h-3 w-3 mr-1" />
-                                {sewadar.centerName || 'Unknown Center'}
-                              </Badge>
-                              {sewadar.isTemp && (
-                                <Badge variant="destructive" className="text-xs">
-                                  Temporary
-                                </Badge>
-                              )}
-                            </div>
+                          </div>
 
+                          {/* Remove button in place of gender */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 w-8 h-8 p-0 ml-2"
+                            onClick={() => handleRemoveSewadar(sewadar.attendanceRecordId, sewadar._id, sewadar.isTemp)}
+                            title="Remove from event"
+                          >
+                            <UserMinus className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        {/* Badge number and center - responsive layout */}
+                        <div className="flex flex-col md:flex-row md:items-center md:gap-4">
+                          {/* Badge number */}
+                          <div className="bg-gray-100 rounded-lg p-2 md:p-2 mb-3 md:mb-0 md:flex-1">
+                            <div className="text-center font-medium text-gray-900 text-sm md:text-sm">
+                              {sewadar.badgeNumber || sewadar.tempBadge || 'No Badge'}
+                            </div>
+                          </div>
+
+                          {/* Center */}
+                          <div className="bg-blue-100 rounded-lg p-2 md:p-2 md:flex-1">
+                            <div className="text-center font-medium text-blue-900 text-sm md:text-sm">
+                              {sewadar.centerName || 'Unknown Center'}
+                            </div>
                           </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                          onClick={() => handleRemoveSewadar(sewadar.attendanceRecordId, sewadar._id, sewadar.isTemp)}
-                          title="Remove from event"
-                        >
-                          <UserMinus className="h-4 w-4" />
-                        </Button>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-6 md:py-8 text-gray-500 text-sm">
                     {searchTerm ? "No participants found matching your search" : "No participants in this event"}
                   </div>
                 )}
@@ -410,22 +469,25 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
 
             {/* Attendance Records Summary */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Attendance Records</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm md:text-base">Attendance Records</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-0">
                 <div className="space-y-2">
                   {eventAttendance.map((record) => (
-                    <div key={record._id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                      <div>
-                        <span className="font-medium">{record.centerName}</span>
-                        <span className="text-sm text-gray-600 ml-2">
-                          ({record.sewadars.length} participants)
-                        </span>
-                      </div>
-                      <Badge variant="outline">
+                    <div key={record._id} className="relative p-3 bg-gray-50 rounded-lg">
+                      {/* Date in top right */}
+                      <Badge variant="outline" className="absolute top-2 right-2 text-xs">
                         {formatDate(record.submittedAt)}
                       </Badge>
+
+                      {/* Main content */}
+                      <div className="pr-20">
+                        <div className="font-medium text-base">{record.centerName}</div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          {record.sewadars.length} participant{record.sewadars.length !== 1 ? 's' : ''}
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
