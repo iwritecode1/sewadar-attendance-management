@@ -238,21 +238,21 @@ export default function CentersPage() {
                         <Users className="h-4 w-4 text-blue-600" />
                         <span className="text-sm text-gray-600">Sewadars</span>
                       </div>
-                      <span className="font-semibold text-gray-900">{center.stats?.sewadarCount || 0}</span>
+                      <span className="text-gray-900">{center.stats?.sewadarCount || 0}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <Calendar className="h-4 w-4 text-green-600" />
                         <span className="text-sm text-gray-600">Events</span>
                       </div>
-                      <span className="font-semibold text-gray-900">{center.stats?.attendanceCount || 0}</span>
+                      <span className="text-gray-900">{center.stats?.attendanceCount || 0}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <Building2 className="h-4 w-4 text-purple-600" />
                         <span className="text-sm text-gray-600">Coordinators</span>
                       </div>
-                      <span className="font-semibold text-blue-600">{center.stats?.coordinatorCount || 0}</span>
+                      <span className="text-blue-600">{center.stats?.coordinatorCount || 0}</span>
                     </div>
                   </div>
                   <div className="mt-4 pt-3 border-t">

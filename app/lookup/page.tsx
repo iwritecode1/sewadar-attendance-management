@@ -981,7 +981,7 @@ export default function SewadarLookupPage() {
             <CardHeader>
               {/* Mobile Layout */}
               <div className="block md:hidden">
-                <CardTitle className="text-lg font-semibold mb-3">
+                <CardTitle className="text-lg mb-3">
                   Search Results ({searchResults.length})
                 </CardTitle>
                 <div className="flex space-x-2 mb-3">

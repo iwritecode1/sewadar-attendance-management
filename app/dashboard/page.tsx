@@ -159,21 +159,7 @@ export default function Dashboard() {
           {/* First Row - Centers, Sewadars, Events */}
           <Card className="stat-card">
             <CardContent className="py-4 px-4">
-              <div className="grid grid-cols-3 gap-3">
-                {/* <div className="text-center space-y-1">
-                  <div className="flex items-center justify-center space-x-1">
-                    <Building className="h-4 w-4 text-blue-600" />
-                    <span className="text-xs font-medium text-gray-600">Centers</span>
-                  </div>
-                  <p className="text-xl font-bold text-gray-900">{overview.centerCount}</p>
-                </div> */}
-                <div className="text-center space-y-1">
-                  <div className="flex items-center justify-center space-x-1">
-                    <Calendar className="h-4 w-4 text-purple-600" />
-                    <span className="text-xs font-medium text-gray-600">Events</span>
-                  </div>
-                  <p className="text-2xl text-gray-900">{overview.eventCount}</p>
-                </div>
+              <div className="grid grid-cols-3 gap-3"> 
                 <div className="text-center space-y-1">
                   <div className="flex items-center justify-center space-x-1">
                     <Users className="h-4 w-4 text-green-600" />
@@ -183,8 +169,15 @@ export default function Dashboard() {
                 </div>
                 <div className="text-center space-y-1">
                   <div className="flex items-center justify-center space-x-1">
+                    <Calendar className="h-4 w-4 text-purple-600" />
+                    <span className="text-xs font-medium text-gray-600">Events</span>
+                  </div>
+                  <p className="text-2xl text-gray-900">{overview.eventCount}</p>
+                </div>
+                <div className="text-center space-y-1">
+                  <div className="flex items-center justify-center space-x-1">
                     <TrendingUp className="h-4 w-4 text-orange-600" />
-                    <span className="text-xs font-medium text-gray-600">Attendance</span>
+                    <span className="text-xs font-medium text-gray-600">Attended</span>
                   </div>
                   <p className="text-2xl text-gray-900">{overview.totalAttendance}</p>
                 </div>
@@ -193,7 +186,7 @@ export default function Dashboard() {
           </Card>
 
           {/* Second Row - Coordinators, Attendance */}
-          <Card className="stat-card">
+          {/* <Card className="stat-card">
             <CardContent className="py-4 px-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center space-y-2">
@@ -212,7 +205,7 @@ export default function Dashboard() {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
 
         {/* Desktop - Individual Cards */}
@@ -301,7 +294,7 @@ export default function Dashboard() {
                       </p>
                     </div>
                     <div className="text-right ml-3">
-                      <p className="text-xl md:text-2xl font-bold text-blue-600">{center.attendanceCount}</p>
+                      <p className="text-xl md:text-2xl text-blue-600">{center.attendanceCount}</p>
                       <p className="text-xs md:text-sm text-gray-600">Participated</p>
                     </div>
                   </div>
@@ -362,7 +355,7 @@ export default function Dashboard() {
                   key={gender.gender}
                   className="text-center p-4 md:p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl"
                 >
-                  <div className="text-3xl md:text-4xl font-bold text-blue-600 mb-2">{gender.count}</div>
+                  <div className="text-3xl md:text-4xl text-blue-600 mb-2">{gender.count}</div>
                   <p className="text-gray-700 font-medium">{gender.gender}</p>
                   <p className="text-sm text-gray-600 mt-1">
                     {((gender.count / overview.sewadarCount) * 100).toFixed(1)}% of total

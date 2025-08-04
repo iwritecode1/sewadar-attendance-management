@@ -72,6 +72,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       await apiClient.logout();
+      // Clear install banner session storage on logout
+      sessionStorage.removeItem("installBannerShownThisSession")
+      sessionStorage.removeItem("installBannerDismissedThisSession")
+      sessionStorage.removeItem("iosInstallBannerShownThisSession")
+      sessionStorage.removeItem("iosInstallBannerDismissedThisSession")
       router.push("/")
     } catch (error) {
       console.error("Logout failed:", error)

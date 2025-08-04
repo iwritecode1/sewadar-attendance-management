@@ -423,7 +423,7 @@ export default function EventsPage() {
             <CardTitle className="flex items-center justify-between text-base md:text-lg">
               <span>Sewa Events ({pagination.events?.total || events.length})</span>
               <Badge variant="secondary" className="ml-2">
-                {user.area} Area
+                {user.area}
               </Badge>
             </CardTitle>
           </CardHeader>

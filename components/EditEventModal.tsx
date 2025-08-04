@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
-import { Edit, Calendar, Users, Search, X, Plus, Trash2, Building, UserMinus, UserPlus } from "lucide-react"
+import { Edit, Calendar, Users, Search, UserMinus } from "lucide-react"
 import SearchablePlaceSelect from "@/components/SearchablePlaceSelect"
 import SearchableDepartmentSelect from "@/components/SearchableDepartmentSelect"
 import { formatDate } from "@/lib/date-utils"
@@ -24,8 +24,7 @@ interface EditEventModalProps {
 }
 
 export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: EditEventModalProps) {
-  const { user } = useAuth()
-  const { events, updateEvent, attendance, sewadars, centers, fetchAttendance, fetchSewadars } = useData()
+  const { events, updateEvent, attendance, sewadars, fetchAttendance, fetchSewadars, refreshEvents } = useData()
   const { toast } = useToast()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -190,7 +189,7 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
     }
   }
 
-  const handleRemoveSewadar = async (attendanceRecordId: string, sewadarId: string, isTemp: boolean) => {
+  const handleRemoveSewadar = async (attendanceRecordId: string, sewadarId: string) => {
     if (!confirm("Are you sure you want to remove this sewadar from the event?")) {
       return
     }
@@ -265,8 +264,9 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
 
       // Refresh attendance data
       await fetchAttendance()
-      // Don't call onSuccess() here as it closes the modal
-      // onSuccess() should only be called when updating event details, not when managing participants
+      // Refresh events data to update participant counts on the events page
+      // This will update the events list without closing the modal
+      await refreshEvents({ includeStats: true })
 
     } catch (error: any) {
       console.error("Remove sewadar error:", error)
@@ -420,7 +420,7 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
                         {/* Header row with name and remove button */}
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-lg text-gray-900 leading-tight">
+                            <h4 className="text-lg text-gray-900 leading-tight">
                               {sewadar.name || 'Unknown Name'}
                             </h4>
                             <p className="text-sm text-gray-500 mt-1">
@@ -433,7 +433,7 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
                             variant="ghost"
                             size="sm"
                             className="text-red-500 hover:text-red-700 hover:bg-red-50 w-8 h-8 p-0 ml-2"
-                            onClick={() => handleRemoveSewadar(sewadar.attendanceRecordId, sewadar._id, sewadar.isTemp)}
+                            onClick={() => handleRemoveSewadar(sewadar.attendanceRecordId, sewadar._id)}
                             title="Remove from event"
                           >
                             <UserMinus className="h-4 w-4" />

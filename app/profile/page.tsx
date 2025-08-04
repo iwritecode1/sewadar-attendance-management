@@ -156,7 +156,7 @@ export default function ProfilePage() {
                 <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
                   <User className="h-8 w-8 text-blue-600" />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900">{user.name}</h2>
+                <h2 className="text-xl text-gray-900">{user.name}</h2>
                 <p className="text-sm text-gray-600">{user.username}</p>
               </div>
 
@@ -177,7 +177,7 @@ export default function ProfilePage() {
                       <Building2 className="h-4 w-4 text-green-600" />
                       <span className="text-sm font-medium text-gray-600">Center</span>
                     </div>
-                    <p className="text-sm font-semibold text-gray-900">{user.centerName}</p>
+                    <p className="text-sm text-gray-900">{user.centerName}</p>
                   </div>
                 )}
 
@@ -186,7 +186,7 @@ export default function ProfilePage() {
                     <Building2 className="h-4 w-4 text-blue-600" />
                     <span className="text-sm font-medium text-gray-600">Area</span>
                   </div>
-                  <p className="text-sm font-semibold text-gray-900">{user.area}</p>
+                  <p className="text-sm text-gray-900">{user.area}</p>
                 </div>
 
                 {user.createdAt && (
@@ -195,7 +195,7 @@ export default function ProfilePage() {
                       <Calendar className="h-4 w-4 text-orange-600" />
                       <span className="text-sm font-medium text-gray-600">Member Since</span>
                     </div>
-                    <p className="text-sm font-semibold text-gray-900">{formatDate(user.createdAt)}</p>
+                    <p className="text-sm text-gray-900">{formatDate(user.createdAt)}</p>
                   </div>
                 )}
               </div>

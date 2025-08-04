@@ -1,4 +1,4 @@
-const CACHE_NAME = "rssb-sewadar-v3"
+const CACHE_NAME = "rssb-sewadar-v4"
 const urlsToCache = [
   "/",
   "/dashboard",
@@ -34,6 +34,11 @@ self.addEventListener("install", (event) => {
 
 // Fetch event
 self.addEventListener("fetch", (event) => {
+  // Skip service worker for navigation requests to prevent redirect issues
+  if (event.request.mode === 'navigate') {
+    return
+  }
+
   // Skip caching for Next.js internal requests, API calls, and non-GET requests
   if (
     event.request.url.includes('/_next/') ||
@@ -57,23 +62,26 @@ self.addEventListener("fetch", (event) => {
         }
 
         // Fetch from network
-        return fetch(event.request)
+        return fetch(event.request, { redirect: 'follow' })
           .then((response) => {
-            // Check if we received a valid response
-            if (!response || response.status !== 200 || response.type !== 'basic') {
+            // Don't cache redirects or error responses
+            if (!response || response.status >= 300 || response.type !== 'basic') {
               return response
             }
 
-            // Clone the response for caching
-            const responseToCache = response.clone()
+            // Only cache successful responses
+            if (response.status === 200) {
+              // Clone the response for caching
+              const responseToCache = response.clone()
 
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache)
-              })
-              .catch((error) => {
-                console.warn("Failed to cache response:", error)
-              })
+              caches.open(CACHE_NAME)
+                .then((cache) => {
+                  cache.put(event.request, responseToCache)
+                })
+                .catch((error) => {
+                  console.warn("Failed to cache response:", error)
+                })
+            }
 
             return response
           })
@@ -90,7 +98,7 @@ self.addEventListener("fetch", (event) => {
       })
       .catch((error) => {
         console.error("Cache match failed:", error)
-        return fetch(event.request)
+        return fetch(event.request, { redirect: 'follow' })
       })
   )
 })
