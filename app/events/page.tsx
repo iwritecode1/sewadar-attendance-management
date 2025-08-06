@@ -21,6 +21,7 @@ import SearchablePlaceSelect from "@/components/SearchablePlaceSelect"
 import SearchableDepartmentSelect from "@/components/SearchableDepartmentSelect"
 import { formatDate } from "@/lib/date-utils"
 import { DEPARTMENTS } from "@/lib/constants"
+import { toTitleCase } from "@/lib/text-utils"
 
 export default function EventsPage() {
   const { user } = useAuth()
@@ -36,6 +37,8 @@ export default function EventsPage() {
   const [editingEvent, setEditingEvent] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [allEventDepartments, setAllEventDepartments] = useState<string[]>([])
+  const [allEventPlaces, setAllEventPlaces] = useState<string[]>([])
 
   // Redirect non-admin users
   useEffect(() => {
@@ -43,6 +46,38 @@ export default function EventsPage() {
       router.push("/attendance")
     }
   }, [user, router])
+
+  // Fetch all departments and places on initial load (without filters to get complete list)
+  useEffect(() => {
+    if (user?.role === "admin" && allEventDepartments.length === 0 && allEventPlaces.length === 0) {
+      // Fetch all events without filters to get complete department and place lists
+      fetchEvents({ page: 1, limit: 1000, includeStats: false })
+        .then(() => {
+          // This will trigger the departments and places update in the next useEffects
+        })
+        .catch(console.error)
+    }
+  }, [user, allEventDepartments.length, allEventPlaces.length, fetchEvents])
+
+  // Update allEventDepartments when departments change
+  useEffect(() => {
+    if (departments.length > 0) {
+      setAllEventDepartments(prev => {
+        const combined = [...new Set([...prev, ...departments])]
+        return combined.sort()
+      })
+    }
+  }, [departments])
+
+  // Update allEventPlaces when places change
+  useEffect(() => {
+    if (places.length > 0) {
+      setAllEventPlaces(prev => {
+        const combined = [...new Set([...prev, ...places])]
+        return combined.sort()
+      })
+    }
+  }, [places])
 
   // Fetch events when filters change
   useEffect(() => {
@@ -247,9 +282,9 @@ export default function EventsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Places</SelectItem>
-                      {places.map((place) => (
+                      {allEventPlaces.map((place) => (
                         <SelectItem key={place} value={place}>
-                          {place}
+                          {toTitleCase(place)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -261,9 +296,9 @@ export default function EventsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Departments</SelectItem>
-                      {DEPARTMENTS.map((dept) => (
+                      {allEventDepartments.map((dept) => (
                         <SelectItem key={dept} value={dept}>
-                          {dept}
+                          {toTitleCase(dept)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -297,9 +332,9 @@ export default function EventsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Places</SelectItem>
-                  {places.map((place) => (
+                  {allEventPlaces.map((place) => (
                     <SelectItem key={place} value={place}>
-                      {place}
+                      {toTitleCase(place)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -311,9 +346,9 @@ export default function EventsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Departments</SelectItem>
-                  {DEPARTMENTS.map((dept) => (
+                  {allEventDepartments.map((dept) => (
                     <SelectItem key={dept} value={dept}>
-                      {dept}
+                      {toTitleCase(dept)}
                     </SelectItem>
                   ))}
                 </SelectContent>

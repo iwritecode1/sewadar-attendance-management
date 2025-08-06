@@ -96,6 +96,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       name: body.name,
       fatherHusbandName: body.fatherHusbandName,
       dob: body.dob,
+      age: body.age,
       gender: body.gender,
       badgeStatus: body.badgeStatus,
       department: body.department,

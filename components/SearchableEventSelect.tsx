@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { ChevronDown, Plus, Search, X } from "lucide-react"
+import { ChevronDown, Plus, Search, X, Check } from "lucide-react"
 import { formatDate, formatDateRange } from "@/lib/date-utils"
 
 interface SewaEvent {
@@ -20,13 +20,15 @@ interface SearchableEventSelectProps {
   value: string
   onValueChange: (value: string) => void
   placeholder?: string
+  hasAttendance?: (eventId: string) => boolean
 }
 
 export default function SearchableEventSelect({
   events,
   value,
   onValueChange,
-  placeholder = "Choose an event"
+  placeholder = "Choose an event",
+  hasAttendance
 }: SearchableEventSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
@@ -125,19 +127,59 @@ export default function SearchableEventSelect({
     return `${event.place} - ${event.department} (${formatDateRange(event.fromDate, event.toDate)})`
   }
 
+  // Helper function to render event with optional checkmark - mobile responsive
+  const renderEventWithCheckmark = (event: SewaEvent, isMobile: boolean = false) => {
+    const hasExistingAttendance = hasAttendance && hasAttendance(event._id);
+    
+    return (
+      <div className="flex items-start">
+        <div className="w-6 flex justify-start flex-shrink-0 mt-0.5">
+          {hasExistingAttendance && (
+            <Check className="h-4 w-4 text-green-600" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          {isMobile ? (
+            // Mobile layout: Place - Department on first line, dates on second line
+            <div className="space-y-1">
+              <div className="font-medium text-gray-900 truncate">
+                {event.place} - {event.department}
+              </div>
+              <div className="text-sm text-gray-900">
+                {formatDateRange(event.fromDate, event.toDate)}
+              </div>
+            </div>
+          ) : (
+            // Desktop layout: single line with truncation
+            <span className="truncate font-medium text-gray-900">
+              {formatEventDisplay(event)}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Trigger Button */}
       <Button
         type="button"
         variant="outline"
-        className="w-full justify-between text-left font-normal"
+        className="w-full justify-between text-left font-normal min-h-[2.5rem] h-auto py-2"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <span className="truncate">
-          {selectedEvent ? formatEventDisplay(selectedEvent) : placeholder}
-        </span>
-        <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        <div className="flex items-start flex-1 min-w-0">
+          {selectedEvent ? (
+            renderEventWithCheckmark(selectedEvent, true)
+          ) : (
+            <div className="flex items-center">
+              <div className="w-6"></div>
+              <span className="truncate">{placeholder}</span>
+            </div>
+          )}
+        </div>
+        <ChevronDown className={`h-4 w-4 transition-transform flex-shrink-0 ml-2 mt-0.5 ${isOpen ? "rotate-180" : ""}`} />
       </Button>
 
       {/* Dropdown */}
@@ -220,7 +262,7 @@ export default function SearchableEventSelect({
                     key={event._id}
                     id={`event-option-${index}`}
                     type="button"
-                    className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                    className={`w-full text-left px-3 py-3 text-sm rounded-md transition-colors ${
                       focusedEventIndex === index 
                         ? "bg-blue-50" 
                         : "hover:bg-gray-50"
@@ -228,9 +270,7 @@ export default function SearchableEventSelect({
                     onClick={() => handleSelect(event._id)}
                     onMouseEnter={() => setFocusedEventIndex(index)}
                   >
-                    <div className="font-medium text-gray-900">
-                      {formatEventDisplay(event)}
-                    </div>
+                    {renderEventWithCheckmark(event, true)}
                   </button>
                 ))}
 

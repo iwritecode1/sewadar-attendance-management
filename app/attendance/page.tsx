@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import SearchableEventSelect from "@/components/SearchableEventSelect";
 import SearchablePlaceSelect from "@/components/SearchablePlaceSelect";
 import SearchableDepartmentSelect from "@/components/SearchableDepartmentSelect";
+import AttendanceStatusOverlay from "@/components/AttendanceStatusOverlay";
 import { generateBadgePattern, getNextBadgeNumber } from "@/lib/badgeUtils";
 import {
   Calendar,
@@ -116,6 +117,8 @@ export default function AttendancePage() {
     addDepartment,
     fetchEvents,
     loading,
+    getExistingAttendanceForEvent,
+    getExistingAttendanceForEventByUser,
   } = useData();
 
 
@@ -185,6 +188,20 @@ export default function AttendancePage() {
   const [showNominalRollForm, setShowNominalRollForm] = useState(false);
   const [nominalRollImages, setNominalRollImages] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [existingAttendance, setExistingAttendance] = useState<any>(null);
+  
+  // Status overlay state
+  const [statusOverlay, setStatusOverlay] = useState({
+    isOpen: false,
+    status: "loading" as "loading" | "success" | "error",
+    message: "",
+  });
+
+  // Get current center ID - DRY helper function (still needed for sewadar fetching)
+  const getCurrentCenterId = () => selectedCenter || user?.centerId || "";
+
+  // Get current user ID - DRY helper function for attendance checking
+  const getCurrentUserId = () => user?.id || "";
 
   // Get sewadars based on user role and selected center
   const getAvailableSewadars = () => {
@@ -194,6 +211,24 @@ export default function AttendancePage() {
       return user?.centerId ? getSewadarsForCenter(user.centerId) : [];
     }
   };
+
+  // Check if attendance exists for a specific event by current user - DRY function used by both useEffect and component
+  const hasAttendanceForEvent = (eventId: string) => {
+    const userId = getCurrentUserId();
+    if (!userId) return false;
+    return !!getExistingAttendanceForEventByUser(eventId, userId);
+  };
+
+  // Check for existing attendance when event changes (now based on user, not center)
+  useEffect(() => {
+    if (selectedEvent && selectedEvent !== "new" && getCurrentUserId()) {
+      const userId = getCurrentUserId();
+      const existing = getExistingAttendanceForEventByUser(selectedEvent, userId);
+      setExistingAttendance(existing);
+    } else {
+      setExistingAttendance(null);
+    }
+  }, [selectedEvent, user?.id, getExistingAttendanceForEventByUser]);
 
   const availableSewadars = getAvailableSewadars();
 
@@ -367,9 +402,48 @@ export default function AttendancePage() {
     };
 
     setIsSubmitting(true);
+    
+    // Show loading overlay
+    setStatusOverlay({
+      isOpen: true,
+      status: "loading",
+      message: "Please wait while we submit your attendance...",
+    });
+
     try {
-      const success = await createAttendance(attendanceData);
-      if (success) {
+      // Make direct API call to get more detailed response
+      const formData = new FormData();
+      formData.append("eventId", attendanceData.eventId);
+      if (attendanceData.centerId) formData.append("centerId", attendanceData.centerId);
+      if (attendanceData.centerName) formData.append("centerName", attendanceData.centerName);
+      
+      attendanceData.sewadarIds.forEach((id) => formData.append("sewadarIds[]", id));
+      formData.append("tempSewadars", JSON.stringify(attendanceData.tempSewadars));
+      
+      attendanceData.nominalRollImages.forEach((file) => formData.append("nominalRollImages[]", file));
+
+      const response = await fetch('/api/attendance', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Show success overlay
+        let successMessage = "Your attendance has been submitted successfully!";
+        
+        // Add temp sewadar info if available
+        if (result.tempSewadarInfo && result.tempSewadarInfo.length > 0) {
+          successMessage += `\n\nTemporary sewadars added: ${result.tempSewadarInfo.join(", ")}`;
+        }
+        
+        setStatusOverlay({
+          isOpen: true,
+          status: "success",
+          message: successMessage,
+        });
+        
         // Reset form
         setSelectedEvent("");
         setSelectedSewadars([]);
@@ -379,9 +453,25 @@ export default function AttendancePage() {
         setSewadarSearch("");
         setNominalRollImages([]);
         setShowTempSewadarForm(false);
+        
+        // Refresh data in background
+        await fetchEvents();
+      } else {
+        // Show error overlay with specific error message
+        setStatusOverlay({
+          isOpen: true,
+          status: "error",
+          message: result.error || "Failed to submit attendance. Please try again.",
+        });
       }
     } catch (error) {
       console.error("Error submitting attendance:", error);
+      // Show error overlay
+      setStatusOverlay({
+        isOpen: true,
+        status: "error",
+        message: "Network error occurred. Please check your connection and try again.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -436,6 +526,14 @@ export default function AttendancePage() {
     if (centerId && user?.role === "admin") {
       await fetchSewadarsForCenter(centerId);
     }
+  };
+
+  const handleCloseStatusOverlay = () => {
+    setStatusOverlay({
+      isOpen: false,
+      status: "loading",
+      message: "",
+    });
   };
 
   return (
@@ -553,8 +651,23 @@ export default function AttendancePage() {
                       value={selectedEvent}
                       onValueChange={setSelectedEvent}
                       placeholder="Choose an event"
+                      hasAttendance={hasAttendanceForEvent}
                     />
                   </div>
+
+                  {/* Warning message for existing attendance */}
+                  {existingAttendance && (
+                    <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-red-800 text-sm mb-2">
+                        <strong>Note:</strong> You have already added the attendance for this sewa on{" "}
+                        <strong>{new Date(existingAttendance.submittedAt).toLocaleDateString()}</strong> with{" "}
+                        <strong>{existingAttendance.sewadars?.length || 0} sewadars</strong>.
+                      </p>
+                      <p className="text-red-800 text-sm">
+                        Duplicate attendance submissions are not allowed. Please select a different sewa to add attendance.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {selectedEvent === "new" && (
@@ -648,6 +761,7 @@ export default function AttendancePage() {
 
         {selectedEvent &&
           selectedEvent !== "new" &&
+          !existingAttendance &&
           (user?.role === "coordinator" ||
             (user?.role === "admin" && selectedCenter)) && (
             <form onSubmit={handleAttendanceSubmit} className="space-y-6">
@@ -671,16 +785,20 @@ export default function AttendancePage() {
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
-                      placeholder="Search Sewadars by Name, Badge Number or Department"
+                      placeholder="Start typing to search sewadars by name, badge number or department"
                       value={sewadarSearch}
                       onChange={(e) => {
                         setSewadarSearch(e.target.value);
-                        setShowSewadarDropdown(true);
+                        setShowSewadarDropdown(e.target.value.trim().length > 0);
                         setFocusedSewadarIndex(-1); // Reset focused index when search changes
                       }}
-                      onFocus={() => setShowSewadarDropdown(true)}
+                      onFocus={() => {
+                        if (sewadarSearch.trim()) {
+                          setShowSewadarDropdown(true);
+                        }
+                      }}
                       onKeyDown={(e) => {
-                        if (showSewadarDropdown && filteredSewadars.length > 0) {
+                        if (showSewadarDropdown && sewadarSearch.trim() && filteredSewadars.length > 0) {
                           // Arrow down - move focus down
                           if (e.key === "ArrowDown") {
                             e.preventDefault();
@@ -718,15 +836,14 @@ export default function AttendancePage() {
                   </div>
 
                   {/* Searchable Dropdown */}
-                  {showSewadarDropdown && (
+                  {showSewadarDropdown && sewadarSearch.trim() && (
                     <div className="relative">
                       <div
                         id="sewadar-dropdown"
                         className="absolute top-0 left-0 right-0 z-10 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
                       >
-                        {sewadarSearch ? (
-                          filteredSewadars.length > 0 ? (
-                            filteredSewadars.map((sewadar, index) => (
+                        {filteredSewadars.length > 0 ? (
+                          filteredSewadars.map((sewadar, index) => (
                               <div
                                 key={sewadar._id}
                                 id={`sewadar-option-${index}`}
@@ -785,15 +902,7 @@ export default function AttendancePage() {
                               No sewadars found matching your search
                             </div>
                           )
-                        ) : (
-                          <div className="p-4 text-center text-gray-400">
-                            <Search className="mx-auto h-8 w-8 mb-2" />
-                            <p>Start typing to search sewadars...</p>
-                            <p className="text-xs mt-1">
-                              {availableSewadars.length} sewadars available
-                            </p>
-                          </div>
-                        )}
+                        }
                         {/* Close dropdown button */}
                         <div className="border-t border-gray-200 p-2">
                           <Button
@@ -1040,7 +1149,7 @@ export default function AttendancePage() {
                       Nominal Roll Images
                     </CardTitle>
                     <CardDescription className="text-sm">
-                      Upload attendance images (optional)
+                      Upload nominal roll images
                     </CardDescription>
                   </CardHeader>
                   <div className="px-6 md:px-0 md:mr-6 mb-6 md:mb-0">
@@ -1238,6 +1347,14 @@ export default function AttendancePage() {
           </Card>
         )}
       </div>
+
+      {/* Status Overlay */}
+      <AttendanceStatusOverlay
+        isOpen={statusOverlay.isOpen}
+        status={statusOverlay.status}
+        message={statusOverlay.message}
+        onClose={handleCloseStatusOverlay}
+      />
     </Layout>
   );
 }

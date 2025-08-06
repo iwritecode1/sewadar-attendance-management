@@ -18,12 +18,15 @@ import { Upload, Search, Download, FileSpreadsheet, Users, Filter, Eye, X, Refre
 import * as XLSX from "xlsx"
 import SewadarDetailModal from "@/components/SewadarDetailModal"
 import EditSewadarModal from "@/components/EditSewadarModal"
+import StatusOverlay from "@/components/StatusOverlay"
+import LoadingOverlay from "@/components/LoadingOverlay"
 import { DEPARTMENTS } from "@/lib/constants"
 import { generateBadgePattern, getNextBadgeNumber } from "@/lib/badgeUtils"
+import { toTitleCase } from "@/lib/text-utils"
 
 export default function SewadarsPage() {
   const { user } = useAuth()
-  const { sewadars, centers, importSewadars, fetchSewadars, loading, pagination } = useData()
+  const { sewadars, centers, importSewadars, fetchSewadars, deleteSewadar, loading, pagination } = useData()
   const { toast } = useToast()
 
   const [searchTerm, setSearchTerm] = useState("")
@@ -33,7 +36,7 @@ export default function SewadarsPage() {
   const [selectedBadgeStatus, setSelectedBadgeStatus] = useState("all")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showImportForm, setShowImportForm] = useState(false)
-  const [isImporting, setIsImporting] = useState(false)
+
   const [currentPage, setCurrentPage] = useState(1)
   const [viewingSewadar, setViewingSewadar] = useState<string | null>(null)
   const [editingSewadar, setEditingSewadar] = useState<string | null>(null)
@@ -87,9 +90,7 @@ export default function SewadarsPage() {
       return
     }
 
-    setIsImporting(true)
     const success = await importSewadars(file)
-    setIsImporting(false)
 
     if (success) {
       setShowImportForm(false)
@@ -179,26 +180,9 @@ export default function SewadarsPage() {
       return
     }
 
-    try {
-      const response = await fetch(`/api/sewadars/${sewadarId}`, {
-        method: "DELETE",
-      })
-
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Sewadar deleted successfully",
-        })
-        refreshData()
-      } else {
-        throw new Error("Failed to delete sewadar")
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete sewadar",
-        variant: "destructive",
-      })
+    const success = await deleteSewadar(sewadarId)
+    if (success) {
+      refreshData()
     }
   }
 
@@ -263,7 +247,7 @@ export default function SewadarsPage() {
     // Generate base next badge number from existing badges
     const baseNextBadge = getNextBadgeNumber(existingBadges, badgePattern)
     const baseNumber = parseInt(baseNextBadge.slice(-4))
-    
+
     // Calculate the final badge number for this specific sewadar
     const finalNumber = baseNumber + sameGenderCountBefore
     return `${badgePattern}${String(finalNumber).padStart(4, "0")}`
@@ -272,7 +256,7 @@ export default function SewadarsPage() {
   const handleCreateTempSewadars = async () => {
     // Validate that we have at least one valid temp sewadar
     const validTempSewadars = tempSewadars.filter(ts => ts.name.trim() && ts.fatherName.trim())
-    
+
     if (validTempSewadars.length === 0) {
       toast({
         title: "Error",
@@ -285,10 +269,10 @@ export default function SewadarsPage() {
     // Check for duplicates within the form itself
     const duplicatesInForm = []
     const seenCombinations = new Set()
-    
+
     for (const [index, ts] of validTempSewadars.entries()) {
       const combination = `${ts.name.toLowerCase().trim()}|${ts.fatherName.toLowerCase().trim()}`
-      
+
       if (seenCombinations.has(combination)) {
         duplicatesInForm.push(`${ts.name} (Father: ${ts.fatherName})`)
       } else {
@@ -318,7 +302,7 @@ export default function SewadarsPage() {
     try {
       const centerId = user?.role === "admin" ? selectedCenter : user?.centerId
       const centerData = centers.find(c => c.code === centerId || c._id === centerId)
-      
+
       if (!centerData) {
         throw new Error("Center not found")
       }
@@ -358,7 +342,7 @@ export default function SewadarsPage() {
 
           if (response.ok) {
             const result = await response.json()
-            
+
             if (result.isExisting) {
               // Server found existing sewadar
               existingMessages.push(`${ts.name} (Father: ${ts.fatherName}) - Found existing record with badge ${result.data.badgeNumber}`)
@@ -420,7 +404,7 @@ export default function SewadarsPage() {
           variant: "destructive",
         })
       }
-      
+
       // Reset form
       setTempSewadars([{ name: "", fatherName: "", age: "", gender: "MALE", phone: "" }])
       setShowTempSewadarForm(false)
@@ -467,7 +451,7 @@ export default function SewadarsPage() {
                   Export Data
                 </DropdownMenuItem>
                 {user?.role === "admin" && (
-                  <DropdownMenuItem onClick={() => setShowImportForm(!showImportForm)} disabled={isImporting}>
+                  <DropdownMenuItem onClick={() => setShowImportForm(!showImportForm)} disabled={loading.importSewadars}>
                     <Upload className="mr-2 h-4 w-4" />
                     Import Sewadars
                   </DropdownMenuItem>
@@ -506,10 +490,10 @@ export default function SewadarsPage() {
               Export
             </Button>
             {user?.role === "admin" && (
-              <Button 
-                onClick={() => setShowImportForm(!showImportForm)} 
-                variant={showImportForm ? "default" : "outline"} 
-                disabled={isImporting} 
+              <Button
+                onClick={() => setShowImportForm(!showImportForm)}
+                variant={showImportForm ? "default" : "outline"}
+                disabled={loading.importSewadars}
                 className="text-sm"
               >
                 <Upload className="mr-2 h-4 w-4" />
@@ -517,7 +501,7 @@ export default function SewadarsPage() {
               </Button>
             )}
             {(user?.role === "admin" || user?.role === "coordinator") && (
-              <Button 
+              <Button
                 onClick={() => {
                   if (!showTempSewadarForm) {
                     // Fetch all temp sewadars for accurate badge number calculation
@@ -527,8 +511,8 @@ export default function SewadarsPage() {
                     }
                   }
                   setShowTempSewadarForm(!showTempSewadarForm)
-                }} 
-                variant={showTempSewadarForm ? "default" : "outline"} 
+                }}
+                variant={showTempSewadarForm ? "default" : "outline"}
                 className="text-sm"
               >
                 <Plus className="mr-2 h-4 w-4" />
@@ -552,16 +536,16 @@ export default function SewadarsPage() {
                   accept=".xlsx,.xls"
                   onChange={handleFileUpload}
                   className="hidden"
-                  disabled={isImporting}
+                  disabled={loading.importSewadars}
                 />
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={isImporting}
+                  disabled={loading.importSewadars}
                 >
                   <Upload className="mr-2 h-4 w-4" />
-                  {isImporting ? "Importing..." : "Choose Excel File"}
+                  {loading.importSewadars ? "Importing..." : "Choose Excel File"}
                 </Button>
               </div>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -590,8 +574,8 @@ export default function SewadarsPage() {
                     <p className="text-sm text-blue-800 mb-4">
                       Please select a center to create temporary sewadars for
                     </p>
-                    
-                    <div className="max-w-md mx-auto">
+
+                    <div className="w-full max-w-md mx-auto">
                       <Label className="block text-sm font-medium text-gray-700 mb-2">
                         Center *
                       </Label>
@@ -605,13 +589,13 @@ export default function SewadarsPage() {
                           }
                         }}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select center" />
                         </SelectTrigger>
                         <SelectContent>
                           {centers.map((center) => (
                             <SelectItem key={center._id} value={center.code}>
-                              {center.name} ({center.code})
+                              {toTitleCase(center.name)} ({center.code})
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -627,13 +611,13 @@ export default function SewadarsPage() {
                   {/* Show selected center for admin */}
                   {user?.role === "admin" && selectedCenter !== "all" && (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between md:space-y-0">
                         <div>
                           <p className="text-sm font-medium text-green-900">
                             Creating temporary sewadars for:
                           </p>
                           <p className="text-sm text-green-800">
-                            {centers.find(c => c.code === selectedCenter)?.name} ({selectedCenter})
+                            {toTitleCase(centers.find(c => c.code === selectedCenter)?.name || "")} ({selectedCenter})
                           </p>
                         </div>
                         <Button
@@ -641,7 +625,7 @@ export default function SewadarsPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => setSelectedCenter("all")}
-                          className="text-green-700 hover:text-green-900"
+                          className="text-green-700 hover:text-green-900 w-full md:w-auto"
                         >
                           Change Center
                         </Button>
@@ -651,7 +635,7 @@ export default function SewadarsPage() {
 
                   {tempSewadars.map((tempSewadar, index) => (
                     <div key={index} className="form-section">
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="flex flex-col space-y-2 mb-4 md:flex-row md:items-center md:justify-between md:space-y-0">
                         <h4 className="font-medium text-gray-900">
                           Temporary Sewadar #{index + 1}
                         </h4>
@@ -661,14 +645,14 @@ export default function SewadarsPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => removeTempSewadar(index)}
-                            className="text-red-600 hover:text-red-700"
+                            className="text-red-600 hover:text-red-700 w-full md:w-auto"
                           >
                             <X className="mr-1 h-4 w-4" />
                             Remove
                           </Button>
                         )}
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4">
                         <div>
                           <Label>Name *</Label>
                           <Input
@@ -724,7 +708,7 @@ export default function SewadarsPage() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="md:col-span-2">
+                        <div>
                           <Label>Phone</Label>
                           <Input
                             value={tempSewadar.phone}
@@ -752,27 +736,27 @@ export default function SewadarsPage() {
                       )}
                     </div>
                   ))}
-                  
-                  <div className="flex space-x-3">
+
+                  <div className="flex flex-col space-y-3 md:flex-row md:space-y-0 md:space-x-3">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={addTempSewadar}
-                      className="bg-transparent"
+                      className="bg-transparent w-full md:w-auto"
                     >
                       <Plus className="mr-2 h-4 w-4" />
                       Add Another Temporary Sewadar
                     </Button>
-                    
+
                     <Button
                       type="button"
                       onClick={handleCreateTempSewadars}
-                      className="rssb-primary"
+                      className="rssb-primary w-full md:w-auto"
                     >
                       <Users className="mr-2 h-4 w-4" />
                       Create Temporary Sewadars
                     </Button>
-                    
+
                     <Button
                       type="button"
                       variant="outline"
@@ -780,6 +764,7 @@ export default function SewadarsPage() {
                         setShowTempSewadarForm(false)
                         setTempSewadars([{ name: "", fatherName: "", age: "", gender: "MALE", phone: "" }])
                       }}
+                      className="w-full md:w-auto"
                     >
                       Cancel
                     </Button>
@@ -827,7 +812,7 @@ export default function SewadarsPage() {
                         <SelectItem value="all">All Centers</SelectItem>
                         {centers.map((center) => (
                           <SelectItem key={center._id} value={center.code}>
-                            {center.name}
+                            {toTitleCase(center.name)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -842,7 +827,7 @@ export default function SewadarsPage() {
                       <SelectItem value="all">All Departments</SelectItem>
                       {DEPARTMENTS.map((dept) => (
                         <SelectItem key={dept} value={dept}>
-                          {dept}
+                          {toTitleCase(dept)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -902,7 +887,7 @@ export default function SewadarsPage() {
                     <SelectItem value="all">All Centers</SelectItem>
                     {centers.map((center) => (
                       <SelectItem key={center._id} value={center.code}>
-                        {center.name}
+                        {toTitleCase(center.name)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -917,7 +902,7 @@ export default function SewadarsPage() {
                   <SelectItem value="all">All Departments</SelectItem>
                   {DEPARTMENTS.map((dept) => (
                     <SelectItem key={dept} value={dept}>
-                      {dept}
+                      {toTitleCase(dept)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1074,7 +1059,7 @@ export default function SewadarsPage() {
             <CardTitle className="flex items-center justify-between text-base md:text-lg">
               <span>Sewadars ({pagination.sewadars?.total || sewadars.length})</span>
               <Badge variant="secondary" className="ml-2">
-                {user?.area} Area
+                {user?.area}
               </Badge>
             </CardTitle>
           </CardHeader>
@@ -1150,9 +1135,14 @@ export default function SewadarsPage() {
                                   size="sm"
                                   className="h-7 w-7 p-0 text-red-600 hover:text-red-800"
                                   onClick={() => handleDeleteSewadar(sewadar._id)}
+                                  disabled={loading.deleteSewadar}
                                   title="Delete"
                                 >
-                                  <Trash2 className="h-3 w-3" />
+                                  {loading.deleteSewadar ? (
+                                    <RefreshCw className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-3 w-3" />
+                                  )}
                                 </Button>
                               )}
                             </>
@@ -1224,9 +1214,14 @@ export default function SewadarsPage() {
                                       size="sm"
                                       className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
                                       onClick={() => handleDeleteSewadar(sewadar._id)}
+                                      disabled={loading.deleteSewadar}
                                       title="Delete"
                                     >
-                                      <Trash2 className="h-4 w-4" />
+                                      {loading.deleteSewadar ? (
+                                        <RefreshCw className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Trash2 className="h-4 w-4" />
+                                      )}
                                     </Button>
                                   )}
                                 </>

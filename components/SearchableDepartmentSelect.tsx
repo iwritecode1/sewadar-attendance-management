@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Plus, Search, Check } from "lucide-react"
 import { useData } from "@/contexts/DataContext"
+import { toTitleCase } from "@/lib/text-utils"
 
 interface SearchableDepartmentSelectProps {
   value: string
@@ -200,7 +201,7 @@ export default function SearchableDepartmentSelect({
                   onClick={() => handleDepartmentSelect(department)}
                   onMouseEnter={() => setFocusedDepartmentIndex(index)}
                 >
-                  <span className="font-medium">{department}</span>
+                  <span className="font-medium">{toTitleCase(department)}</span>
                   {value === department && (
                     <Check className="h-4 w-4 text-blue-600" />
                   )}

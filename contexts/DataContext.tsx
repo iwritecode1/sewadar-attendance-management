@@ -164,6 +164,8 @@ interface DataContextType {
   getSewadarsForCenter: (centerId: string) => Sewadar[]
   fetchSewadarsForCenter: (centerId: string) => Promise<void>
   getAttendanceForSewadar: (sewadarId: string) => AttendanceRecord[]
+  getExistingAttendanceForEvent: (eventId: string, centerId: string) => AttendanceRecord | undefined
+  getExistingAttendanceForEventByUser: (eventId: string, userId: string) => AttendanceRecord | undefined
   addPlace: (place: string) => void
   addDepartment: (department: string) => void
 
@@ -198,6 +200,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     attendance: false,
     centers: false,
     coordinators: false,
+    // CRUD operation loading states
+    createSewadar: false,
+    updateSewadar: false,
+    deleteSewadar: false,
+    importSewadars: false,
+    createEvent: false,
+    updateEvent: false,
+    deleteEvent: false,
+    createAttendance: false,
+    updateAttendance: false,
+    deleteAttendance: false,
+    createCenter: false,
+    updateCenter: false,
+    deleteCenter: false,
+    createCoordinator: false,
+    updateCoordinator: false,
+    deleteCoordinator: false,
   })
 
   // Pagination states
@@ -439,52 +458,88 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // CRUD operations for Sewadars
   const createSewadar = useCallback(
     async (data: any) => {
-      const response = await apiClient.createSewadar(data)
-      const success = handleApiResponse(response, "Sewadar created successfully")
-      if (success) {
-        // Refresh with current pagination settings
-        await fetchSewadars({ limit: 50, page: 1 })
+      setLoading((prev) => ({ ...prev, createSewadar: true }))
+      try {
+        const response = await apiClient.createSewadar(data)
+        const success = handleApiResponse(response, "Sewadar created successfully")
+        if (success) {
+          // Refresh with current pagination settings
+          await fetchSewadars({ limit: 50, page: 1 })
+        }
+        return success
+      } catch (error) {
+        console.error("Error creating sewadar:", error)
+        handleApiResponse({ success: false, error: "Failed to create sewadar" })
+        return false
+      } finally {
+        setLoading((prev) => ({ ...prev, createSewadar: false }))
       }
-      return success
     },
     [handleApiResponse, fetchSewadars],
   )
 
   const updateSewadar = useCallback(
     async (id: string, data: any) => {
-      const response = await apiClient.updateSewadar(id, data)
-      const success = handleApiResponse(response, "Sewadar updated successfully")
-      if (success) {
-        // Refresh with current pagination settings
-        await fetchSewadars({ limit: 50, page: 1 })
+      setLoading((prev) => ({ ...prev, updateSewadar: true }))
+      try {
+        const response = await apiClient.updateSewadar(id, data)
+        const success = handleApiResponse(response, "Sewadar updated successfully")
+        if (success) {
+          // Refresh with current pagination settings
+          await fetchSewadars({ limit: 50, page: 1 })
+        }
+        return success
+      } catch (error) {
+        console.error("Error updating sewadar:", error)
+        handleApiResponse({ success: false, error: "Failed to update sewadar" })
+        return false
+      } finally {
+        setLoading((prev) => ({ ...prev, updateSewadar: false }))
       }
-      return success
     },
     [handleApiResponse, fetchSewadars],
   )
 
   const deleteSewadar = useCallback(
     async (id: string) => {
-      const response = await apiClient.deleteSewadar(id)
-      const success = handleApiResponse(response, "Sewadar deleted successfully")
-      if (success) {
-        // Refresh with current pagination settings
-        await fetchSewadars({ limit: 50, page: 1 })
+      setLoading((prev) => ({ ...prev, deleteSewadar: true }))
+      try {
+        const response = await apiClient.deleteSewadar(id)
+        const success = handleApiResponse(response, "Sewadar deleted successfully")
+        if (success) {
+          // Refresh with current pagination settings
+          await fetchSewadars({ limit: 50, page: 1 })
+        }
+        return success
+      } catch (error) {
+        console.error("Error deleting sewadar:", error)
+        handleApiResponse({ success: false, error: "Failed to delete sewadar" })
+        return false
+      } finally {
+        setLoading((prev) => ({ ...prev, deleteSewadar: false }))
       }
-      return success
     },
     [handleApiResponse, fetchSewadars],
   )
 
   const importSewadars = useCallback(
     async (file: File) => {
-      const response = await apiClient.importSewadars(file)
-      const success = handleApiResponse(response, response.data?.message || "Sewadars imported successfully")
-      if (success) {
-        // Refresh with current pagination settings
-        await fetchSewadars({ limit: 50, page: 1 })
+      setLoading((prev) => ({ ...prev, importSewadars: true }))
+      try {
+        const response = await apiClient.importSewadars(file)
+        const success = handleApiResponse(response, response.data?.message || "Sewadars imported successfully")
+        if (success) {
+          // Refresh with current pagination settings
+          await fetchSewadars({ limit: 50, page: 1 })
+        }
+        return success
+      } catch (error) {
+        console.error("Error importing sewadars:", error)
+        handleApiResponse({ success: false, error: "Failed to import sewadars" })
+        return false
+      } finally {
+        setLoading((prev) => ({ ...prev, importSewadars: false }))
       }
-      return success
     },
     [handleApiResponse, fetchSewadars],
   )
@@ -492,36 +547,63 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // CRUD operations for Events
   const createEvent = useCallback(
     async (data: any) => {
-      const response = await apiClient.createEvent(data)
-      const success = handleApiResponse(response, "Event created successfully")
-      if (success) {
-        await fetchEvents()
+      setLoading((prev) => ({ ...prev, createEvent: true }))
+      try {
+        const response = await apiClient.createEvent(data)
+        const success = handleApiResponse(response, "Event created successfully")
+        if (success) {
+          await fetchEvents()
+        }
+        return success
+      } catch (error) {
+        console.error("Error creating event:", error)
+        handleApiResponse({ success: false, error: "Failed to create event" })
+        return false
+      } finally {
+        setLoading((prev) => ({ ...prev, createEvent: false }))
       }
-      return success
     },
     [handleApiResponse, fetchEvents],
   )
 
   const updateEvent = useCallback(
     async (id: string, data: any) => {
-      const response = await apiClient.updateEvent(id, data)
-      const success = handleApiResponse(response, "Event updated successfully")
-      if (success) {
-        await fetchEvents()
+      setLoading((prev) => ({ ...prev, updateEvent: true }))
+      try {
+        const response = await apiClient.updateEvent(id, data)
+        const success = handleApiResponse(response, "Event updated successfully")
+        if (success) {
+          await fetchEvents()
+        }
+        return success
+      } catch (error) {
+        console.error("Error updating event:", error)
+        handleApiResponse({ success: false, error: "Failed to update event" })
+        return false
+      } finally {
+        setLoading((prev) => ({ ...prev, updateEvent: false }))
       }
-      return success
     },
     [handleApiResponse, fetchEvents],
   )
 
   const deleteEvent = useCallback(
     async (id: string) => {
-      const response = await apiClient.deleteEvent(id)
-      const success = handleApiResponse(response, "Event deleted successfully")
-      if (success) {
-        await fetchEvents()
+      setLoading((prev) => ({ ...prev, deleteEvent: true }))
+      try {
+        const response = await apiClient.deleteEvent(id)
+        const success = handleApiResponse(response, "Event deleted successfully")
+        if (success) {
+          await fetchEvents()
+        }
+        return success
+      } catch (error) {
+        console.error("Error deleting event:", error)
+        handleApiResponse({ success: false, error: "Failed to delete event" })
+        return false
+      } finally {
+        setLoading((prev) => ({ ...prev, deleteEvent: false }))
       }
-      return success
     },
     [handleApiResponse, fetchEvents],
   )
@@ -529,56 +611,83 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // CRUD operations for Attendance
   const createAttendance = useCallback(
     async (data: any) => {
-      const response = await apiClient.createAttendance(data)
-      const success = handleApiResponse(response, "Attendance submitted successfully")
-      if (success) {
-        await fetchAttendance()
-        // Refresh sewadars to include newly created temporary sewadars
-        if (data.centerId) {
-          // Fetch sewadars for the specific center
-          setLoading((prev) => ({ ...prev, sewadars: true }))
-          try {
-            const sewadarResponse = await apiClient.getSewadars({ centerId: data.centerId, limit: 10000 })
-            if (sewadarResponse.success && sewadarResponse.data) {
-              setSewadars((prev) => {
-                const filtered = prev.filter((s) => s.centerId !== data.centerId)
-                return [...filtered, ...sewadarResponse.data]
-              })
+      setLoading((prev) => ({ ...prev, createAttendance: true }))
+      try {
+        const response = await apiClient.createAttendance(data)
+        const success = handleApiResponse(response, "Attendance submitted successfully")
+        if (success) {
+          await fetchAttendance()
+          // Refresh sewadars to include newly created temporary sewadars
+          if (data.centerId) {
+            // Fetch sewadars for the specific center
+            setLoading((prev) => ({ ...prev, sewadars: true }))
+            try {
+              const sewadarResponse = await apiClient.getSewadars({ centerId: data.centerId, limit: 10000 })
+              if (sewadarResponse.success && sewadarResponse.data) {
+                setSewadars((prev) => {
+                  const filtered = prev.filter((s) => s.centerId !== data.centerId)
+                  return [...filtered, ...sewadarResponse.data]
+                })
+              }
+            } catch (error) {
+              console.error("Failed to refresh sewadars:", error)
+            } finally {
+              setLoading((prev) => ({ ...prev, sewadars: false }))
             }
-          } catch (error) {
-            console.error("Failed to refresh sewadars:", error)
-          } finally {
-            setLoading((prev) => ({ ...prev, sewadars: false }))
+          } else {
+            await fetchSewadars({ limit: 50, page: 1 })
           }
-        } else {
-          await fetchSewadars({ limit: 50, page: 1 })
         }
+        return success
+      } catch (error) {
+        console.error("Error creating attendance:", error)
+        handleApiResponse({ success: false, error: "Failed to submit attendance" })
+        return false
+      } finally {
+        setLoading((prev) => ({ ...prev, createAttendance: false }))
       }
-      return success
     },
     [handleApiResponse, fetchAttendance, fetchSewadars],
   )
 
   const updateAttendance = useCallback(
     async (id: string, data: any) => {
-      const response = await apiClient.updateAttendance(id, data)
-      const success = handleApiResponse(response, "Attendance updated successfully")
-      if (success) {
-        await fetchAttendance()
+      setLoading((prev) => ({ ...prev, updateAttendance: true }))
+      try {
+        const response = await apiClient.updateAttendance(id, data)
+        const success = handleApiResponse(response, "Attendance updated successfully")
+        if (success) {
+          await fetchAttendance()
+        }
+        return success
+      } catch (error) {
+        console.error("Error updating attendance:", error)
+        handleApiResponse({ success: false, error: "Failed to update attendance" })
+        return false
+      } finally {
+        setLoading((prev) => ({ ...prev, updateAttendance: false }))
       }
-      return success
     },
     [handleApiResponse, fetchAttendance],
   )
 
   const deleteAttendance = useCallback(
     async (id: string) => {
-      const response = await apiClient.deleteAttendance(id)
-      const success = handleApiResponse(response, "Attendance deleted successfully")
-      if (success) {
-        await fetchAttendance()
+      setLoading((prev) => ({ ...prev, deleteAttendance: true }))
+      try {
+        const response = await apiClient.deleteAttendance(id)
+        const success = handleApiResponse(response, "Attendance deleted successfully")
+        if (success) {
+          await fetchAttendance()
+        }
+        return success
+      } catch (error) {
+        console.error("Error deleting attendance:", error)
+        handleApiResponse({ success: false, error: "Failed to delete attendance" })
+        return false
+      } finally {
+        setLoading((prev) => ({ ...prev, deleteAttendance: false }))
       }
-      return success
     },
     [handleApiResponse, fetchAttendance],
   )
@@ -586,36 +695,63 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // CRUD operations for Centers
   const createCenter = useCallback(
     async (data: any) => {
-      const response = await apiClient.createCenter(data)
-      const success = handleApiResponse(response, "Center created successfully")
-      if (success) {
-        await fetchCenters()
+      setLoading((prev) => ({ ...prev, createCenter: true }))
+      try {
+        const response = await apiClient.createCenter(data)
+        const success = handleApiResponse(response, "Center created successfully")
+        if (success) {
+          await fetchCenters()
+        }
+        return success
+      } catch (error) {
+        console.error("Error creating center:", error)
+        handleApiResponse({ success: false, error: "Failed to create center" })
+        return false
+      } finally {
+        setLoading((prev) => ({ ...prev, createCenter: false }))
       }
-      return success
     },
     [handleApiResponse, fetchCenters],
   )
 
   const updateCenter = useCallback(
     async (id: string, data: any) => {
-      const response = await apiClient.updateCenter(id, data)
-      const success = handleApiResponse(response, "Center updated successfully")
-      if (success) {
-        await fetchCenters()
+      setLoading((prev) => ({ ...prev, updateCenter: true }))
+      try {
+        const response = await apiClient.updateCenter(id, data)
+        const success = handleApiResponse(response, "Center updated successfully")
+        if (success) {
+          await fetchCenters()
+        }
+        return success
+      } catch (error) {
+        console.error("Error updating center:", error)
+        handleApiResponse({ success: false, error: "Failed to update center" })
+        return false
+      } finally {
+        setLoading((prev) => ({ ...prev, updateCenter: false }))
       }
-      return success
     },
     [handleApiResponse, fetchCenters],
   )
 
   const deleteCenter = useCallback(
     async (id: string) => {
-      const response = await apiClient.deleteCenter(id)
-      const success = handleApiResponse(response, "Center deleted successfully")
-      if (success) {
-        await fetchCenters()
+      setLoading((prev) => ({ ...prev, deleteCenter: true }))
+      try {
+        const response = await apiClient.deleteCenter(id)
+        const success = handleApiResponse(response, "Center deleted successfully")
+        if (success) {
+          await fetchCenters()
+        }
+        return success
+      } catch (error) {
+        console.error("Error deleting center:", error)
+        handleApiResponse({ success: false, error: "Failed to delete center" })
+        return false
+      } finally {
+        setLoading((prev) => ({ ...prev, deleteCenter: false }))
       }
-      return success
     },
     [handleApiResponse, fetchCenters],
   )
@@ -623,36 +759,63 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   // CRUD operations for Coordinators
   const createCoordinator = useCallback(
     async (data: any) => {
-      const response = await apiClient.createCoordinator(data)
-      const success = handleApiResponse(response, "Coordinator created successfully")
-      if (success) {
-        await fetchCoordinators()
+      setLoading((prev) => ({ ...prev, createCoordinator: true }))
+      try {
+        const response = await apiClient.createCoordinator(data)
+        const success = handleApiResponse(response, "Coordinator created successfully")
+        if (success) {
+          await fetchCoordinators()
+        }
+        return success
+      } catch (error) {
+        console.error("Error creating coordinator:", error)
+        handleApiResponse({ success: false, error: "Failed to create coordinator" })
+        return false
+      } finally {
+        setLoading((prev) => ({ ...prev, createCoordinator: false }))
       }
-      return success
     },
     [handleApiResponse, fetchCoordinators],
   )
 
   const updateCoordinatorStatus = useCallback(
     async (id: string, isActive: boolean) => {
-      const response = await apiClient.updateCoordinatorStatus(id, isActive)
-      const success = handleApiResponse(response, "Coordinator status updated successfully")
-      if (success) {
-        await fetchCoordinators()
+      setLoading((prev) => ({ ...prev, updateCoordinator: true }))
+      try {
+        const response = await apiClient.updateCoordinatorStatus(id, isActive)
+        const success = handleApiResponse(response, "Coordinator status updated successfully")
+        if (success) {
+          await fetchCoordinators()
+        }
+        return success
+      } catch (error) {
+        console.error("Error updating coordinator status:", error)
+        handleApiResponse({ success: false, error: "Failed to update coordinator status" })
+        return false
+      } finally {
+        setLoading((prev) => ({ ...prev, updateCoordinator: false }))
       }
-      return success
     },
     [handleApiResponse, fetchCoordinators],
   )
 
   const deleteCoordinator = useCallback(
     async (id: string) => {
-      const response = await apiClient.deleteCoordinator(id)
-      const success = handleApiResponse(response, "Coordinator deleted successfully")
-      if (success) {
-        await fetchCoordinators()
+      setLoading((prev) => ({ ...prev, deleteCoordinator: true }))
+      try {
+        const response = await apiClient.deleteCoordinator(id)
+        const success = handleApiResponse(response, "Coordinator deleted successfully")
+        if (success) {
+          await fetchCoordinators()
+        }
+        return success
+      } catch (error) {
+        console.error("Error deleting coordinator:", error)
+        handleApiResponse({ success: false, error: "Failed to delete coordinator" })
+        return false
+      } finally {
+        setLoading((prev) => ({ ...prev, deleteCoordinator: false }))
       }
-      return success
     },
     [handleApiResponse, fetchCoordinators],
   )
@@ -693,6 +856,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const getAttendanceForSewadar = useCallback(
     (sewadarId: string) => {
       return attendance.filter((record) => record.sewadars.some((sewadar) => sewadar._id === sewadarId))
+    },
+    [attendance],
+  )
+
+  const getExistingAttendanceForEvent = useCallback(
+    (eventId: string, centerId: string) => {
+      return attendance.find((record) =>
+        record.eventId._id === eventId && record.centerId === centerId
+      )
+    },
+    [attendance],
+  )
+
+  const getExistingAttendanceForEventByUser = useCallback(
+    (eventId: string, userId: string) => {
+      return attendance.find((record) =>
+        record.eventId._id === eventId && record.submittedBy._id === userId
+      )
     },
     [attendance],
   )
@@ -833,6 +1014,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         getSewadarsForCenter,
         fetchSewadarsForCenter,
         getAttendanceForSewadar,
+        getExistingAttendanceForEvent,
+        getExistingAttendanceForEventByUser,
         addPlace,
         addDepartment,
 

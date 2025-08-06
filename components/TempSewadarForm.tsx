@@ -11,6 +11,7 @@ import { useData } from "@/contexts/DataContext"
 import { RefreshCw, Users } from "lucide-react"
 import { DEPARTMENTS } from "@/lib/constants"
 import { generateBadgePattern, getNextBadgeNumber } from "@/lib/badgeUtils"
+import { toTitleCase } from "@/lib/text-utils"
 
 export interface TempSewadarData {
   name: string
@@ -185,7 +186,7 @@ export default function TempSewadarForm({
                 Please select a center to create a temporary sewadar for
               </p>
 
-              <div className="max-w-md mx-auto">
+              <div className="w-full max-w-md mx-auto">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Center *
                 </label>
@@ -194,13 +195,13 @@ export default function TempSewadarForm({
                   onValueChange={onCenterChange}
                   disabled={isSubmitting}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select center" />
                   </SelectTrigger>
                   <SelectContent>
                     {centers.map((center) => (
                       <SelectItem key={center._id} value={center.code}>
-                        {center.name} ({center.code})
+                        {toTitleCase(center.name)} ({center.code})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -214,6 +215,7 @@ export default function TempSewadarForm({
                 variant="outline"
                 onClick={onCancel}
                 disabled={isSubmitting}
+                className="w-full md:w-auto"
               >
                 Cancel
               </Button>
@@ -230,13 +232,13 @@ export default function TempSewadarForm({
         {/* Show selected center for admin */}
         {showCenterSelection && selectedCenter && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between md:space-y-0">
               <div>
                 <p className="text-sm font-medium text-green-900">
                   Creating temporary sewadar for:
                 </p>
                 <p className="text-sm text-green-800">
-                  {centers.find(c => c.code === selectedCenter)?.name} ({selectedCenter})
+                  {toTitleCase(centers.find(c => c.code === selectedCenter)?.name || "")} ({selectedCenter})
                 </p>
               </div>
               <Button
@@ -244,7 +246,7 @@ export default function TempSewadarForm({
                 variant="ghost"
                 size="sm"
                 onClick={() => onCenterChange?.("")}
-                className="text-green-700 hover:text-green-900"
+                className="text-green-700 hover:text-green-900 w-full md:w-auto"
               >
                 Change Center
               </Button>
@@ -253,7 +255,7 @@ export default function TempSewadarForm({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Name *
@@ -362,11 +364,11 @@ export default function TempSewadarForm({
             </p>
           </div>
 
-          <div className="flex space-x-3">
+          <div className="flex flex-col space-y-3 md:flex-row md:space-y-0 md:space-x-3">
             <Button
               type="submit"
               disabled={isSubmitting || !formData.name.trim() || !formData.fatherHusbandName.trim()}
-              className="rssb-primary"
+              className="rssb-primary w-full md:w-auto"
             >
               {isSubmitting ? (
                 <>
@@ -386,6 +388,7 @@ export default function TempSewadarForm({
                 variant="outline"
                 onClick={handleCancel}
                 disabled={isSubmitting}
+                className="w-full md:w-auto"
               >
                 Cancel
               </Button>

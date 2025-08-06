@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/AuthContext"
 import { useData } from "@/contexts/DataContext"
 import { apiClient } from "@/lib/api-client"
+import StatusOverlay from "@/components/StatusOverlay"
+import LoadingOverlay from "@/components/LoadingOverlay"
 import { RefreshCw, Save, X } from "lucide-react"
 import { DEPARTMENTS } from "@/lib/constants"
 import type { Sewadar } from "@/contexts/DataContext"
@@ -27,13 +29,19 @@ interface EditSewadarModalProps {
 
 export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess }: EditSewadarModalProps) {
   const { user } = useAuth()
-  const { centers } = useData()
+  const { centers, updateSewadar, loading } = useData()
   const { toast } = useToast()
 
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [fetchLoading, setFetchLoading] = useState(false)
   const [formData, setFormData] = useState<Partial<Sewadar>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Status overlay state
+  const [statusOverlay, setStatusOverlay] = useState({
+    isOpen: false,
+    status: "loading" as "loading" | "success" | "error",
+    message: "",
+  })
 
   useEffect(() => {
     if (sewadarId && isOpen) {
@@ -48,27 +56,27 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
   const fetchSewadarDetails = async () => {
     if (!sewadarId) return
 
-    setLoading(true)
+    setFetchLoading(true)
     try {
       const response = await apiClient.getSewadar(sewadarId)
       if (response.success) {
-        setFormData(response.data)
+        setFormData(response.data as Partial<Sewadar>)
       } else {
-        toast({
-          title: "Error",
-          description: response.error || "Failed to fetch sewadar details",
-          variant: "destructive",
+        setStatusOverlay({
+          isOpen: true,
+          status: "error",
+          message: response.error || "Failed to fetch sewadar details",
         })
       }
     } catch (error) {
       console.error("Failed to fetch sewadar details:", error)
-      toast({
-        title: "Error",
-        description: "Failed to fetch sewadar details",
-        variant: "destructive",
+      setStatusOverlay({
+        isOpen: true,
+        status: "error",
+        message: "Network error occurred while fetching sewadar details",
       })
     } finally {
-      setLoading(false)
+      setFetchLoading(false)
     }
   }
 
@@ -115,32 +123,40 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
     e.preventDefault()
     if (!sewadarId || !validateForm()) return
 
-    setSaving(true)
+    // Show loading overlay
+    setStatusOverlay({
+      isOpen: true,
+      status: "loading",
+      message: "Updating sewadar details...",
+    })
+
     try {
-      const response = await apiClient.updateSewadar(sewadarId, formData)
-      if (response.success) {
-        toast({
-          title: "Success",
-          description: "Sewadar updated successfully",
+      const success = await updateSewadar(sewadarId, formData)
+      if (success) {
+        setStatusOverlay({
+          isOpen: true,
+          status: "success",
+          message: "Sewadar updated successfully!",
         })
         onSuccess()
-        handleClose()
+        // Close modal after a short delay
+        setTimeout(() => {
+          handleClose()
+        }, 1500)
       } else {
-        toast({
-          title: "Error",
-          description: response.error || "Failed to update sewadar",
-          variant: "destructive",
+        setStatusOverlay({
+          isOpen: true,
+          status: "error",
+          message: "Failed to update sewadar. Please try again.",
         })
       }
     } catch (error) {
       console.error("Failed to update sewadar:", error)
-      toast({
-        title: "Error",
-        description: "Failed to update sewadar",
-        variant: "destructive",
+      setStatusOverlay({
+        isOpen: true,
+        status: "error",
+        message: "Network error occurred. Please check your connection and try again.",
       })
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -155,7 +171,20 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
   const handleClose = () => {
     setFormData({})
     setErrors({})
+    setStatusOverlay({
+      isOpen: false,
+      status: "loading",
+      message: "",
+    })
     onClose()
+  }
+
+  const handleCloseStatusOverlay = () => {
+    setStatusOverlay({
+      isOpen: false,
+      status: "loading",
+      message: "",
+    })
   }
 
   if (!isOpen) return null
@@ -172,11 +201,13 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
           </div>
         </DialogHeader>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-            <span className="ml-2 text-gray-600">Loading sewadar details...</span>
-          </div>
+        {fetchLoading ? (
+          <LoadingOverlay
+            isLoading={true}
+            message="Loading sewadar details..."
+            variant="inline"
+            size="lg"
+          />
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -187,7 +218,7 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
                   value={formData.badgeNumber || ""}
                   onChange={(e) => handleInputChange("badgeNumber", e.target.value)}
                   placeholder="Enter badge number"
-                  disabled={user?.role !== "admin"}
+                  disabled={true}
                   className={errors.badgeNumber ? "border-red-500" : ""}
                 />
                 {errors.badgeNumber && <p className="text-sm text-red-500">{errors.badgeNumber}</p>}
@@ -235,7 +266,7 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
                   min="0"
                   max="120"
                   value={formData.age || ""}
-                  onChange={(e) => handleInputChange("age", parseInt(e.target.value) || 0)}
+                  onChange={(e) => handleInputChange("age", e.target.value)}
                   placeholder="Enter age"
                 />
               </div>
@@ -279,7 +310,7 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
                   value={formData.zone?.toUpperCase() || ""}
                   onChange={(e) => handleInputChange("zone", e.target.value?.toUpperCase())}
                   placeholder="Enter zone"
-                  disabled={user?.role !== "admin"}
+                  disabled={true}
                 />
               </div>
 
@@ -290,7 +321,7 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
                   value={formData.area || user?.area || ""}
                   onChange={(e) => handleInputChange("area", e.target.value)}
                   placeholder="Enter area"
-                  disabled={user?.role !== "admin"}
+                  disabled={true}
                 />
               </div>
 
@@ -306,7 +337,7 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
                       handleInputChange("centerId", selectedCenter._id)
                     }
                   }}
-                  disabled={user?.role === "coordinator"}
+                  disabled={true}
                 >
                   <SelectTrigger className={errors.center ? "border-red-500" : ""}>
                     <SelectValue placeholder="Select center" />
@@ -369,12 +400,14 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
 
             {/* Mobile - Stacked Buttons */}
             <div className="block md:hidden space-y-3 pt-4">
-              <Button type="submit" disabled={saving} className="w-full">
-                {saving ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
+              <Button type="submit" disabled={loading.updateSewadar} className="w-full">
+                {loading.updateSewadar ? (
+                  <LoadingOverlay
+                    isLoading={true}
+                    message="Saving..."
+                    variant="button"
+                    size="sm"
+                  />
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
@@ -382,7 +415,7 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
                   </>
                 )}
               </Button>
-              <Button type="button" variant="outline" onClick={handleClose} className="w-full">
+              <Button type="button" variant="outline" onClick={handleClose} className="w-full" disabled={loading.updateSewadar}>
                 <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
@@ -390,16 +423,18 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
 
             {/* Desktop - Side by Side Buttons */}
             <div className="hidden md:flex justify-end space-x-2 pt-4">
-              <Button type="button" variant="outline" onClick={handleClose}>
+              <Button type="button" variant="outline" onClick={handleClose} disabled={loading.updateSewadar}>
                 <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
+              <Button type="submit" disabled={loading.updateSewadar}>
+                {loading.updateSewadar ? (
+                  <LoadingOverlay
+                    isLoading={true}
+                    message="Saving..."
+                    variant="button"
+                    size="sm"
+                  />
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
@@ -410,6 +445,14 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
             </div>
           </form>
         )}
+
+        {/* Status Overlay */}
+        <StatusOverlay
+          isOpen={statusOverlay.isOpen}
+          status={statusOverlay.status}
+          message={statusOverlay.message}
+          onClose={handleCloseStatusOverlay}
+        />
       </DialogContent>
     </Dialog>
   )

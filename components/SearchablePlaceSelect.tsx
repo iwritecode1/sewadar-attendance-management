@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Plus, Search, Check } from "lucide-react"
 import { useData } from "@/contexts/DataContext"
+import { toTitleCase } from "@/lib/text-utils"
 
 interface SearchablePlaceSelectProps {
     value: string
@@ -200,7 +201,7 @@ export default function SearchablePlaceSelect({
                                     onClick={() => handlePlaceSelect(place)}
                                     onMouseEnter={() => setFocusedPlaceIndex(index)}
                                 >
-                                    <span className="font-medium">{place}</span>
+                                    <span className="font-medium">{toTitleCase(place)}</span>
                                     {value === place && (
                                         <Check className="h-4 w-4 text-blue-600" />
                                     )}
