@@ -243,7 +243,7 @@ export default function CentersPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <Calendar className="h-4 w-4 text-green-600" />
-                        <span className="text-sm text-gray-600">Events</span>
+                        <span className="text-sm text-gray-600">Sewa Events</span>
                       </div>
                       <span className="text-gray-900">{center.stats?.attendanceCount || 0}</span>
                     </div>

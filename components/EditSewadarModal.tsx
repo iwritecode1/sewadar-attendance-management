@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -191,17 +191,15 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] md:w-full p-4 md:p-6">
-        <DialogHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg md:text-xl">
-              <span className="hidden md:inline">Edit Sewadar</span>
-              <span className="md:hidden">Edit</span>
-            </DialogTitle>
-          </div>
+      <DialogContent className="max-w-2xl w-[95vw] md:w-full">
+        <DialogHeader>
+          <DialogTitle className="text-lg md:text-xl">
+            <span className="hidden md:inline">Edit Sewadar</span>
+            <span className="md:hidden">Edit</span>
+          </DialogTitle>
         </DialogHeader>
-
-        {fetchLoading ? (
+        <DialogBody>
+          {fetchLoading ? (
           <LoadingOverlay
             isLoading={true}
             message="Loading sewadar details..."
@@ -453,6 +451,7 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
           message={statusOverlay.message}
           onClose={handleCloseStatusOverlay}
         />
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )

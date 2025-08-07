@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useData } from "@/contexts/DataContext"
 import { useAuth } from "@/contexts/AuthContext"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -284,7 +284,7 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl w-[95vw] md:w-full">
         <DialogHeader>
           <DialogTitle className="flex items-center">
             <Edit className="mr-2 h-5 w-5" />
@@ -294,8 +294,8 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
             Update event details and manage participants for "{eventToEdit.place} - {eventToEdit.department}"
           </DialogDescription>
         </DialogHeader>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <DialogBody>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="details" className="flex items-center">
               <Calendar className="mr-2 h-4 w-4" />
@@ -420,7 +420,7 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
                         {/* Header row with name and remove button */}
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-lg text-gray-900 leading-tight">
+                            <h4 className="text-sm text-gray-900 leading-tight">
                               {sewadar.name || 'Unknown Name'}
                             </h4>
                             <p className="text-sm text-gray-500 mt-1">
@@ -495,6 +495,7 @@ export default function EditEventModal({ isOpen, onClose, eventId, onSuccess }: 
             </Card>
           </TabsContent>
         </Tabs>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )

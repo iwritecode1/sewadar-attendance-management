@@ -7,6 +7,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogBody,
 } from "@/components/ui/dialog"
 import {
   Select,
@@ -212,19 +213,47 @@ export default function EventDetailsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-6xl h-[90vh] flex flex-col">
+      <DialogContent className="w-[95vw] max-w-6xl">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <DialogTitle className="flex items-center text-sm md:text-base">
-                <Calendar className="mr-2 h-4 w-4 md:h-5 md:w-5" />
+          {/* Mobile Layout - Stacked */}
+          <div className="block md:hidden space-y-3">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center text-base">
+                <Calendar className="mr-2 h-4 w-4" />
                 <span className="truncate">{eventName || "Event Details"}</span>
               </DialogTitle>
-              <DialogDescription className="text-xs md:text-sm">
+            </div>
+            <DialogDescription className="text-sm">
+              {data?.event && (
+                <div className="space-y-1">
+                  <div>{data.event.place} - {data.event.department}</div>
+                  <div className="text-xs text-gray-500">({data.event.fromDate} to {data.event.toDate})</div>
+                </div>
+              )}
+            </DialogDescription>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowNominalRolls(true)}
+              className="w-full"
+            >
+              <FileImage className="mr-2 h-4 w-4" />
+              Images
+            </Button>
+          </div>
+
+          {/* Desktop Layout - Side by Side */}
+          <div className="hidden md:flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <DialogTitle className="flex items-center text-base">
+                <Calendar className="mr-2 h-5 w-5" />
+                <span className="truncate">{eventName || "Event Details"}</span>
+              </DialogTitle>
+              <DialogDescription className="text-sm">
                 {data?.event && (
                   <>
-                    <span className="block md:inline">{data.event.place} - {data.event.department}</span>
-                    <span className="block md:inline md:ml-2">({data.event.fromDate} to {data.event.toDate})</span>
+                    <span className="inline">{data.event.place} - {data.event.department}</span>
+                    <span className="inline ml-2">({data.event.fromDate} to {data.event.toDate})</span>
                   </>
                 )}
               </DialogDescription>
@@ -236,13 +265,11 @@ export default function EventDetailsModal({
               className="ml-4 mr-4 flex-shrink-0"
             >
               <FileImage className="mr-2 h-4 w-4" />
-              <span className="hidden md:inline">View Nominal Rolls</span>
-              <span className="md:hidden">Images</span>
+              View Nominal Rolls
             </Button>
           </div>
         </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto">
+        <DialogBody>
           {loading ? (
             <div className="flex items-center justify-center h-96">
               <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
@@ -457,7 +484,7 @@ export default function EventDetailsModal({
               </div>
             </div>
           )}
-        </div>
+        </DialogBody>
       </DialogContent>
 
       {/* Nominal Rolls Modal */}

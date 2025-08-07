@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -160,8 +160,8 @@ export default function SewadarAttendanceModal({ isOpen, onClose, sewadar }: Sew
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[95vh] overflow-y-auto mx-2 md:mx-auto">
-        <DialogHeader className="pb-4">
+      <DialogContent className="max-w-2xl w-[95vw] md:w-full">
+        <DialogHeader>
           {/* Mobile Header */}
           <div className="block md:hidden">
             <div className="flex items-center justify-between mb-2">
@@ -199,8 +199,8 @@ export default function SewadarAttendanceModal({ isOpen, onClose, sewadar }: Sew
             </DialogDescription>
           </div>
         </DialogHeader>
-
-        <div className="space-y-4">
+        <DialogBody>
+          <div className="space-y-4">
           {/* Quick Stats */}
           {attendanceStats && (
             <div className="grid grid-cols-3 gap-2 md:gap-4">
@@ -289,6 +289,7 @@ export default function SewadarAttendanceModal({ isOpen, onClose, sewadar }: Sew
             </CardContent>
           </Card>
         </div>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -174,16 +174,16 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-[95vw] md:w-full p-4 md:p-6">
-        <DialogHeader className="pb-4">
+      <DialogContent className="max-w-4xl w-[95vw] md:w-full">
+        <DialogHeader>
           <DialogTitle className="flex items-center text-lg md:text-xl">
             <User className="mr-2 h-4 w-4 md:h-5 md:w-5" />
             <span className="hidden md:inline">Sewadar Details</span>
             <span className="md:hidden">Details</span>
           </DialogTitle>
         </DialogHeader>
-
-        {loading ? (
+        <DialogBody>
+          {loading ? (
           <div className="flex items-center justify-center py-12">
             <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
             <span className="ml-2 text-gray-600">Loading sewadar details...</span>
@@ -469,6 +469,7 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
             <p>Sewadar not found</p>
           </div>
         )}
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )

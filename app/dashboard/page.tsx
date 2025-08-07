@@ -170,14 +170,14 @@ export default function Dashboard() {
                 <div className="text-center space-y-1">
                   <div className="flex items-center justify-center space-x-1">
                     <Calendar className="h-4 w-4 text-purple-600" />
-                    <span className="text-xs font-medium text-gray-600">Events</span>
+                    <span className="text-xs font-medium text-gray-600">Sewa</span>
                   </div>
                   <p className="text-2xl text-gray-900">{overview.eventCount}</p>
                 </div>
                 <div className="text-center space-y-1">
                   <div className="flex items-center justify-center space-x-1">
                     <TrendingUp className="h-4 w-4 text-orange-600" />
-                    <span className="text-xs font-medium text-gray-600">Attended</span>
+                    <span className="text-xs font-medium text-gray-600">Participated</span>
                   </div>
                   <p className="text-2xl text-gray-900">{overview.totalAttendance}</p>
                 </div>
@@ -246,18 +246,18 @@ export default function Dashboard() {
 
           <Card className="stat-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Events</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">Sewa Jatha</CardTitle>
               <Calendar className="h-5 w-5 text-purple-600" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl text-gray-900">{overview.eventCount}</div>
-              <p className="text-xs text-gray-500 mt-1">Sewa Jatha</p>
+              <p className="text-xs text-gray-500 mt-1">Events</p>
             </CardContent>
           </Card>
 
           <Card className="stat-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Attended</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">Participated</CardTitle>
               <TrendingUp className="h-5 w-5 text-orange-600" />
             </CardHeader>
             <CardContent>

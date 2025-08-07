@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -159,17 +159,15 @@ export default function EditCoordinatorModal({ coordinatorId, isOpen, onClose, o
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto w-[95vw] md:w-full p-4 md:p-6">
-        <DialogHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg md:text-xl">
-              <span className="hidden md:inline">Edit Coordinator</span>
-              <span className="md:hidden">Edit</span>
-            </DialogTitle>
-          </div>
+      <DialogContent className="max-w-md w-[95vw] md:w-full">
+        <DialogHeader>
+          <DialogTitle className="text-lg md:text-xl">
+            <span className="hidden md:inline">Edit Coordinator</span>
+            <span className="md:hidden">Edit</span>
+          </DialogTitle>
         </DialogHeader>
-
-        {loading ? (
+        <DialogBody>
+          {loading ? (
           <div className="flex items-center justify-center py-8">
             <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
             <span className="ml-2 text-gray-600">Loading coordinator details...</span>
@@ -279,6 +277,7 @@ export default function EditCoordinatorModal({ coordinatorId, isOpen, onClose, o
             </div>
           </form>
         )}
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )

@@ -2,12 +2,13 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { Building2, X, Save } from "lucide-react"
+import { Building2, Save } from "lucide-react"
 import { apiClient } from "@/lib/api-client"
 
 interface Center {
@@ -106,50 +107,45 @@ export default function EditCenterModal({ center, isOpen, onClose, onUpdate }: E
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <div>
-            <CardTitle className="flex items-center">
-              <Building2 className="mr-2 h-5 w-5" />
-              Edit Center
-            </CardTitle>
-            <CardDescription>Update center information</CardDescription>
-          </div>
-          <Button variant="ghost" size="sm" onClick={onClose} disabled={isSubmitting}>
-            <X className="h-4 w-4" />
-          </Button>
-        </CardHeader>
-        <CardContent>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md w-[95vw] md:w-full">
+        <DialogHeader>
+          <DialogTitle className="text-lg md:text-xl flex items-center">
+            <Building2 className="mr-2 h-5 w-5" />
+            <span className="hidden md:inline">Edit Center</span>
+            <span className="md:hidden">Edit</span>
+          </DialogTitle>
+        </DialogHeader>
+        <DialogBody>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="name">Center Name *</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => handleInputChange("name", e.target.value)}
                 placeholder="e.g., HISSAR-III"
-                className={`mt-1 ${errors.name ? "border-red-500" : ""}`}
+                className={errors.name ? "border-red-500" : ""}
                 disabled={isSubmitting}
               />
               {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
             </div>
 
-            <div>
+            <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-500">Center Code</Label>
-              <Input value={center.code} disabled className="mt-1 bg-gray-50" />
-              <p className="text-xs text-gray-500 mt-1">Center code cannot be changed</p>
+              <Input value={center.code} disabled className="bg-gray-50" />
+              <p className="text-xs text-gray-500">Center code cannot be changed</p>
             </div>
 
-            <div>
+            <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-500">Area</Label>
-              <Input value={center.area} disabled className="mt-1 bg-gray-50" />
+              <Input value={center.area} disabled className="bg-gray-50" />
             </div>
 
             {center.stats && (
-              <div className="pt-4 border-t">
+              <div className="pt-4 border-t space-y-2">
                 <Label className="text-sm font-medium text-gray-500">Center Statistics</Label>
-                <div className="grid grid-cols-3 gap-2 mt-2">
+                <div className="grid grid-cols-3 gap-2">
                   <div className="text-center p-2 bg-blue-50 rounded">
                     <p className="text-lg font-bold text-blue-600">{center.stats.sewadarCount}</p>
                     <p className="text-xs text-blue-800">Sewadars</p>
@@ -166,18 +162,30 @@ export default function EditCenterModal({ center, isOpen, onClose, onUpdate }: E
               </div>
             )}
 
-            <div className="flex space-x-2 pt-4">
-              <Button type="submit" className="flex-1 rssb-primary" disabled={isSubmitting}>
+            {/* Mobile - Stacked Buttons */}
+            <div className="block md:hidden space-y-3 pt-4">
+              <Button type="submit" disabled={isSubmitting} className="w-full">
                 <Save className="mr-2 h-4 w-4" />
                 {isSubmitting ? "Updating..." : "Update Center"}
               </Button>
-              <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+              <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting} className="w-full">
                 Cancel
               </Button>
             </div>
+
+            {/* Desktop - Side by Side Buttons */}
+            <div className="hidden md:flex justify-end space-x-2 pt-4">
+              <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                <Save className="mr-2 h-4 w-4" />
+                {isSubmitting ? "Updating..." : "Update Center"}
+              </Button>
+            </div>
           </form>
-        </CardContent>
-      </Card>
-    </div>
+        </DialogBody>
+      </DialogContent>
+    </Dialog>
   )
 }
