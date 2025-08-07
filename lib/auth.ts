@@ -37,7 +37,10 @@ export async function login(
 ): Promise<{ success: boolean; user?: UserSession; response?: NextResponse }> {
   await dbConnect()
 
-  const user = await User.findOne({ username, isActive: true })
+  const user = await User.findOne({
+    username: { $regex: new RegExp(`^${username}$`, 'i') },
+    isActive: true
+  })
 
   if (!user) {
     return { success: false }

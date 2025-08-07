@@ -89,6 +89,9 @@ export default function SewadarLookupPage() {
   const [attendanceFilterCount, setAttendanceFilterCount] = useState("")
   const [genderFilter, setGenderFilter] = useState("all")
   const [showExamples, setShowExamples] = useState(false)
+  
+  // Mobile filter collapse state
+  const [isFiltersCollapsed, setIsFiltersCollapsed] = useState(true)
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
@@ -830,8 +833,45 @@ export default function SewadarLookupPage() {
               )}
             </div>
 
+            {/* Mobile Filter Toggle and Search Button */}
+            <div className="block md:hidden">
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsFiltersCollapsed(!isFiltersCollapsed)}
+                  className="flex-1 flex items-center justify-between"
+                >
+                  <span className="flex items-center">
+                    <Filter className="mr-2 h-4 w-4" />
+                    Filters
+                  </span>
+                  {isFiltersCollapsed ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronUp className="h-4 w-4" />
+                  )}
+                </Button>
+                
+                {/* Mobile Search Button - only show when filters are collapsed */}
+                {isFiltersCollapsed && (
+                  <Button
+                    onClick={() => handleSearchAndFilter()}
+                    disabled={isSearching || (!searchTerm.trim() && !attendanceFilterCount)}
+                    className="rssb-primary px-4"
+                  >
+                    {isSearching ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+
             {/* Filter Row */}
-            <div className={`grid grid-cols-1 gap-3 items-end ${user?.role === "admin" ? "md:grid-cols-5" : "md:grid-cols-4"}`}>
+            <div className={`grid grid-cols-1 gap-3 items-end ${user?.role === "admin" ? "md:grid-cols-5" : "md:grid-cols-4"} ${isFiltersCollapsed ? "hidden md:grid" : "grid"}`}>
               {/* Center - Only show for admin users */}
               {user?.role === "admin" && (
                 <div>
@@ -928,7 +968,7 @@ export default function SewadarLookupPage() {
             </div>
 
             {/* Show Usage Examples Button */}
-            <div className="mt-4">
+            <div className={`mt-4 ${isFiltersCollapsed ? "hidden md:block" : "block"}`}>
               <Button
                 variant="ghost"
                 size="sm"
@@ -946,7 +986,7 @@ export default function SewadarLookupPage() {
 
             {/* Usage Examples - Expandable */}
             {showExamples && (
-              <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className={`mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg ${isFiltersCollapsed ? "hidden md:block" : "block"}`}>
                 <h4 className="font-medium text-blue-900 mb-3 text-sm">Search Examples:</h4>
                 <ul className="text-xs text-blue-800 space-y-2 mb-4">
                   <li>• <strong>By Name:</strong> "Rajesh Kumar" or "Priya"</li>
