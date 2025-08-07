@@ -210,7 +210,7 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                       <User className="h-5 w-5 text-gray-400" />
                       <div>
                         <p className="text-sm text-gray-600">Full Name</p>
-                        <p className="font-medium">{sewadar.name}</p>
+                        <p>{sewadar.name}</p>
                       </div>
                     </div>
 
@@ -218,7 +218,7 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                       <User className="h-5 w-5 text-gray-400" />
                       <div>
                         <p className="text-sm text-gray-600">Father/Husband Name</p>
-                        <p className="font-medium">{sewadar.fatherHusbandName}</p>
+                        <p>{sewadar.fatherHusbandName}</p>
                       </div>
                     </div>
 
@@ -226,7 +226,7 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                       <Calendar className="h-5 w-5 text-gray-400" />
                       <div>
                         <p className="text-sm text-gray-600">Date of Birth</p>
-                        <p className="font-medium">{sewadar.dob}</p>
+                        <p>{sewadar.dob}</p>
                       </div>
                     </div>
 
@@ -234,7 +234,7 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                       <Clock className="h-5 w-5 text-gray-400" />
                       <div>
                         <p className="text-sm text-gray-600">Age</p>
-                        <p className="font-medium">{sewadar.age || "Not specified"}</p>
+                        <p>{sewadar.age || "Not specified"}</p>
                       </div>
                     </div>
 
@@ -242,7 +242,7 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                       <Phone className="h-5 w-5 text-gray-400" />
                       <div>
                         <p className="text-sm text-gray-600">Contact Number</p>
-                        <p className="font-medium">{sewadar.contactNo}</p>
+                        <p>{sewadar.contactNo}</p>
                       </div>
                     </div>
                   </div>
@@ -252,7 +252,7 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                       <FileText className="h-5 w-5 text-gray-400" />
                       <div>
                         <p className="text-sm text-gray-600">Badge Number</p>
-                        <p className="font-mono font-medium">{sewadar.badgeNumber}</p>
+                        <p className>{sewadar.badgeNumber}</p>
                       </div>
                     </div>
 
@@ -260,7 +260,7 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                       <Building2 className="h-5 w-5 text-gray-400" />
                       <div>
                         <p className="text-sm text-gray-600">Center</p>
-                        <p className="font-medium">{sewadar.center}</p>
+                        <p>{sewadar.center}</p>
                       </div>
                     </div>
 
@@ -268,7 +268,7 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                       <Briefcase className="h-5 w-5 text-gray-400" />
                       <div>
                         <p className="text-sm text-gray-600">Department</p>
-                        <p className="font-medium">{sewadar.department}</p>
+                        <p>{sewadar.department}</p>
                       </div>
                     </div>
 
@@ -276,7 +276,7 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                       <MapPin className="h-5 w-5 text-gray-400" />
                       <div>
                         <p className="text-sm text-gray-600">Area</p>
-                        <p className="font-medium">{sewadar.area}</p>
+                        <p>{sewadar.area}</p>
                       </div>
                     </div>
                   </div>
@@ -288,7 +288,7 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                       <Phone className="h-5 w-5 text-red-500" />
                       <div>
                         <p className="text-sm text-gray-600">Emergency Contact</p>
-                        <p className="font-medium">{sewadar.emergencyContact}</p>
+                        <p>{sewadar.emergencyContact}</p>
                       </div>
                     </div>
                   </div>

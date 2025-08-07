@@ -189,7 +189,7 @@ export default function AttendancePage() {
   const [nominalRollImages, setNominalRollImages] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingAttendance, setExistingAttendance] = useState<any>(null);
-  
+
   // Status overlay state
   const [statusOverlay, setStatusOverlay] = useState({
     isOpen: false,
@@ -402,7 +402,7 @@ export default function AttendancePage() {
     };
 
     setIsSubmitting(true);
-    
+
     // Show loading overlay
     setStatusOverlay({
       isOpen: true,
@@ -416,10 +416,10 @@ export default function AttendancePage() {
       formData.append("eventId", attendanceData.eventId);
       if (attendanceData.centerId) formData.append("centerId", attendanceData.centerId);
       if (attendanceData.centerName) formData.append("centerName", attendanceData.centerName);
-      
+
       attendanceData.sewadarIds.forEach((id) => formData.append("sewadarIds[]", id));
       formData.append("tempSewadars", JSON.stringify(attendanceData.tempSewadars));
-      
+
       attendanceData.nominalRollImages.forEach((file) => formData.append("nominalRollImages[]", file));
 
       const response = await fetch('/api/attendance', {
@@ -432,18 +432,18 @@ export default function AttendancePage() {
       if (result.success) {
         // Show success overlay
         let successMessage = "Your attendance has been submitted successfully!";
-        
+
         // Add temp sewadar info if available
         if (result.tempSewadarInfo && result.tempSewadarInfo.length > 0) {
           successMessage += `\n\nTemporary sewadars added: ${result.tempSewadarInfo.join(", ")}`;
         }
-        
+
         setStatusOverlay({
           isOpen: true,
           status: "success",
           message: successMessage,
         });
-        
+
         // Reset form
         setSelectedEvent("");
         setSelectedSewadars([]);
@@ -453,7 +453,7 @@ export default function AttendancePage() {
         setSewadarSearch("");
         setNominalRollImages([]);
         setShowTempSewadarForm(false);
-        
+
         // Refresh data in background
         await fetchEvents();
       } else {
@@ -552,7 +552,7 @@ export default function AttendancePage() {
             <CardHeader>
               <CardTitle className="flex items-center text-base md:text-lg">
                 <Building2 className="mr-2 h-5 w-5" />
-                Select Center
+                Center *
               </CardTitle>
               <CardDescription>
                 Choose the center for which you want to add attendance
@@ -561,7 +561,7 @@ export default function AttendancePage() {
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="center">Center *</Label>
+                  {/* <Label htmlFor="center">Center *</Label> */}
                   <Select
                     value={selectedCenter}
                     onValueChange={handleCenterChange}
@@ -636,16 +636,16 @@ export default function AttendancePage() {
               <CardHeader>
                 <CardTitle className="flex items-center text-base md:text-lg">
                   <Calendar className="mr-2 h-5 w-5" />
-                  Select Sewa
+                  Sewa *
                 </CardTitle>
                 <CardDescription>
                   Choose an existing event or create a new one
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent>
                 <div>
-                  <Label htmlFor="event">Sewa *</Label>
-                  <div className="mt-1">
+                  {/* <Label htmlFor="event">Sewa *</Label> */}
+                  <div>
                     <SearchableEventSelect
                       events={events}
                       value={selectedEvent}
@@ -820,6 +820,13 @@ export default function AttendancePage() {
                               setSewadarSearch("");
                               setShowSewadarDropdown(false);
                               setFocusedSewadarIndex(-1);
+                              // Focus back on search input for next search
+                              setTimeout(() => {
+                                const searchInput = document.querySelector('input[placeholder*="Start typing to search sewadars"]') as HTMLInputElement;
+                                if (searchInput) {
+                                  searchInput.focus();
+                                }
+                              }, 100);
                             }
                           }
                           // Escape - close dropdown
@@ -844,64 +851,64 @@ export default function AttendancePage() {
                       >
                         {filteredSewadars.length > 0 ? (
                           filteredSewadars.map((sewadar, index) => (
-                              <div
-                                key={sewadar._id}
-                                id={`sewadar-option-${index}`}
-                                className={`p-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${focusedSewadarIndex === index
-                                  ? "bg-blue-50"
-                                  : "hover:bg-gray-50"
-                                  }`}
-                                onClick={() => {
-                                  if (!selectedSewadars.includes(sewadar._id)) {
-                                    toggleSewadarSelection(sewadar._id);
-                                    // Clear search and close dropdown
-                                    setSewadarSearch("");
-                                    setShowSewadarDropdown(false);
-                                    setFocusedSewadarIndex(-1);
-                                    // Focus back on search input for next search
-                                    setTimeout(() => {
-                                      const searchInput = document.querySelector('input[placeholder*="Search sewadars"]') as HTMLInputElement;
-                                      if (searchInput) {
-                                        searchInput.focus();
-                                      }
-                                    }, 100);
-                                  } else {
-                                    // If already selected, remove from selection
-                                    toggleSewadarSelection(sewadar._id);
-                                  }
-                                }}
-                                onMouseEnter={() => setFocusedSewadarIndex(index)}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <p className="font-medium text-gray-900">
-                                      {sewadar.name} / {sewadar.fatherHusbandName}
+                            <div
+                              key={sewadar._id}
+                              id={`sewadar-option-${index}`}
+                              className={`p-3 cursor-pointer border-b border-gray-100 last:border-b-0 ${focusedSewadarIndex === index
+                                ? "bg-blue-50"
+                                : "hover:bg-gray-50"
+                                }`}
+                              onClick={() => {
+                                if (!selectedSewadars.includes(sewadar._id)) {
+                                  toggleSewadarSelection(sewadar._id);
+                                  // Clear search and close dropdown
+                                  setSewadarSearch("");
+                                  setShowSewadarDropdown(false);
+                                  setFocusedSewadarIndex(-1);
+                                  // Focus back on search input for next search
+                                  setTimeout(() => {
+                                    const searchInput = document.querySelector('input[placeholder*="Start typing to search sewadars"]') as HTMLInputElement;
+                                    if (searchInput) {
+                                      searchInput.focus();
+                                    }
+                                  }, 100);
+                                } else {
+                                  // If already selected, remove from selection
+                                  toggleSewadarSelection(sewadar._id);
+                                }
+                              }}
+                              onMouseEnter={() => setFocusedSewadarIndex(index)}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-medium text-gray-900">
+                                    {sewadar.name} / {sewadar.fatherHusbandName}
+                                  </p>
+                                  <p className="text-sm text-gray-600 font-mono">
+                                    {sewadar.badgeNumber}
+                                  </p>
+                                  <div className="flex items-center space-x-2">
+                                    <p className="text-sm text-gray-500">
+                                      {sewadar.department}
                                     </p>
-                                    <p className="text-sm text-gray-600 font-mono">
-                                      {sewadar.badgeNumber}
-                                    </p>
-                                    <div className="flex items-center space-x-2">
-                                      <p className="text-sm text-gray-500">
-                                        {sewadar.department}
-                                      </p>
-                                      {sewadar.age && (
-                                        <span className="text-sm text-gray-500">
-                                          | {sewadar.age}Y
-                                        </span>
-                                      )}
-                                    </div>
+                                    {sewadar.age && (
+                                      <span className="text-sm text-gray-500">
+                                        | {sewadar.age}Y
+                                      </span>
+                                    )}
                                   </div>
-                                  {selectedSewadars.includes(sewadar._id) && (
-                                    <Badge variant="secondary">Selected</Badge>
-                                  )}
                                 </div>
+                                {selectedSewadars.includes(sewadar._id) && (
+                                  <Badge variant="secondary">Selected</Badge>
+                                )}
                               </div>
-                            ))
-                          ) : (
-                            <div className="p-4 text-center text-gray-500">
-                              No sewadars found matching your search
                             </div>
-                          )
+                          ))
+                        ) : (
+                          <div className="p-4 text-center text-gray-500">
+                            No sewadars found matching your search
+                          </div>
+                        )
                         }
                         {/* Close dropdown button */}
                         <div className="border-t border-gray-200 p-2">
@@ -1155,9 +1162,19 @@ export default function AttendancePage() {
                   <div className="px-6 md:px-0 md:mr-6 mb-6 md:mb-0">
                     <Button
                       type="button"
-                      onClick={() =>
-                        setShowNominalRollForm(!showNominalRollForm)
-                      }
+                      onClick={() => {
+                        if (!showNominalRollForm) {
+                          // If form is closed, open it and trigger file picker
+                          setShowNominalRollForm(true);
+                          // Use setTimeout to ensure the form is rendered before triggering file picker
+                          setTimeout(() => {
+                            document.getElementById("nominal-roll-upload")?.click();
+                          }, 100);
+                        } else {
+                          // If form is open, just close it
+                          setShowNominalRollForm(false);
+                        }
+                      }}
                       variant={showNominalRollForm ? "secondary" : "default"}
                       className="w-full md:w-auto rssb-primary text-sm hover:bg-blue-700 active:bg-blue-800"
                       size="sm"
@@ -1266,7 +1283,7 @@ export default function AttendancePage() {
                         </h4>
                         <ul className="text-sm text-blue-800 space-y-1">
                           <li>
-                            • Upload clear, readable images of attendance sheets
+                            • Upload clear, readable images of nominal roll
                           </li>
                           <li>• Supported formats: JPG, PNG, JPEG</li>
                           <li>• Maximum file size: 5MB per image</li>
