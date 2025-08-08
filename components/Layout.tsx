@@ -33,7 +33,7 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile header */}
-      <div className="lg:hidden bg-white shadow-sm border-b px-4 py-3 flex items-center justify-between sticky top-0 z-50">
+      <div className="lg:hidden bg-white shadow-sm border-b py-3 flex items-center justify-between sticky top-0 z-50 mobile-header-safe">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
             <span className="text-white font-bold text-sm">R</span>
@@ -50,7 +50,7 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-white border-b shadow-sm sticky top-[73px] z-40">
+        <div className="lg:hidden bg-white border-b shadow-sm sticky z-40 mobile-menu-safe">
           <div className="px-4 py-2 space-y-1">
             {navigation.map((item) => (
               <Link

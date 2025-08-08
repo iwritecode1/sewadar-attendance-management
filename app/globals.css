@@ -92,6 +92,35 @@
   }
 }
 
+/* iOS Safe Area Support */
+.pt-safe-top {
+  padding-top: max(12px, env(safe-area-inset-top));
+}
+
+.pb-safe-bottom {
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+.pl-safe-left {
+  padding-left: max(16px, env(safe-area-inset-left));
+}
+
+.pr-safe-right {
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+
+/* Mobile header safe area fix */
+.mobile-header-safe {
+  padding-top: max(12px, env(safe-area-inset-top));
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+
+/* Mobile menu positioning with safe area */
+.mobile-menu-safe {
+  top: calc(73px + max(0px, env(safe-area-inset-top) - 12px));
+}
+
 /* Mobile-first responsive design */
 @media (max-width: 640px) {
   .mobile-padding {
