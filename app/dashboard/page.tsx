@@ -159,7 +159,7 @@ export default function Dashboard() {
           {/* First Row - Centers, Sewadars, Events */}
           <Card className="stat-card">
             <CardContent className="py-4 px-4">
-              <div className="grid grid-cols-3 gap-3"> 
+              <div className="grid grid-cols-3 gap-3">
                 <div className="text-center space-y-1">
                   <div className="flex items-center justify-center space-x-1">
                     <Users className="h-4 w-4 text-green-600" />

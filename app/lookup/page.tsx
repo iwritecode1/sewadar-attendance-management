@@ -89,7 +89,11 @@ export default function SewadarLookupPage() {
   const [attendanceFilterCount, setAttendanceFilterCount] = useState("")
   const [genderFilter, setGenderFilter] = useState("all")
   const [showExamples, setShowExamples] = useState(false)
-  
+
+  // No attendance filter states
+  const [noAttendanceFilter, setNoAttendanceFilter] = useState(false)
+  const [noAttendanceDays, setNoAttendanceDays] = useState("")
+
   // Mobile filter collapse state
   const [isFiltersCollapsed, setIsFiltersCollapsed] = useState(true)
 
@@ -212,8 +216,8 @@ export default function SewadarLookupPage() {
   const handleSearchAndFilter = async (searchValue?: string) => {
     const term = searchValue || searchTerm
 
-    // Need either search term or attendance filter
-    if (!term.trim() && !attendanceFilterCount) {
+    // Need either search term, attendance filter, or no attendance filter
+    if (!term.trim() && !attendanceFilterCount && !noAttendanceFilter) {
       return
     }
 
@@ -329,6 +333,20 @@ export default function SewadarLookupPage() {
           })
         }
 
+        // Apply no attendance filter if specified
+        if (noAttendanceFilter && noAttendanceDays) {
+          const targetDays = parseInt(noAttendanceDays)
+          const targetCenterId = attendanceFilterCenter !== "all" ? attendanceFilterCenter : undefined
+
+          results = results.filter(sewadar => {
+            if (controller.signal.aborted) {
+              return false
+            }
+
+            return hasNoAttendanceInLastDays(sewadar._id, targetDays, targetCenterId)
+          })
+        }
+
         setSearchResults(results)
         setHasSearched(true)
 
@@ -370,6 +388,8 @@ export default function SewadarLookupPage() {
     setGenderFilter("all")
     setAttendanceFilterOperator("less_than")
     setAttendanceFilterCount("")
+    setNoAttendanceFilter(false)
+    setNoAttendanceDays("")
     setHasSearched(false)
     searchInputRef.current?.focus()
   }
@@ -380,6 +400,42 @@ export default function SewadarLookupPage() {
     setShowSuggestions(false)
     setSelectedSuggestionIndex(-1)
     handleSearch(suggestion.value)
+  }
+
+  // Check if sewadar has no attendance in the last x days
+  const hasNoAttendanceInLastDays = (sewadarId: string, days: number, centerId?: string) => {
+    const cutoffDate = new Date()
+    cutoffDate.setDate(cutoffDate.getDate() - days)
+
+    const recentRecords = attendance.filter(record => {
+      // Check if this attendance record includes the sewadar
+      let hasSewadar = false
+
+      // Check sewadars (includes both regular and formerly temporary sewadars)
+      if (record.sewadars && Array.isArray(record.sewadars)) {
+        hasSewadar = record.sewadars.some(sewadar =>
+          typeof sewadar === 'string' ? sewadar === sewadarId : sewadar._id === sewadarId
+        )
+      }
+
+      if (!hasSewadar) return false
+
+      // If specific center is requested, filter by center code
+      if (centerId && centerId !== "all") {
+        if (record.centerId !== centerId) return false
+      }
+
+      // Check if the event ended after the cutoff date (meaning it's within the last x days)
+      if (record.eventId?.toDate) {
+        const eventEndDate = new Date(record.eventId.toDate)
+        return eventEndDate >= cutoffDate
+      }
+
+      return false
+    })
+
+    // Return true if no recent attendance found
+    return recentRecords.length === 0
   }
 
   // Calculate attendance count for a sewadar in a specific center or all centers
@@ -852,12 +908,12 @@ export default function SewadarLookupPage() {
                     <ChevronUp className="h-4 w-4" />
                   )}
                 </Button>
-                
+
                 {/* Mobile Search Button - only show when filters are collapsed */}
                 {isFiltersCollapsed && (
                   <Button
                     onClick={() => handleSearchAndFilter()}
-                    disabled={isSearching || (!searchTerm.trim() && !attendanceFilterCount)}
+                    disabled={isSearching || (!searchTerm.trim() && !attendanceFilterCount && !noAttendanceFilter)}
                     className="rssb-primary px-4"
                   >
                     {isSearching ? (
@@ -871,7 +927,7 @@ export default function SewadarLookupPage() {
             </div>
 
             {/* Filter Row */}
-            <div className={`grid grid-cols-1 gap-3 items-end ${user?.role === "admin" ? "md:grid-cols-5" : "md:grid-cols-4"} ${isFiltersCollapsed ? "hidden md:grid" : "grid"}`}>
+            <div className={`grid grid-cols-1 gap-3 items-end ${user?.role === "admin" ? "md:grid-cols-6" : "md:grid-cols-5"} ${isFiltersCollapsed ? "hidden md:grid" : "grid"}`}>
               {/* Center - Only show for admin users */}
               {user?.role === "admin" && (
                 <div>
@@ -950,11 +1006,37 @@ export default function SewadarLookupPage() {
                 />
               </div>
 
+              {/* No Attendance Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  No Attendance in Last
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="Days"
+                    value={noAttendanceDays}
+                    onChange={(e) => {
+                      setNoAttendanceDays(e.target.value)
+                      setNoAttendanceFilter(!!e.target.value)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault()
+                        handleSearchAndFilter()
+                      }
+                    }}
+                    className="flex-1"
+                  />
+                </div>
+              </div>
+
               {/* Find Button */}
               <div>
                 <Button
                   onClick={() => handleSearchAndFilter()}
-                  disabled={isSearching || (!searchTerm.trim() && !attendanceFilterCount)}
+                  disabled={isSearching || (!searchTerm.trim() && !attendanceFilterCount && !noAttendanceFilter)}
                   className="w-full rssb-primary"
                 >
                   {isSearching ? (
@@ -1001,8 +1083,11 @@ export default function SewadarLookupPage() {
                   <li>• <strong>Low Attendance:</strong> Find sewadars with less than 10 attendance days</li>
                   <li>• <strong>No Attendance:</strong> Find sewadars with exactly 0 attendances</li>
                   <li>• <strong>High Attendance:</strong> Find sewadars with more than 20 attendance days</li>
+                  <li>• <strong>Inactive Sewadars:</strong> Find sewadars with no attendance in last 30 days</li>
                   <li>• <strong>Gender Filter:</strong> Filter by Male or Female sewadars</li>
-                  <li>• <strong>Center Filter:</strong> Filter by specific center or all centers</li>
+                  {user?.role === "admin" && (
+                    <li>• <strong>Center Filter:</strong> Filter by specific center or all centers</li>
+                  )}
                 </ul>
 
                 <div className="mt-4 p-3 bg-blue-100 rounded-md">
@@ -1124,9 +1209,11 @@ export default function SewadarLookupPage() {
 
                       {/* Center and attendance badges */}
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                          {sewadar.center}
-                        </span>
+                        {user?.role === "admin" && (
+                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                            {sewadar.center}
+                          </span>
+                        )}
                         <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
                           {getSewadarAttendanceCount(sewadar._id)} days
                         </span>
@@ -1150,7 +1237,9 @@ export default function SewadarLookupPage() {
                       <TableHead className="w-[20%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Name</TableHead>
                       <TableHead className="w-[15%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Father/Husband</TableHead>
                       <TableHead className="w-[10%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Gender</TableHead>
-                      <TableHead className="w-[15%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Center</TableHead>
+                      {user?.role === "admin" && (
+                        <TableHead className="w-[15%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Center</TableHead>
+                      )}
                       <TableHead className="w-[10%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Attendance</TableHead>
                       <TableHead className="w-[10%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Status</TableHead>
                       <TableHead className="w-[10%] py-3 px-4 font-semibold text-center bg-gray-50 border-b">Action</TableHead>
@@ -1170,7 +1259,9 @@ export default function SewadarLookupPage() {
                             {sewadar.gender}
                           </Badge>
                         </TableCell>
-                        <TableCell className="py-3 px-4 text-left border-b border-gray-100">{sewadar.center}</TableCell>
+                        {user?.role === "admin" && (
+                          <TableCell className="py-3 px-4 text-left border-b border-gray-100">{sewadar.center}</TableCell>
+                        )}
                         <TableCell className="text-left py-3 px-4 border-b border-gray-100">
                           <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             {getSewadarAttendanceCount(sewadar._id)} days

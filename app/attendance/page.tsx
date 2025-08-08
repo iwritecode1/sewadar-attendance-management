@@ -41,6 +41,8 @@ import {
   FileImage,
   Building2,
   RefreshCw,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 const validateImageFile = (file: File): boolean => {
@@ -116,6 +118,7 @@ export default function AttendancePage() {
     addPlace,
     addDepartment,
     fetchEvents,
+    fetchAttendance,
     loading,
     getExistingAttendanceForEvent,
     getExistingAttendanceForEventByUser,
@@ -197,6 +200,14 @@ export default function AttendancePage() {
     message: "",
   });
 
+  // Usage instructions state
+  const [showSewaInstructions, setShowSewaInstructions] = useState(false);
+  const [showSewadarInstructions, setShowSewadarInstructions] = useState(false);
+  const [showTempSewadarInstructions, setShowTempSewadarInstructions] = useState(false);
+  const [showCreateEventInstructions, setShowCreateEventInstructions] = useState(false);
+  const [showNominalRollInstructions, setShowNominalRollInstructions] = useState(false);
+  const [showCenterInstructions, setShowCenterInstructions] = useState(false);
+
   // Get current center ID - DRY helper function (still needed for sewadar fetching)
   const getCurrentCenterId = () => selectedCenter || user?.centerId || "";
 
@@ -236,6 +247,7 @@ export default function AttendancePage() {
   const filteredSewadars = availableSewadars.filter(
     (sewadar) =>
       sewadar.name.toLowerCase().includes(sewadarSearch.toLowerCase()) ||
+      sewadar.fatherHusbandName.toLowerCase().includes(sewadarSearch.toLowerCase()) ||
       sewadar.badgeNumber.toLowerCase().includes(sewadarSearch.toLowerCase()) ||
       sewadar.department.toLowerCase().includes(sewadarSearch.toLowerCase())
   );
@@ -455,7 +467,10 @@ export default function AttendancePage() {
         setShowTempSewadarForm(false);
 
         // Refresh data in background
-        await fetchEvents();
+        await Promise.all([
+          fetchEvents(),
+          fetchAttendance()
+        ]);
       } else {
         // Show error overlay with specific error message
         setStatusOverlay({
@@ -624,6 +639,44 @@ export default function AttendancePage() {
                     </div>
                   </div>
                 )}
+
+                {/* Show Usage Instructions Button */}
+                <div className="mt-4">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowCenterInstructions(!showCenterInstructions)}
+                    className="text-xs text-gray-500 hover:text-gray-700 p-0 h-auto font-medium"
+                  >
+                    <span className="mr-1">Show Usage Instructions</span>
+                    {showCenterInstructions ? (
+                      <ChevronUp className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    )}
+                  </Button>
+                </div>
+
+                {/* Usage Instructions - Expandable */}
+                {showCenterInstructions && (
+                  <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-medium text-blue-900 mb-3 text-sm">Center Selection Instructions:</h4>
+                    <ul className="text-xs text-blue-800 space-y-2">
+                      <li>• <strong>Area Coordinator Access:</strong> As an Area Coordinator, you can manage attendance for all centers in your area</li>
+                      <li>• <strong>Select Center:</strong> Choose a center from the dropdown to view available sewadars for that center</li>
+                      <li>• <strong>View Sewadars:</strong> After selecting a center, you can see the number of available sewadars</li>
+                      <li>• <strong>Create Events:</strong> You can then create or select events and add attendance for the specific center</li>
+                      <li>• <strong>Required Fields:</strong> All mandatory fields must be completed before submitting attendance</li>
+                    </ul>
+
+                    <div className="mt-4 p-3 bg-blue-100 rounded-md">
+                      <p className="text-xs text-blue-900">
+                        <strong>💡 Pro Tip:</strong> Select the center first to unlock all other attendance management features for that specific center.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -652,6 +705,7 @@ export default function AttendancePage() {
                       onValueChange={setSelectedEvent}
                       placeholder="Choose an event"
                       hasAttendance={hasAttendanceForEvent}
+                      loading={loading.events}
                     />
                   </div>
 
@@ -753,6 +807,80 @@ export default function AttendancePage() {
                         {loading.events ? "Creating..." : "Create Event"}
                       </Button>
                     </form>
+
+                    {/* Show Usage Instructions Button */}
+                    <div className="mt-4">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowCreateEventInstructions(!showCreateEventInstructions)}
+                        className="text-xs text-gray-500 hover:text-gray-700 p-0 h-auto font-medium"
+                      >
+                        <span className="mr-1">Show Usage Instructions</span>
+                        {showCreateEventInstructions ? (
+                          <ChevronUp className="h-3 w-3" />
+                        ) : (
+                          <ChevronDown className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Usage Instructions - Expandable */}
+                    {showCreateEventInstructions && (
+                      <div className="mt-3 p-4 bg-blue-100 border border-blue-300 rounded-lg">
+                        <h4 className="font-medium text-blue-900 mb-3 text-sm">Create New Event Instructions:</h4>
+                        <ul className="text-xs text-blue-800 space-y-2">
+                          <li>• <strong>Search Place:</strong> Type in the place field to search for existing places</li>
+                          <li>• <strong>Add New Place:</strong> If place is not present, type the new place name and click "+Add" option</li>
+                          <li>• <strong>Search Department:</strong> Type in the department field to search for existing departments</li>
+                          <li>• <strong>Add New Department:</strong> If department is not present, type the new department name and click "+Add" option</li>
+                          <li>• <strong>Set Dates:</strong> Choose appropriate from date and to date for the sewa event</li>
+                        </ul>
+
+                        <div className="mt-4 p-3 bg-blue-200 rounded-md">
+                          <p className="text-xs text-blue-900">
+                            <strong>💡 Pro Tip:</strong> When adding new places or departments, make sure to use proper naming conventions like "BEAS" or "RIVER" for consistency.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Show Usage Instructions Button */}
+                <div className="mt-4">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowSewaInstructions(!showSewaInstructions)}
+                    className="text-xs text-gray-500 hover:text-gray-700 p-0 h-auto font-medium"
+                  >
+                    <span className="mr-1">Show Usage Instructions</span>
+                    {showSewaInstructions ? (
+                      <ChevronUp className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    )}
+                  </Button>
+                </div>
+
+                {/* Usage Instructions - Expandable */}
+                {showSewaInstructions && (
+                  <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-medium text-blue-900 mb-3 text-sm">Sewa Instructions:</h4>
+                    <ul className="text-xs text-blue-800 space-y-2">
+                      <li>• <strong>Search Events:</strong> Type in the dropdown to search for existing sewa events by place, department, or dates</li>
+                      <li>• <strong>Create New Event:</strong> If you don't see the required event with the same dates, click on "Create new event" option shown at the end of the dropdown</li>
+                      <li>• <strong>Event Details:</strong> When creating a new event, provide place, department, from date, and to date</li>
+                    </ul>
+
+                    <div className="mt-4 p-3 bg-blue-100 rounded-md">
+                      <p className="text-xs text-blue-900">
+                        <strong>💡 Pro Tip:</strong> Use specific search terms like "Beas Langar" or "Sikanderpur Hospital" to quickly find relevant events.
+                      </p>
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -982,6 +1110,43 @@ export default function AttendancePage() {
                       <p>No sewadars found for the selected center</p>
                     </div>
                   )}
+
+                  {/* Show Usage Instructions Button */}
+                  <div className="mt-4">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowSewadarInstructions(!showSewadarInstructions)}
+                      className="text-xs text-gray-500 hover:text-gray-700 p-0 h-auto font-medium"
+                    >
+                      <span className="mr-1">Show Usage Instructions</span>
+                      {showSewadarInstructions ? (
+                        <ChevronUp className="h-3 w-3" />
+                      ) : (
+                        <ChevronDown className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Usage Instructions - Expandable */}
+                  {showSewadarInstructions && (
+                    <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <h4 className="font-medium text-blue-900 mb-3 text-sm">Select Sewadars Instructions:</h4>
+                      <ul className="text-xs text-blue-800 space-y-2">
+                        <li>• <strong>Search Sewadars:</strong> Type in the search box to find sewadars by name, father name, badge number or department</li>
+                        <li>• <strong>Badge Types:</strong> All open, permanent, and temporary sewadars can be searched in the list</li>
+                        <li>• <strong>Multiple Selection:</strong> Click on sewadars to select multiple ones for attendance</li>
+                        <li>• <strong>Remove Selection:</strong> Click the X button next to selected sewadars to remove them</li>
+                      </ul>
+
+                      <div className="mt-4 p-3 bg-blue-100 rounded-md">
+                        <p className="text-xs text-blue-900">
+                          <strong>💡 Pro Tip:</strong> Use partial names like "Raj" to find all sewadars with names containing "Raj", or search by badge numbers like "GA0001".
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -991,7 +1156,7 @@ export default function AttendancePage() {
                   <CardHeader className="pb-2 md:pb-6">
                     <CardTitle className="flex items-center text-base md:text-lg">
                       <UserPlus className="mr-2 h-4 w-4 md:h-5 md:w-5" />
-                      Temporary Sewadars
+                      New Temporary Sewadars
                     </CardTitle>
                     <CardDescription className="text-sm">
                       Add new temporary sewadars in the system
@@ -1017,7 +1182,7 @@ export default function AttendancePage() {
                         <>
                           <Plus className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                           <span className="hidden md:inline">Add Temporary Sewadars</span>
-                          <span className="md:hidden">Add Temporary</span>
+                          <span className="md:hidden">Add Sewadars</span>
                         </>
                       )}
                       {tempSewadars.filter((ts) => ts.name).length > 0 && (
@@ -1143,6 +1308,43 @@ export default function AttendancePage() {
                       <Plus className="mr-2 h-4 w-4" />
                       Add Another Temporary Sewadar
                     </Button>
+
+                    {/* Show Usage Instructions Button */}
+                    <div className="mt-4">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowTempSewadarInstructions(!showTempSewadarInstructions)}
+                        className="text-xs text-gray-500 hover:text-gray-700 p-0 h-auto font-medium"
+                      >
+                        <span className="mr-1">Show Usage Instructions</span>
+                        {showTempSewadarInstructions ? (
+                          <ChevronUp className="h-3 w-3" />
+                        ) : (
+                          <ChevronDown className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Usage Instructions - Expandable */}
+                    {showTempSewadarInstructions && (
+                      <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <h4 className="font-medium text-blue-900 mb-3 text-sm">New Temporary Sewadars Instructions:</h4>
+                        <ul className="text-xs text-blue-800 space-y-2">
+                          <li>• <strong>Add New Sewadars:</strong> Fill in name, father name, age, gender, and phone (optional) to add new temporary sewadars</li>
+                          <li>• <strong>Auto Badge Generation:</strong> System automatically generates new temporary badge numbers based on center and gender</li>
+                          <li>• <strong>Multiple Additions:</strong> Click "Add Another Temporary Sewadar" to add multiple sewadars at once</li>
+                          <li>• <strong>Future Searches:</strong> Newly added temporary sewadars can be searched in the sewadar list from next time</li>
+                        </ul>
+
+                        <div className="mt-4 p-3 bg-blue-100 rounded-md">
+                          <p className="text-xs text-blue-900">
+                            <strong>💡 Pro Tip:</strong> Fill in all required fields (name, father name, age, gender) to see the auto-generated badge number preview.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 )}
               </Card>
@@ -1277,19 +1479,44 @@ export default function AttendancePage() {
                         </div>
                       )}
 
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <h4 className="font-medium text-blue-900 mb-2">
-                          Image Upload Guidelines:
-                        </h4>
-                        <ul className="text-sm text-blue-800 space-y-1">
-                          <li>
-                            • Upload clear, readable images of nominal roll
-                          </li>
-                          <li>• Supported formats: JPG, PNG, JPEG</li>
-                          <li>• Maximum file size: 5MB per image</li>
-                          <li>• Images are optional but recommended for record keeping</li>
-                        </ul>
+                      {/* Show Usage Instructions Button */}
+                      <div className="mt-4">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowNominalRollInstructions(!showNominalRollInstructions)}
+                          className="text-xs text-gray-500 hover:text-gray-700 p-0 h-auto font-medium"
+                        >
+                          <span className="mr-1">Show Usage Instructions</span>
+                          {showNominalRollInstructions ? (
+                            <ChevronUp className="h-3 w-3" />
+                          ) : (
+                            <ChevronDown className="h-3 w-3" />
+                          )}
+                        </Button>
                       </div>
+
+                      {/* Usage Instructions - Expandable */}
+                      {showNominalRollInstructions && (
+                        <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                          <h4 className="font-medium text-blue-900 mb-3 text-sm">Nominal Roll Images Instructions:</h4>
+                          <ul className="text-xs text-blue-800 space-y-2">
+                            <li>• <strong>Upload Images:</strong> Click "Take Photo" to capture nominal roll photos or select from library</li>
+                            <li>• <strong>Image Quality:</strong> Upload clear, readable images of nominal roll for better record keeping</li>
+                            <li>• <strong>File Formats:</strong> Supported formats are JPG, PNG, and JPEG</li>
+                            <li>• <strong>File Size:</strong> Maximum file size is 5MB per image</li>
+                            <li>• <strong>Optional:</strong> Images are optional but recommended for attendance verification</li>
+                            <li>• <strong>Remove Images:</strong> Click the X button on any image to remove it from selection</li>
+                          </ul>
+
+                          <div className="mt-4 p-3 bg-blue-100 rounded-md">
+                            <p className="text-xs text-blue-900">
+                              <strong>💡 Pro Tip:</strong> Take clear photos of the nominal rolls showing sewadar details for better attendance documentation.
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 )}
@@ -1337,32 +1564,7 @@ export default function AttendancePage() {
             </form>
           )}
 
-        {/* Instructions for Area Coordinators */}
-        {user?.role === "admin" && !selectedCenter && (
-          <Card className="enhanced-card bg-blue-50 border-blue-200">
-            <CardHeader>
-              <CardTitle className="text-blue-900 text-base md:text-lg">Getting Started</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm text-blue-800">
-              <p>
-                • As an Area Coordinator, you can manage attendance for all
-                centers in your area
-              </p>
-              <p>
-                • First, select a center from the dropdown above to view
-                available sewadars
-              </p>
-              <p>
-                • You can then create or select events and add attendance for
-                that specific center
-              </p>
-              <p>
-                • All mandatory fields must be completed before submitting
-                attendance
-              </p>
-            </CardContent>
-          </Card>
-        )}
+
       </div>
 
       {/* Status Overlay */}

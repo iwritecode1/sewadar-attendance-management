@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
-import { ChevronDown, Plus, Search, X, Check } from "lucide-react"
+import { ChevronDown, Plus, Search, X, Check, RefreshCw } from "lucide-react"
 import { formatDate, formatDateRange } from "@/lib/date-utils"
 
 interface SewaEvent {
@@ -21,6 +21,7 @@ interface SearchableEventSelectProps {
   onValueChange: (value: string) => void
   placeholder?: string
   hasAttendance?: (eventId: string) => boolean
+  loading?: boolean
 }
 
 export default function SearchableEventSelect({
@@ -28,7 +29,8 @@ export default function SearchableEventSelect({
   value,
   onValueChange,
   placeholder = "Choose an event",
-  hasAttendance
+  hasAttendance,
+  loading = false
 }: SearchableEventSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
@@ -168,9 +170,18 @@ export default function SearchableEventSelect({
         variant="outline"
         className="w-full justify-between text-left font-normal min-h-[2.5rem] h-auto py-2"
         onClick={() => setIsOpen(!isOpen)}
+        disabled={loading}
       >
         <div className="flex items-start flex-1 min-w-0">
-          {selectedEvent ? (
+          {loading ? (
+            <div className="flex items-center">
+              <div className="w-6"></div>
+              <span className="flex items-center">
+                <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                Loading events...
+              </span>
+            </div>
+          ) : selectedEvent ? (
             renderEventWithCheckmark(selectedEvent, true)
           ) : (
             <div className="flex items-center">
@@ -257,35 +268,51 @@ export default function SearchableEventSelect({
             {/* Event Options - Scrollable */}
             <div id="event-dropdown" className="max-h-64 overflow-y-auto">
               <div className="space-y-1">
-                {displayEvents.map((event, index) => (
-                  <button
-                    key={event._id}
-                    id={`event-option-${index}`}
-                    type="button"
-                    className={`w-full text-left px-3 py-3 text-sm rounded-md transition-colors ${
-                      focusedEventIndex === index 
-                        ? "bg-blue-50" 
-                        : "hover:bg-gray-50"
-                    }`}
-                    onClick={() => handleSelect(event._id)}
-                    onMouseEnter={() => setFocusedEventIndex(index)}
-                  >
-                    {renderEventWithCheckmark(event, true)}
-                  </button>
-                ))}
-
-                {/* Show total count if there are many events */}
-                {filteredEvents.length > 6 && !searchTerm && (
-                  <div className="px-3 py-2 text-xs text-gray-500 border-t">
-                    {filteredEvents.length} events available. Use search to find specific events quickly.
+                {loading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                    <span className="text-sm text-gray-600">Loading events...</span>
                   </div>
-                )}
+                ) : displayEvents.length > 0 ? (
+                  displayEvents.map((event, index) => (
+                    <button
+                      key={event._id}
+                      id={`event-option-${index}`}
+                      type="button"
+                      className={`w-full text-left px-3 py-3 text-sm rounded-md transition-colors ${
+                        focusedEventIndex === index 
+                          ? "bg-blue-50" 
+                          : "hover:bg-gray-50"
+                      }`}
+                      onClick={() => handleSelect(event._id)}
+                      onMouseEnter={() => setFocusedEventIndex(index)}
+                    >
+                      {renderEventWithCheckmark(event, true)}
+                    </button>
+                  ))
+                ) : (
+                  <>
+                    {/* Show total count if there are many events */}
+                    {filteredEvents.length > 6 && !searchTerm && (
+                      <div className="px-3 py-2 text-xs text-gray-500 border-t">
+                        {filteredEvents.length} events available. Use search to find specific events quickly.
+                      </div>
+                    )}
 
-                {/* No results message */}
-                {searchTerm && filteredEvents.length === 0 && (
-                  <div className="px-3 py-2 text-sm text-gray-500 text-center">
-                    No events found matching "{searchTerm}"
-                  </div>
+                    {/* No results message */}
+                    {searchTerm && filteredEvents.length === 0 && (
+                      <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                        No events found matching "{searchTerm}"
+                      </div>
+                    )}
+
+                    {/* No events available */}
+                    {!searchTerm && events.length === 0 && (
+                      <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                        No events available
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Create New Event Option */}
