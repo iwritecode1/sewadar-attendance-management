@@ -264,11 +264,8 @@ export default function SewadarAttendanceModal({ isOpen, onClose, sewadar }: Sew
                       <div className="flex justify-between items-start mb-2">
                         <h4 className="text-sm">{record.eventId?.place || 'N/A'}</h4>
                         <Badge variant="outline" className="text-xs">
-                          {record.eventId?.fromDate ? formatDate(record.eventId.fromDate) : 'Invalid Date'}
+                          {record.eventId?.department}
                         </Badge>
-                      </div>
-                      <div className="text-xs text-gray-600 mb-1">
-                        <span className="font-medium">{record.eventId?.department || 'N/A'}</span>
                       </div>
                       <div className="text-xs text-gray-500">
                         {record.eventId?.fromDate ? formatDate(record.eventId.fromDate) : 'Invalid Date'} -{" "}
