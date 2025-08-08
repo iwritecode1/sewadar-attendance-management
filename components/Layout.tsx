@@ -33,7 +33,7 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile header */}
-      <div className="lg:hidden bg-white shadow-sm border-b py-3 flex items-center justify-between sticky top-0 z-50 mobile-header-safe">
+      <div className="lg:hidden bg-white shadow-sm border-b px-4 py-3 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
             <span className="text-white font-bold text-sm">R</span>
@@ -50,29 +50,41 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-white border-b shadow-sm sticky z-40 mobile-menu-safe">
-          <div className="px-4 py-2 space-y-1">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex items-center px-3 py-3 rounded-lg text-sm font-medium transition-colors ${pathname === item.href
-                  ? "bg-blue-50 text-blue-600 border-l-4 border-blue-600"
-                  : "text-gray-600 hover:bg-gray-50"
-                  }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <item.icon className="mr-3 h-5 w-5" />
-                {item.name}
-              </Link>
-            ))}
-            <button
-              onClick={logout}
-              className="flex items-center w-full px-3 py-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50"
-            >
-              <LogOut className="mr-3 h-5 w-5" />
-              Logout
-            </button>
+        <div className="lg:hidden fixed top-16 left-4 right-4 bg-white rounded-xl shadow-2xl z-50 max-h-[calc(100vh-6rem)] overflow-hidden">
+          <div className="flex flex-col h-full">
+            {/* Menu items */}
+            <div className="flex-1 overflow-y-auto px-6 py-6">
+              <div className="space-y-2">
+                {navigation.map((item) => (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`flex items-center px-4 py-4 rounded-xl text-base font-medium transition-all duration-200 ${pathname === item.href
+                      ? "bg-blue-50 text-blue-600 shadow-sm border-l-4 border-blue-600"
+                      : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                      }`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <item.icon className={`mr-4 h-6 w-6 ${pathname === item.href ? "text-blue-600" : "text-gray-400"}`} />
+                    {item.name}
+                  </Link>
+                ))}
+
+                {/* Logout button */}
+                <button
+                  onClick={logout}
+                  className="flex items-center w-full px-4 py-4 rounded-xl text-base font-medium text-red-600 hover:bg-red-50 transition-all duration-200 mt-4"
+                >
+                  <LogOut className="mr-4 h-6 w-6" />
+                  Logout
+                </button>
+              </div>
+            </div>
+
+            {/* Assistance info for mobile */}
+            <div className="flex-shrink-0 border-t border-gray-100 px-6 py-4 bg-gradient-to-r from-blue-50 to-gray-50">
+              <p className="text-sm text-gray-600 text-center font-medium">Need assistance? Call 9467796669</p>
+            </div>
           </div>
         </div>
       )}
@@ -155,6 +167,11 @@ export default function Layout({ children }: LayoutProps) {
                     </Button>
                   </div>
                 </div>
+              </div>
+
+              {/* Assistance info - Stick to bottom */}
+              <div className="flex-shrink-0 border-t border-gray-200 p-4 bg-gray-100">
+                <p className="text-xs text-gray-600 text-center">Need assistance? Call 9467796669</p>
               </div>
             </div>
           </div>
