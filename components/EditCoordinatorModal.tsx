@@ -107,18 +107,28 @@ export default function EditCoordinatorModal({ coordinatorId, isOpen, onClose, o
       return
     }
 
+    // If password is provided, validate it
+    if (formData.password.trim() && formData.password.trim().length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters long",
+        variant: "destructive",
+      })
+      return
+    }
+
     setSaving(true)
     try {
-      const updateData = {
+      const updateData: any = {
         name: formData.name.trim(),
         username: formData.username.trim(),
         centerId: formData.centerId,
         isActive: formData.isActive,
       }
 
-      // Only include password if it's provided
+      // Only include password if it's provided and not empty
       if (formData.password.trim()) {
-        updateData.password = formData.password
+        updateData.password = formData.password.trim()
       }
 
       const response = await apiClient.updateCoordinator(coordinatorId, updateData)

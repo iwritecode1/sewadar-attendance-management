@@ -25,7 +25,7 @@ export default function Layout({ children }: LayoutProps) {
       const originalOverflow = document.body.style.overflow
       document.body.style.overflow = 'hidden'
       document.documentElement.style.overflow = 'hidden'
-      
+
       return () => {
         document.body.style.overflow = originalOverflow
         document.documentElement.style.overflow = ''
@@ -87,7 +87,7 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div 
+        <div
           ref={menuRef}
           className="lg:hidden fixed top-16 right-4 w-[75%] max-w-sm bg-white rounded-xl shadow-2xl z-50 max-h-[calc(100vh-6rem)] overflow-hidden"
         >
