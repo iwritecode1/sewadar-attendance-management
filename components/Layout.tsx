@@ -137,9 +137,9 @@ export default function Layout({ children }: LayoutProps) {
               {/* Logo and branding */}
               <div className="flex items-center flex-shrink-0 px-6 mb-8">
                 <div className="flex items-center gap-2">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded flex items-center justify-center shadow-lg overflow-hidden">
+                  <div className="w-20 bg-gradient-to-br from-blue-600 to-blue-700 rounded flex items-center justify-center shadow-lg overflow-hidden">
                     {/* <span className="text-white font-bold text-xl">R</span> */}
-                    <img src="/icon-192x192.png" alt="Logo" className="w-12 h-12" />
+                    <img src="/icon-192x192.png" alt="Logo" className="w-20" />
                   </div>
                   <div>
                     <h1 className="text-gray-900">Sewadar Attendance Management</h1>
