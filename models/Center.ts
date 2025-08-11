@@ -16,7 +16,11 @@ const CenterSchema: Schema = new Schema({
   createdAt: { type: Date, default: Date.now },
 })
 
+// Create indexes for common queries
+CenterSchema.index({ areaCode: 1 })
+CenterSchema.index({ name: 1 })
 // Compound index for area and name to ensure unique center names within an area
 CenterSchema.index({ area: 1, name: 1 }, { unique: true })
+CenterSchema.index({ areaCode: 1, name: 1 }) // For area-based center lookups with sorting
 
 export default mongoose.models.Center || mongoose.model<ICenter>("Center", CenterSchema)

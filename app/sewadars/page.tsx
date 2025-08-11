@@ -20,6 +20,7 @@ import SewadarDetailModal from "@/components/SewadarDetailModal"
 import EditSewadarModal from "@/components/EditSewadarModal"
 import StatusOverlay from "@/components/StatusOverlay"
 import LoadingOverlay from "@/components/LoadingOverlay"
+import ImportProgressModal from "@/components/ImportProgressModal"
 import { DEPARTMENTS } from "@/lib/constants"
 import { generateBadgePattern, getNextBadgeNumber } from "@/lib/badgeUtils"
 import { toTitleCase } from "@/lib/text-utils"
@@ -36,6 +37,15 @@ export default function SewadarsPage() {
   const [selectedBadgeStatus, setSelectedBadgeStatus] = useState("all")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showImportForm, setShowImportForm] = useState(false)
+  const [importProgress, setImportProgress] = useState<{
+    isOpen: boolean
+    jobId: string | null
+    totalRecords: number
+  }>({
+    isOpen: false,
+    jobId: null,
+    totalRecords: 0
+  })
 
   const [currentPage, setCurrentPage] = useState(1)
   const [viewingSewadar, setViewingSewadar] = useState<string | null>(null)
@@ -90,15 +100,39 @@ export default function SewadarsPage() {
       return
     }
 
-    const success = await importSewadars(file)
+    const result = await importSewadars(file)
 
-    if (success) {
+    if (result && typeof result === 'object' && 'jobId' in result) {
+      // New optimized import with progress tracking
       setShowImportForm(false)
+      setImportProgress({
+        isOpen: true,
+        jobId: result.jobId,
+        totalRecords: result.total
+      })
+
       // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = ""
       }
+    } else if (result === true) {
+      // Old import format - success
+      setShowImportForm(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
     }
+    // If result is false, error handling is done in DataContext
+  }
+
+  const handleImportProgressClose = () => {
+    setImportProgress({
+      isOpen: false,
+      jobId: null,
+      totalRecords: 0
+    })
+    // Refresh data after import completion
+    refreshData()
   }
 
   const downloadSampleExcel = () => {
@@ -555,7 +589,11 @@ export default function SewadarsPage() {
                   <li>• Existing records will be updated if Badge_Number matches</li>
                   <li>• Required columns: Badge_Number, Sewadar_Name, Centre</li>
                   <li>• Optional columns: Age, DOB, Gender, Department, etc.</li>
+                  <li>• Badge Status: PERMANENT/OPEN remain as-is, all others become TEMPORARY</li>
                   <li>• Download sample file for correct format</li>
+                  <li>• Large imports (2500+ records) are processed in background</li>
+                  <li>• Progress tracking available for large imports</li>
+                  <li>• Maximum file size: 50MB</li>
                 </ul>
               </div>
             </CardContent>
@@ -1317,6 +1355,13 @@ export default function SewadarsPage() {
           }}
         />
       </div>
+
+      {/* Import Progress Modal */}
+      <ImportProgressModal
+        isOpen={importProgress.isOpen}
+        onClose={handleImportProgressClose}
+        jobId={importProgress.jobId}
+      />
     </Layout>
   )
 }

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Home, Users, Calendar, Search, Settings, LogOut, Menu, X, Building2, UserCircle } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 
 interface LayoutProps {
   children: React.ReactNode
@@ -16,18 +16,36 @@ export default function Layout({ children }: LayoutProps) {
   const { user, logout } = useAuth()
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   // Prevent body scroll when mobile menu is open
   useEffect(() => {
     if (mobileMenuOpen) {
+      // Store original overflow value
+      const originalOverflow = document.body.style.overflow
       document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = 'unset'
+      document.documentElement.style.overflow = 'hidden'
+      
+      return () => {
+        document.body.style.overflow = originalOverflow
+        document.documentElement.style.overflow = ''
+      }
+    }
+  }, [mobileMenuOpen])
+
+  // Handle outside click to close menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (mobileMenuOpen && menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMobileMenuOpen(false)
+      }
     }
 
-    // Cleanup function to reset overflow when component unmounts
-    return () => {
-      document.body.style.overflow = 'unset'
+    if (mobileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
     }
   }, [mobileMenuOpen])
 
@@ -62,9 +80,17 @@ export default function Layout({ children }: LayoutProps) {
         </Button>
       </div>
 
+      {/* Mobile menu backdrop */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-40" />
+      )}
+
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden fixed top-16 right-4 w-[75%] max-w-sm bg-white rounded-xl shadow-2xl z-50 max-h-[calc(100vh-6rem)] overflow-hidden">
+        <div 
+          ref={menuRef}
+          className="lg:hidden fixed top-16 right-4 w-[75%] max-w-sm bg-white rounded-xl shadow-2xl z-50 max-h-[calc(100vh-6rem)] overflow-hidden"
+        >
           <div className="flex flex-col h-full">
             {/* Menu items */}
             <div className="flex-1 overflow-y-auto px-4 py-4">

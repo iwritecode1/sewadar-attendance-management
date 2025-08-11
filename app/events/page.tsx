@@ -196,8 +196,7 @@ export default function EventsPage() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="w-full">
-                  <MoreHorizontal className="mr-2 h-4 w-4" />
-                  More Actions
+                  Actions
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">

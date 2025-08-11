@@ -73,7 +73,14 @@ export async function GET(request: NextRequest) {
               },
             },
           },
-          eventCount: { $size: { $ifNull: ["$attendance", []] } },
+          eventCount: {
+            $size: {
+              $setUnion: [
+                { $ifNull: [{ $map: { input: "$attendance", in: "$$this.eventId" } }, []] },
+                []
+              ]
+            }
+          },
         },
       },
       { $sort: { attendanceCount: -1 } },

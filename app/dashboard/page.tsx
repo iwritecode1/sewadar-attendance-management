@@ -3,7 +3,7 @@
 import { useAuth } from "@/contexts/AuthContext"
 import Layout from "@/components/Layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, Calendar, Building, TrendingUp, BarChart3, PieChart, Activity, RefreshCw, Eye } from "lucide-react"
+import { Users, Calendar, Building, TrendingUp, BarChart3, PieChart, Activity, RefreshCw, Eye, ChevronDown, ChevronUp } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -65,6 +65,7 @@ export default function Dashboard() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [selectedEventName, setSelectedEventName] = useState<string>("")
   const [isEventModalOpen, setIsEventModalOpen] = useState(false)
+  const [showAllCenters, setShowAllCenters] = useState(false)
 
   useEffect(() => {
     if (user && user.role !== "admin") {
@@ -137,9 +138,9 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="space-y-4 md:space-y-8 px-0 md:px-0">
+      <div className="space-y-4 md:space-y-8 -mx-4 sm:-mx-6 lg:-mx-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 md:px-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 lg:px-8">
           <div>
             <h1 className="text-xl md:text-2xl text-gray-900">Dashboard</h1>
             <p className="text-gray-600 mt-1 text-sm md:text-base">Overview & Analytics</p>
@@ -155,7 +156,7 @@ export default function Dashboard() {
 
         {/* Stats Cards */}
         {/* Mobile - Combined Stats Cards */}
-        <div className="block lg:hidden space-y-4 px-4 md:px-0">
+        <div className="block lg:hidden space-y-4 px-4 sm:px-6 lg:px-8">
           {/* First Row - Centers, Sewadars, Events */}
           <Card className="stat-card">
             <CardContent className="py-4 px-4">
@@ -269,7 +270,7 @@ export default function Dashboard() {
         </div>
 
         {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 px-4 md:px-0">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 px-4 sm:px-6 lg:px-8">
           {/* Center Performance Chart */}
           <Card className="chart-container">
             <CardHeader>
@@ -285,7 +286,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3 md:space-y-4">
-                {centerStats.map((center) => (
+                {(showAllCenters ? centerStats : centerStats.slice(0, 10)).map((center) => (
                   <div key={center._id} className="flex items-center justify-between p-3 md:p-4 bg-gray-50 rounded-lg">
                     <div className="min-w-0 flex-1">
                       <h3 className="font-medium text-gray-900 text-sm md:text-base truncate">{center.name}</h3>
@@ -299,6 +300,30 @@ export default function Dashboard() {
                     </div>
                   </div>
                 ))}
+                
+                {/* Show More/Less Button */}
+                {centerStats.length > 10 && (
+                  <div className="pt-2 text-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowAllCenters(!showAllCenters)}
+                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    >
+                      {showAllCenters ? (
+                        <>
+                          <ChevronUp className="mr-1 h-4 w-4" />
+                          Show Less
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="mr-1 h-4 w-4" />
+                          Show More ({centerStats.length - 10})
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -343,7 +368,7 @@ export default function Dashboard() {
         </div>
 
         {/* Gender Distribution */}
-        <Card className="enhanced-card mx-4 md:mx-0">
+        <Card className="enhanced-card mx-4 sm:mx-6 lg:mx-8">
           <CardHeader>
             <CardTitle className="text-base md:text-lg">Gender Distribution</CardTitle>
             <CardDescription className="text-sm">Breakdown of sewadars by gender</CardDescription>
@@ -367,7 +392,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Recent Events */}
-        <Card className="enhanced-card mx-4 md:mx-0">
+        <Card className="enhanced-card mx-4 sm:mx-6 lg:mx-8">
           <CardHeader>
             <CardTitle className="text-base md:text-lg">Recent Events</CardTitle>
             <CardDescription className="text-sm">Latest sewa events organized</CardDescription>

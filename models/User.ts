@@ -28,6 +28,20 @@ const UserSchema: Schema = new Schema({
   createdAt: { type: Date, default: Date.now },
 })
 
+// Create indexes for common queries
+UserSchema.index({ role: 1 })
+UserSchema.index({ areaCode: 1 })
+UserSchema.index({ centerId: 1 })
+UserSchema.index({ isActive: 1 })
+UserSchema.index({ name: 1 })
+UserSchema.index({ createdAt: -1 })
+// Compound indexes for common query patterns
+UserSchema.index({ role: 1, areaCode: 1 }) // Role-based queries by area
+UserSchema.index({ role: 1, centerId: 1 }) // Coordinators by center
+UserSchema.index({ role: 1, centerId: 1, isActive: 1 }) // Active coordinators by center
+UserSchema.index({ areaCode: 1, isActive: 1 }) // Active users by area
+UserSchema.index({ role: 1, areaCode: 1, isActive: 1 }) // Active users by role and area
+
 // Hash password before saving
 UserSchema.pre<IUser>("save", async function (next) {
   if (!this.isModified("password")) return next()

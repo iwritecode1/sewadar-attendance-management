@@ -6,7 +6,15 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "test:temp-import": "node scripts/test-temp-to-permanent-import.js",
+    "create:test-excel": "node scripts/create-test-excel.js",
+    "verify:indexes": "node scripts/verify-indexes.js",
+    "rebuild:indexes": "node scripts/rebuild-indexes.js",
+    "optimize:import": "node scripts/optimize-import-indexes.js",
+    "clean:indexes": "node scripts/clean-duplicate-indexes.js",
+    "test:import": "node scripts/test-optimized-import.js",
+    "test:badge-normalization": "node scripts/test-badge-normalization.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

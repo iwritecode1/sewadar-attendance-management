@@ -28,7 +28,16 @@ const AttendanceRecordSchema: Schema = new Schema({
 AttendanceRecordSchema.index({ eventId: 1 })
 AttendanceRecordSchema.index({ centerId: 1 })
 AttendanceRecordSchema.index({ area: 1 })
+AttendanceRecordSchema.index({ areaCode: 1 })
 AttendanceRecordSchema.index({ submittedAt: -1 })
+AttendanceRecordSchema.index({ submittedBy: 1 })
+// Compound indexes for common query patterns
+AttendanceRecordSchema.index({ eventId: 1, centerId: 1 }, { unique: true }) // Prevent duplicate attendance
+AttendanceRecordSchema.index({ areaCode: 1, submittedAt: -1 }) // Area-based queries with date sorting
+AttendanceRecordSchema.index({ centerId: 1, submittedAt: -1 }) // Center-based queries with date sorting
+AttendanceRecordSchema.index({ eventId: 1, areaCode: 1 }) // Event attendance by area
+// Index for sewadar attendance lookup
+AttendanceRecordSchema.index({ sewadars: 1 })
 
 export default mongoose.models.AttendanceRecord ||
   mongoose.model<IAttendanceRecord>("AttendanceRecord", AttendanceRecordSchema)

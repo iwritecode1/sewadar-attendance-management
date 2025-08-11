@@ -22,6 +22,23 @@ const SewaEventSchema: Schema = new Schema({
   createdAt: { type: Date, default: Date.now },
 })
 
+// Create indexes for common queries
+SewaEventSchema.index({ areaCode: 1 })
+SewaEventSchema.index({ department: 1 })
+SewaEventSchema.index({ place: 1 })
+SewaEventSchema.index({ createdBy: 1 })
+SewaEventSchema.index({ createdAt: -1 })
+SewaEventSchema.index({ fromDate: 1 })
+SewaEventSchema.index({ toDate: 1 })
+// Compound indexes for common query patterns
+SewaEventSchema.index({ areaCode: 1, fromDate: -1 }) // Area events sorted by date
+SewaEventSchema.index({ areaCode: 1, createdAt: -1 }) // Recent events by area
+SewaEventSchema.index({ place: 1, department: 1, fromDate: 1, toDate: 1 }) // Duplicate event detection
+SewaEventSchema.index({ areaCode: 1, department: 1 }) // Department-based filtering by area
+// Date range queries
+SewaEventSchema.index({ fromDate: 1, toDate: 1 })
+SewaEventSchema.index({ areaCode: 1, fromDate: 1, toDate: 1 })
+
 // Ensure the model is properly registered
 let SewaEvent: mongoose.Model<ISewaEvent>
 

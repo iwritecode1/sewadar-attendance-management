@@ -168,18 +168,8 @@ export default function SewadarLookupPage() {
   const generateSearchSuggestions = () => {
     const suggestions: SearchSuggestion[] = []
 
-    // Add center suggestions - only for admin users or their own center for coordinators
-    if (user?.role === "admin") {
-      // Admin can see all centers
-      centers.forEach((center) => {
-        suggestions.push({
-          type: "center",
-          value: center.name,
-          label: `Center: ${center.name}`,
-          count: 0, // We don't have counts without pre-loading all sewadars
-        })
-      })
-    } else if (user?.centerId) {
+    // Add center suggestions - only for center coordinators (admins have center filter now)
+    if (user?.role !== "admin" && user?.centerId) {
       // Center coordinators only see their own center
       const userCenter = centers.find(center => center.code === user.centerId)
       if (userCenter) {

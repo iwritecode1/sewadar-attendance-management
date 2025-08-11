@@ -142,7 +142,7 @@ interface DataContextType {
   createSewadar: (data: any) => Promise<boolean>
   updateSewadar: (id: string, data: any) => Promise<boolean>
   deleteSewadar: (id: string) => Promise<boolean>
-  importSewadars: (file: File) => Promise<boolean>
+  importSewadars: (file: File) => Promise<boolean | { success: boolean; jobId: string; total: number }>
 
   createEvent: (data: any) => Promise<boolean>
   updateEvent: (id: string, data: any) => Promise<boolean>
@@ -527,12 +527,24 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setLoading((prev) => ({ ...prev, importSewadars: true }))
       try {
         const response = await apiClient.importSewadars(file)
-        const success = handleApiResponse(response, response.data?.message || "Sewadars imported successfully")
-        if (success) {
-          // Refresh with current pagination settings
-          await fetchSewadars({ limit: 50, page: 1 })
+        
+        if (response.success) {
+          // New optimized import returns jobId for progress tracking
+          if (response.jobId) {
+            // No toast needed - the progress modal will handle all communication
+            return { success: true, jobId: response.jobId, total: response.total }
+          } else {
+            // Fallback for old import format
+            const success = handleApiResponse(response, response.data?.message || "Sewadars imported successfully")
+            if (success) {
+              await fetchSewadars({ limit: 50, page: 1 })
+            }
+            return success
+          }
+        } else {
+          handleApiResponse(response)
+          return false
         }
-        return success
       } catch (error) {
         console.error("Error importing sewadars:", error)
         handleApiResponse({ success: false, error: "Failed to import sewadars" })
@@ -541,7 +553,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         setLoading((prev) => ({ ...prev, importSewadars: false }))
       }
     },
-    [handleApiResponse, fetchSewadars],
+    [handleApiResponse, fetchSewadars, toast],
   )
 
   // CRUD operations for Events
