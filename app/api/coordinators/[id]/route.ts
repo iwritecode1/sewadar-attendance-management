@@ -82,24 +82,55 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       isActive: body.isActive,
     }
 
-    // If password is provided, include it
-    if (body.password && body.password.trim() !== "") {
-      updateData.password = body.password
+    // Only include password if it's provided and not empty
+    if (body.password && typeof body.password === "string" && body.password.trim() !== "") {
+      updateData.password = body.password.trim()
     }
 
-    // Validate update data
-    const validation = validateCoordinatorData({
+    // Validate update data (skip password validation if not provided)
+    const validationData = {
       ...updateData,
       area: coordinator.area,
       areaCode: coordinator.areaCode,
-      password: updateData.password || "dummy", // Use dummy for validation if no password
-    })
+    }
 
-    if (!validation.isValid) {
+    // Only include password in validation if it's being updated
+    if (updateData.password) {
+      validationData.password = updateData.password
+    }
+
+    // Custom validation for updates
+    const errors: string[] = []
+
+    if (!validationData.name || typeof validationData.name !== "string" || validationData.name.trim().length === 0) {
+      errors.push("Name is required")
+    }
+
+    if (!validationData.username || typeof validationData.username !== "string" || validationData.username.trim().length === 0) {
+      errors.push("Username is required")
+    }
+
+    if (validationData.username && typeof validationData.username === "string") {
+      const usernameRegex = /^[a-zA-Z0-9_.@-]{5,35}$/;
+      if (!usernameRegex.test(validationData.username)) {
+        errors.push("Username must be 5-35 characters long and contain only letters, numbers, underscores, dots, @ symbols, and hyphens")
+      }
+    }
+
+    // Only validate password if it's being updated
+    if (validationData.password && (typeof validationData.password !== "string" || validationData.password.length < 6)) {
+      errors.push("Password must be at least 6 characters long")
+    }
+
+    if (!validationData.centerId || typeof validationData.centerId !== "string" || validationData.centerId.trim().length === 0) {
+      errors.push("Center ID is required")
+    }
+
+    if (errors.length > 0) {
       return NextResponse.json(
         {
           error: "Validation failed",
-          details: validation.errors,
+          details: errors,
         },
         { status: 400 },
       )
@@ -160,23 +191,31 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       updateData.centerName = center.name
     }
 
-    // Update coordinator - handle password hashing properly
+    // Prepare update object
+    const updateObject: any = {
+      name: updateData.name,
+      username: updateData.username,
+      centerId: updateData.centerId,
+      isActive: updateData.isActive,
+      updatedAt: new Date(),
+      updatedBy: session.id,
+    }
+
+    // Add centerName if it was updated
+    if (updateData.centerName) {
+      updateObject.centerName = updateData.centerName
+    }
+
+    // Handle password update separately if provided
     if (updateData.password) {
-      // If password is being updated, we need to use the save method to trigger the pre-save hook
       const salt = await bcrypt.genSalt(10)
-      updateData.password = await bcrypt.hash(updateData.password, salt)
+      updateObject.password = await bcrypt.hash(updateData.password, salt)
     }
     
     // Update coordinator
     const updatedCoordinator = await User.findByIdAndUpdate(
       params.id,
-      {
-        $set: {
-          ...updateData,
-          updatedAt: new Date(),
-          updatedBy: session.id,
-        },
-      },
+      { $set: updateObject },
       { new: true },
     ).select("-password")
 
