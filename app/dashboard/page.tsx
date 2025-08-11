@@ -138,9 +138,9 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="space-y-4 md:space-y-8 -mx-4 sm:-mx-6 lg:-mx-8">
+      <div className="space-y-4 md:space-y-8 -mx-4 sm:-mx-6 lg:mx-0">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 lg:px-0">
           <div>
             <h1 className="text-xl md:text-2xl text-gray-900">Dashboard</h1>
             <p className="text-gray-600 mt-1 text-sm md:text-base">Overview & Analytics</p>
@@ -156,7 +156,7 @@ export default function Dashboard() {
 
         {/* Stats Cards */}
         {/* Mobile - Combined Stats Cards */}
-        <div className="block lg:hidden space-y-4 px-4 sm:px-6 lg:px-8">
+        <div className="block lg:hidden space-y-4 px-4 sm:px-6">
           {/* First Row - Centers, Sewadars, Events */}
           <Card className="stat-card">
             <CardContent className="py-4 px-4">
@@ -270,7 +270,7 @@ export default function Dashboard() {
         </div>
 
         {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 px-4 sm:px-6 lg:px-0">
           {/* Center Performance Chart */}
           <Card className="chart-container">
             <CardHeader>
@@ -300,7 +300,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                 ))}
-                
+
                 {/* Show More/Less Button */}
                 {centerStats.length > 10 && (
                   <div className="pt-2 text-center">
@@ -368,7 +368,7 @@ export default function Dashboard() {
         </div>
 
         {/* Gender Distribution */}
-        <Card className="enhanced-card mx-4 sm:mx-6 lg:mx-8">
+        <Card className="enhanced-card mx-4 sm:mx-6 lg:mx-0">
           <CardHeader>
             <CardTitle className="text-base md:text-lg">Gender Distribution</CardTitle>
             <CardDescription className="text-sm">Breakdown of sewadars by gender</CardDescription>
@@ -392,7 +392,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Recent Events */}
-        <Card className="enhanced-card mx-4 sm:mx-6 lg:mx-8">
+        <Card className="enhanced-card mx-4 sm:mx-6 lg:mx-0">
           <CardHeader>
             <CardTitle className="text-base md:text-lg">Recent Events</CardTitle>
             <CardDescription className="text-sm">Latest sewa events organized</CardDescription>
