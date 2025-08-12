@@ -137,11 +137,11 @@ export default function Layout({ children }: LayoutProps) {
               {/* Logo and branding */}
               <div className="flex items-center flex-shrink-0 px-6 mb-8">
                 <div className="flex items-center gap-2">
-                  <div className="w-20 bg-gradient-to-br from-blue-600 to-blue-700 rounded flex items-center justify-center shadow-lg overflow-hidden">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded flex items-center justify-center shadow-lg overflow-hidden">
                     {/* <span className="text-white font-bold text-xl">R</span> */}
-                    <img src="/icon-192x192.png" alt="Logo" className="w-20" />
+                    <img src="/icon-192x192.png" alt="Logo" className="w-full h-full object-contain" />
                   </div>
-                  <div>
+                  <div className="w-48">
                     <h1 className="text-gray-900">Sewadar Attendance Management</h1>
                     {/* <p className="text-sm text-gray-600">Sewadar Attendance Management</p> */}
                   </div>

@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
           if (existingSewadar) {
             // Use existing sewadar for attendance
             processedTempSewadarIds.push(existingSewadar._id.toString())
-            existingSewadarMessages.push(`${tempSewadar.name} (Father: ${tempSewadar.fatherName}) - Found existing record with badge ${existingSewadar.badgeNumber}`)
+            existingSewadarMessages.push(`${tempSewadar.name} / ${tempSewadar.fatherName}) - Existing (${existingSewadar.badgeNumber})`)
           } else {
             // Create new temp sewadar
             // Generate progressive badge number for this center and gender
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
             })
 
             processedTempSewadarIds.push(newSewadar._id.toString())
-            newSewadarMessages.push(`${tempSewadar.name} (Father: ${tempSewadar.fatherName}) - Created new record with badge ${tempBadgeNumber}`)
+            newSewadarMessages.push(`${tempSewadar.name} / ${tempSewadar.fatherName}) - Created (${tempBadgeNumber})`)
           }
         } catch (error) {
           console.error("Error processing temp sewadar:", error)

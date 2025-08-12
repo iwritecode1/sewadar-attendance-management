@@ -308,7 +308,7 @@ export default function SewadarsPage() {
       const combination = `${ts.name.toLowerCase().trim()}|${ts.fatherName.toLowerCase().trim()}`
 
       if (seenCombinations.has(combination)) {
-        duplicatesInForm.push(`${ts.name} (Father: ${ts.fatherName})`)
+        duplicatesInForm.push(`${ts.name} / ${ts.fatherName}`)
       } else {
         seenCombinations.add(combination)
       }
@@ -379,7 +379,7 @@ export default function SewadarsPage() {
 
             if (result.isExisting) {
               // Server found existing sewadar
-              existingMessages.push(`${ts.name} (Father: ${ts.fatherName}) - Found existing record with badge ${result.data.badgeNumber}`)
+              existingMessages.push(`${ts.name} / ${ts.fatherName} - Existing (${result.data.badgeNumber})`)
             } else {
               // Server created new sewadar
               createdBadges.push(result.data?.badgeNumber)
@@ -1173,14 +1173,9 @@ export default function SewadarsPage() {
                                   size="sm"
                                   className="h-7 w-7 p-0 text-red-600 hover:text-red-800"
                                   onClick={() => handleDeleteSewadar(sewadar._id)}
-                                  disabled={loading.deleteSewadar}
                                   title="Delete"
                                 >
-                                  {loading.deleteSewadar ? (
-                                    <RefreshCw className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-3 w-3" />
-                                  )}
+                                  <Trash2 className="h-3 w-3" />
                                 </Button>
                               )}
                             </>
@@ -1252,14 +1247,9 @@ export default function SewadarsPage() {
                                       size="sm"
                                       className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
                                       onClick={() => handleDeleteSewadar(sewadar._id)}
-                                      disabled={loading.deleteSewadar}
                                       title="Delete"
                                     >
-                                      {loading.deleteSewadar ? (
-                                        <RefreshCw className="h-4 w-4 animate-spin" />
-                                      ) : (
-                                        <Trash2 className="h-4 w-4" />
-                                      )}
+                                      <Trash2 className="h-4 w-4" />
                                     </Button>
                                   )}
                                 </>

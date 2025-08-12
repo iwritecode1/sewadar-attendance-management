@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           data: existingSewadar,
-          message: `Found existing sewadar: ${existingSewadar.name} (Father: ${existingSewadar.fatherHusbandName}) with badge ${existingSewadar.badgeNumber}`,
+          message: `Found existing sewadar: ${existingSewadar.name} / ${existingSewadar.fatherHusbandName} with badge ${existingSewadar.badgeNumber}`,
           isExisting: true
         })
       }

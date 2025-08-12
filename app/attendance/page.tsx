@@ -46,8 +46,8 @@ import {
 } from "lucide-react";
 
 const validateImageFile = (file: File): boolean => {
-  const validTypes = ["image/jpeg", "image/jpg", "image/png"];
-  const maxSize = 5 * 1024 * 1024; // 5MB
+  const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+  const maxSize = 10 * 1024 * 1024; // 10MB (increased to allow larger files before compression)
 
   if (!validTypes.includes(file.type)) {
     return false;
@@ -60,7 +60,56 @@ const validateImageFile = (file: File): boolean => {
   return true;
 };
 
-const handleImageUpload = (
+// Image compression function
+const compressImage = (file: File, maxWidth = 1200, maxHeight = 1200, quality = 0.8): Promise<File> => {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+
+    img.onload = () => {
+      // Calculate new dimensions
+      let { width, height } = img;
+
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width *= ratio;
+        height *= ratio;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      // Draw and compress
+      ctx?.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            const compressedFile = new File(
+              [blob],
+              file.name.replace(/\.[^/.]+$/, '.jpg'),
+              {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              }
+            );
+            resolve(compressedFile);
+          } else {
+            resolve(file); // Fallback to original if compression fails
+          }
+        },
+        'image/jpeg',
+        quality
+      );
+    };
+
+    img.onerror = () => resolve(file); // Fallback to original if loading fails
+    img.src = URL.createObjectURL(file);
+  });
+};
+
+const handleImageUpload = async (
   files: FileList | null,
   setImages: (images: File[]) => void,
   toast: any
@@ -89,11 +138,31 @@ const handleImageUpload = (
   }
 
   if (validFiles.length > 0) {
-    setImages(validFiles);
-    toast({
-      title: "Success",
-      description: `${validFiles.length} image(s) uploaded successfully`,
-    });
+    try {
+      // Compress images
+      const compressedFiles = await Promise.all(
+        validFiles.map(file => compressImage(file))
+      );
+
+      setImages(compressedFiles);
+
+      // Calculate compression savings
+      const originalSize = validFiles.reduce((sum, file) => sum + file.size, 0);
+      const compressedSize = compressedFiles.reduce((sum, file) => sum + file.size, 0);
+      const savings = Math.round(((originalSize - compressedSize) / originalSize) * 100);
+
+      toast({
+        title: "Success",
+        description: `${validFiles.length} image(s) uploaded and optimized (${savings}% size reduction)`,
+      });
+    } catch (error) {
+      // Fallback to original files if compression fails
+      setImages(validFiles);
+      toast({
+        title: "Success",
+        description: `${validFiles.length} image(s) uploaded successfully`,
+      });
+    }
   }
 };
 
@@ -114,7 +183,6 @@ export default function AttendancePage() {
     getSewadarsForCenter,
     fetchSewadarsForCenter,
     createEvent,
-    createAttendance,
     addPlace,
     addDepartment,
     fetchEvents,
@@ -146,6 +214,7 @@ export default function AttendancePage() {
       age: "",
       gender: "MALE" as "MALE" | "FEMALE",
       phone: "",
+      isCollapsed: false,
     },
   ]);
   const [showNewEventForm, setShowNewEventForm] = useState(false);
@@ -460,17 +529,27 @@ export default function AttendancePage() {
         setSelectedEvent("");
         setSelectedSewadars([]);
         setTempSewadars([
-          { name: "", fatherName: "", age: "", gender: "MALE", phone: "" },
+          { name: "", fatherName: "", age: "", gender: "MALE", phone: "", isCollapsed: false },
         ]);
         setSewadarSearch("");
         setNominalRollImages([]);
         setShowTempSewadarForm(false);
 
         // Refresh data in background
-        await Promise.all([
+        const refreshPromises = [
           fetchEvents(),
           fetchAttendance()
-        ]);
+        ];
+
+        // If temporary sewadars were created, refresh the sewadars list for the center
+        if (result.tempSewadarInfo && result.tempSewadarInfo.length > 0) {
+          const centerToRefresh = selectedCenter || user.centerId;
+          if (centerToRefresh) {
+            refreshPromises.push(fetchSewadarsForCenter(centerToRefresh));
+          }
+        }
+
+        await Promise.all(refreshPromises);
       } else {
         // Show error overlay with specific error message
         setStatusOverlay({
@@ -493,9 +572,17 @@ export default function AttendancePage() {
   };
 
   const addTempSewadar = () => {
+    // Collapse all previous temp sewadars that have required fields filled
+    const updatedTempSewadars = tempSewadars.map((ts, index) => {
+      if (ts.name.trim() && ts.fatherName.trim() && ts.age && ts.gender) {
+        return { ...ts, isCollapsed: true };
+      }
+      return ts;
+    });
+
     setTempSewadars([
-      ...tempSewadars,
-      { name: "", fatherName: "", age: "", gender: "MALE", phone: "" },
+      ...updatedTempSewadars,
+      { name: "", fatherName: "", age: "", gender: "MALE", phone: "", isCollapsed: false },
     ]);
   };
 
@@ -510,6 +597,27 @@ export default function AttendancePage() {
     updated[index] = { ...updated[index], [field]: value };
     setTempSewadars(updated);
   };
+
+  const toggleTempSewadarCollapse = (index: number) => {
+    const updated = [...tempSewadars];
+    updated[index] = { ...updated[index], isCollapsed: !updated[index].isCollapsed };
+    setTempSewadars(updated);
+  };
+
+  // Auto-collapse last temp sewadar when moving to nominal roll section
+  useEffect(() => {
+    if (showNominalRollForm) {
+      const lastIndex = tempSewadars.length - 1;
+      if (lastIndex >= 0) {
+        const tempSewadar = tempSewadars[lastIndex];
+        if (tempSewadar.name.trim() && tempSewadar.fatherName.trim() && tempSewadar.age && tempSewadar.gender) {
+          const updated = [...tempSewadars];
+          updated[lastIndex] = { ...updated[lastIndex], isCollapsed: true };
+          setTempSewadars(updated);
+        }
+      }
+    }
+  }, [showNominalRollForm]);
 
   const toggleSewadarSelection = (sewadarId: string) => {
     if (selectedSewadars.includes(sewadarId)) {
@@ -1196,109 +1304,163 @@ export default function AttendancePage() {
 
                 {showTempSewadarForm && (
                   <CardContent className="space-y-4 pt-0 border-t">
-                    {tempSewadars.map((tempSewadar, index) => (
-                      <div key={index} className="form-section">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="font-medium text-gray-900">
-                            Temporary Sewadar #{index + 1}
-                          </h4>
-                          {tempSewadars.length > 1 && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => removeTempSewadar(index)}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <X className="mr-1 h-4 w-4" />
-                              Remove
-                            </Button>
+                    {tempSewadars.map((tempSewadar, index) => {
+                      const isComplete = tempSewadar.name.trim() && tempSewadar.fatherName.trim() && tempSewadar.age && tempSewadar.gender;
+
+                      if (tempSewadar.isCollapsed && isComplete) {
+                        // Collapsed card view
+                        return (
+                          <div key={index} className="bg-green-50 border border-green-200 rounded-lg p-4 cursor-pointer hover:bg-green-100 transition-colors" onClick={() => toggleTempSewadarCollapse(index)}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="font-medium text-green-900 text-sm md:text-base">
+                                  {tempSewadar.name} / {tempSewadar.fatherName}
+                                </div>
+                                <div className="text-green-700 text-xs md:text-sm mt-1">
+                                  {getNextTempBadgeNumber(tempSewadar.gender, index)}
+                                </div>
+                                <div className="text-green-600 text-xs mt-1">
+                                  {tempSewadar.gender} | {tempSewadar.age}Y
+                                </div>
+                              </div>
+                              <div className="flex items-center">
+                                {tempSewadars.length > 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeTempSewadar(index);
+                                    }}
+                                    className="text-red-600 hover:text-red-700 p-1"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Expanded form view
+                      return (
+                        <div key={index} className="form-section">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="font-medium text-gray-900">
+                              Temporary Sewadar #{index + 1}
+                            </h4>
+                            <div className="flex items-center space-x-1">
+                              {isComplete && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => toggleTempSewadarCollapse(index)}
+                                  className="text-gray-600 hover:text-gray-700 p-1"
+                                >
+                                  <ChevronUp className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {tempSewadars.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeTempSewadar(index)}
+                                  className="text-red-600 hover:text-red-700 p-1"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                          <div className="form-grid">
+                            <div>
+                              <Label>Name *</Label>
+                              <Input
+                                value={tempSewadar.name}
+                                onChange={(e) =>
+                                  updateTempSewadar(index, "name", e.target.value?.toUpperCase())
+                                }
+                                placeholder="Full name"
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label>Father / Husband Name *</Label>
+                              <Input
+                                value={tempSewadar.fatherName}
+                                onChange={(e) =>
+                                  updateTempSewadar(
+                                    index,
+                                    "fatherName",
+                                    e.target.value?.toUpperCase()
+                                  )
+                                }
+                                placeholder="Father / Husband Name"
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label>Age *</Label>
+                              <Input
+                                type="number"
+                                value={tempSewadar.age}
+                                onChange={(e) =>
+                                  updateTempSewadar(index, "age", e.target.value)
+                                }
+                                placeholder="Age"
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label>Gender *</Label>
+                              <Select
+                                value={tempSewadar.gender}
+                                onValueChange={(value: "MALE" | "FEMALE") =>
+                                  updateTempSewadar(index, "gender", value)
+                                }
+                              >
+                                <SelectTrigger className="mt-1">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="MALE">Male</SelectItem>
+                                  <SelectItem value="FEMALE">Female</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label>Phone</Label>
+                              <Input
+                                value={tempSewadar.phone}
+                                onChange={(e) =>
+                                  updateTempSewadar(
+                                    index,
+                                    "phone",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="Phone number (optional)"
+                                className="mt-1"
+                              />
+                            </div>
+                          </div>
+                          {tempSewadar.name && tempSewadar.gender && (
+                            <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                              <p className="text-sm text-gray-600">
+                                Auto-generated badge:
+                                <span className="font-mono font-medium ml-2 text-blue-600">
+                                  {getNextTempBadgeNumber(tempSewadar.gender, index)}
+                                </span>
+                              </p>
+                            </div>
                           )}
                         </div>
-                        <div className="form-grid">
-                          <div>
-                            <Label>Name *</Label>
-                            <Input
-                              value={tempSewadar.name}
-                              onChange={(e) =>
-                                updateTempSewadar(index, "name", e.target.value?.toUpperCase())
-                              }
-                              placeholder="Full name"
-                              className="mt-1"
-                            />
-                          </div>
-                          <div>
-                            <Label>Father / Husband Name *</Label>
-                            <Input
-                              value={tempSewadar.fatherName}
-                              onChange={(e) =>
-                                updateTempSewadar(
-                                  index,
-                                  "fatherName",
-                                  e.target.value?.toUpperCase()
-                                )
-                              }
-                              placeholder="Father / Husband Name"
-                              className="mt-1"
-                            />
-                          </div>
-                          <div>
-                            <Label>Age *</Label>
-                            <Input
-                              type="number"
-                              value={tempSewadar.age}
-                              onChange={(e) =>
-                                updateTempSewadar(index, "age", e.target.value)
-                              }
-                              placeholder="Age"
-                              className="mt-1"
-                            />
-                          </div>
-                          <div>
-                            <Label>Gender *</Label>
-                            <Select
-                              value={tempSewadar.gender}
-                              onValueChange={(value: "MALE" | "FEMALE") =>
-                                updateTempSewadar(index, "gender", value)
-                              }
-                            >
-                              <SelectTrigger className="mt-1">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="MALE">Male</SelectItem>
-                                <SelectItem value="FEMALE">Female</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label>Phone</Label>
-                            <Input
-                              value={tempSewadar.phone}
-                              onChange={(e) =>
-                                updateTempSewadar(
-                                  index,
-                                  "phone",
-                                  e.target.value
-                                )
-                              }
-                              placeholder="Phone number (optional)"
-                              className="mt-1"
-                            />
-                          </div>
-                        </div>
-                        {tempSewadar.name && tempSewadar.gender && (
-                          <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm text-gray-600">
-                              Auto-generated badge:
-                              <span className="font-mono font-medium ml-2 text-blue-600">
-                                {getNextTempBadgeNumber(tempSewadar.gender, index)}
-                              </span>
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                     <Button
                       type="button"
                       variant="outline"
@@ -1504,15 +1666,16 @@ export default function AttendancePage() {
                           <ul className="text-xs text-blue-800 space-y-2">
                             <li>• <strong>Upload Images:</strong> Click "Take Photo" to capture nominal roll photos or select from library</li>
                             <li>• <strong>Image Quality:</strong> Upload clear, readable images of nominal roll for better record keeping</li>
-                            <li>• <strong>File Formats:</strong> Supported formats are JPG, PNG, and JPEG</li>
-                            <li>• <strong>File Size:</strong> Maximum file size is 5MB per image</li>
+                            <li>• <strong>File Formats:</strong> Supported formats are JPG, PNG, JPEG, and WebP</li>
+                            <li>• <strong>File Size:</strong> Maximum file size is 10MB per image (automatically compressed for faster upload)</li>
+                            <li>• <strong>Auto-Optimization:</strong> Images are automatically compressed to reduce upload time</li>
                             <li>• <strong>Optional:</strong> Images are optional but recommended for attendance verification</li>
                             <li>• <strong>Remove Images:</strong> Click the X button on any image to remove it from selection</li>
                           </ul>
 
                           <div className="mt-4 p-3 bg-blue-100 rounded-md">
                             <p className="text-xs text-blue-900">
-                              <strong>💡 Pro Tip:</strong> Take clear photos of the nominal rolls showing sewadar details for better attendance documentation.
+                              <strong>💡 Pro Tip:</strong> Take clear photos of the nominal rolls. Images are automatically optimized for faster upload on slow networks.
                             </p>
                           </div>
                         </div>
@@ -1537,6 +1700,7 @@ export default function AttendancePage() {
                         age: "",
                         gender: "MALE",
                         phone: "",
+                        isCollapsed: false,
                       },
                     ]);
                     setSewadarSearch("");
