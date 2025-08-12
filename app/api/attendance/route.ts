@@ -188,45 +188,51 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check for duplicate attendance
-    const existingAttendance = await AttendanceRecord.findOne({
-      eventId: new mongoose.Types.ObjectId(attendanceData.eventId),
-      centerId: attendanceData.centerId,
-    })
-
-    // if (existingAttendance) {
-    //   return NextResponse.json(
-    //     {
-    //       error: "Attendance already submitted for this event and center",
-    //     },
-    //     { status: 409 },
-    //   )
-    // }
-
     // Combine regular sewadars with processed temp sewadars (new + existing)
     const allSewadarIds = [
       ...attendanceData.sewadarIds.map((id) => new mongoose.Types.ObjectId(id)),
       ...processedTempSewadarIds.map((id) => new mongoose.Types.ObjectId(id))
     ]
 
-    // Create attendance record
-    const attendance = await AttendanceRecord.create({
+    // Check for duplicate attendance by the same user (allow different coordinators to submit for same event-center)
+    const existingAttendance = await AttendanceRecord.findOne({
       eventId: new mongoose.Types.ObjectId(attendanceData.eventId),
       centerId: attendanceData.centerId,
-      centerName: attendanceData.centerName,
-      area: session.area,
-      areaCode: session.areaCode,
-      sewadars: allSewadarIds,
-      nominalRollImages: imageUrls,
       submittedBy: new mongoose.Types.ObjectId(session.id),
-      submittedAt: new Date(),
     })
+
+    let attendance
+    if (existingAttendance) {
+      // Update existing attendance record from the same user
+      attendance = await AttendanceRecord.findByIdAndUpdate(
+        existingAttendance._id,
+        {
+          sewadars: allSewadarIds,
+          nominalRollImages: [...(existingAttendance.nominalRollImages || []), ...imageUrls],
+          submittedAt: new Date(),
+        },
+        { new: true }
+      )
+    } else {
+      // Create new attendance record (allows multiple coordinators for same event-center)
+      attendance = await AttendanceRecord.create({
+        eventId: new mongoose.Types.ObjectId(attendanceData.eventId),
+        centerId: attendanceData.centerId,
+        centerName: attendanceData.centerName,
+        area: session.area,
+        areaCode: session.areaCode,
+        sewadars: allSewadarIds,
+        nominalRollImages: imageUrls,
+        submittedBy: new mongoose.Types.ObjectId(session.id),
+        submittedAt: new Date(),
+      })
+    }
 
     // Log activity
     await logActivity({
       userId: session.id,
-      action: "CREATE_ATTENDANCE",
-      details: `Created attendance record for event ${event.place} - ${event.department}, center ${attendanceData.centerName}`,
+      action: existingAttendance ? "UPDATE_ATTENDANCE" : "CREATE_ATTENDANCE",
+      details: `${existingAttendance ? 'Updated' : 'Created'} attendance record for event ${event.place} - ${event.department}, center ${attendanceData.centerName}`,
       ipAddress: request.ip || "unknown",
     })
 
@@ -239,6 +245,7 @@ export async function POST(request: NextRequest) {
     const response: any = {
       success: true,
       data: populatedAttendance,
+      updated: !!existingAttendance,
     }
 
     // Add information about temp sewadar processing
@@ -248,7 +255,7 @@ export async function POST(request: NextRequest) {
       if (allMessages.length > 0) {
         response.tempSewadarInfo = allMessages
 
-        let message = "Attendance submitted successfully."
+        let message = existingAttendance ? "Attendance updated successfully." : "Attendance submitted successfully."
         if (existingSewadarMessages.length > 0) {
           message += ` ${existingSewadarMessages.length} existing sewadar(s) were included.`
         }
@@ -262,9 +269,11 @@ export async function POST(request: NextRequest) {
 
         response.message = message
       }
+    } else if (existingAttendance) {
+      response.message = "Attendance updated successfully."
     }
 
-    return NextResponse.json(response, { status: 201 })
+    return NextResponse.json(response, { status: existingAttendance ? 200 : 201 })
   } catch (error) {
     console.error("Create attendance error:", error)
     return NextResponse.json(
