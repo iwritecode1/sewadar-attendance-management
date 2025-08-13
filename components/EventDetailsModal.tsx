@@ -31,6 +31,7 @@ import {
   ZoomIn
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface Sewadar {
   _id: string
@@ -105,6 +106,7 @@ export default function EventDetailsModal({
   const [loadingImages, setLoadingImages] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const { toast } = useToast()
+  const { user } = useAuth()
 
   const fetchEventDetails = async () => {
     if (!eventId) return
@@ -194,7 +196,15 @@ export default function EventDetailsModal({
 
   // Get filtered statistics based on selected center
   const getFilteredStats = () => {
-    if (!data) return data?.stats
+    if (!data || !data.stats) return {
+      totalSewadars: 0,
+      totalCenters: 0,
+      maleCount: 0,
+      femaleCount: 0,
+      permanentCount: 0,
+      temporaryCount: 0,
+      openCount: 0
+    }
 
     const filteredSewadars = getFilteredSewadars()
 
@@ -330,35 +340,39 @@ export default function EventDetailsModal({
                 </Card>
               </div>
 
-              {/* Center Filter */}
-              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-                <div className="flex items-center space-x-2">
-                  <Filter className="h-3.5 w-3.5 md:h-5 md:w-5 text-gray-600" />
-                  <span className="text-xs md:text-sm font-medium text-gray-700">Filter by Center:</span>
+              {/* Center Filter - Only show for admins */}
+              {user?.role === "admin" && data.centers.length > 1 && (
+                <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <Filter className="h-3.5 w-3.5 md:h-5 md:w-5 text-gray-600" />
+                    <span className="text-xs md:text-sm font-medium text-gray-700">Filter by Center:</span>
+                  </div>
+                  <Select value={selectedCenter} onValueChange={handleCenterFilterChange}>
+                    <SelectTrigger className="w-full sm:w-64 h-8 md:h-10 text-xs md:text-sm">
+                      <SelectValue placeholder="Filter by center" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Centers ({data.stats.totalSewadars})</SelectItem>
+                      {data.centers.map((center) => (
+                        <SelectItem key={center.id} value={center.id}>
+                          {center.name} ({data.sewadars.filter(s => s.centerId === center.id).length})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <Select value={selectedCenter} onValueChange={handleCenterFilterChange}>
-                  <SelectTrigger className="w-full sm:w-64 h-8 md:h-10 text-xs md:text-sm">
-                    <SelectValue placeholder="Filter by center" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Centers ({data.stats.totalSewadars})</SelectItem>
-                    {data.centers.map((center) => (
-                      <SelectItem key={center.id} value={center.id}>
-                        {center.name} ({data.sewadars.filter(s => s.centerId === center.id).length})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              )}
 
               {/* Sewadars List */}
               <Card className="flex-1">
                 <CardHeader className="pb-2 md:pb-3">
                   <CardTitle className="text-sm md:text-base">Participating Sewadars</CardTitle>
                   <CardDescription className="text-xs md:text-sm">
-                    {selectedCenter === "all"
-                      ? `Showing all ${getFilteredSewadars().length} sewadars`
-                      : `Showing ${getFilteredSewadars().length} sewadars from ${data.centers.find(c => c.id === selectedCenter)?.name}`
+                    {user?.role === "coordinator" 
+                      ? `Showing ${getFilteredSewadars().length} sewadars from your center`
+                      : selectedCenter === "all"
+                        ? `Showing all ${getFilteredSewadars().length} sewadars`
+                        : `Showing ${getFilteredSewadars().length} sewadars from ${data.centers.find(c => c.id === selectedCenter)?.name}`
                     }
                   </CardDescription>
                 </CardHeader>
@@ -494,7 +508,10 @@ export default function EventDetailsModal({
               Nominal Roll Images
             </DialogTitle>
             <DialogDescription>
-              All nominal roll images for this event across all centers
+              {user?.role === "coordinator" 
+                ? "Nominal roll images from your center for this event"
+                : "All nominal roll images for this event across all centers"
+              }
             </DialogDescription>
           </DialogHeader>
 

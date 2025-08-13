@@ -244,6 +244,7 @@ export default function AttendancePage() {
     addPlace,
     addDepartment,
     fetchEvents,
+    fetchEventsForAttendance,
     fetchAttendance,
     loading,
     getExistingAttendanceForEvent,
@@ -289,6 +290,14 @@ export default function AttendancePage() {
       fetchSewadarsForCenter(user.centerId);
     }
   }, [user, fetchSewadarsForCenter]);
+
+  // Fetch all events for attendance dropdown when component mounts
+  useEffect(() => {
+    if (user) {
+      // Load all events for attendance (not filtered by center participation)
+      fetchEventsForAttendance({ limit: 1000 });
+    }
+  }, [user, fetchEventsForAttendance]);
 
   // Auto-scroll to focused sewadar item within dropdown only
   useEffect(() => {
@@ -472,7 +481,7 @@ export default function AttendancePage() {
           });
 
           // Refresh events in the background to ensure everything is up to date
-          fetchEvents();
+          fetchEventsForAttendance();
         }, 300);
       } else {
         toast({
@@ -692,7 +701,7 @@ export default function AttendancePage() {
 
         // Refresh data in background
         const refreshPromises = [
-          fetchEvents(),
+          fetchEventsForAttendance(),
           fetchAttendance()
         ];
 

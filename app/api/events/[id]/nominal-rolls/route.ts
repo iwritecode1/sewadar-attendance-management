@@ -12,7 +12,8 @@ export async function GET(
   try {
     const session = await getSession()
 
-    if (!isAuthorized(session, "admin")) {
+    // Allow both admin and coordinator access
+    if (!isAuthorized(session, "admin") && !isAuthorized(session, "coordinator")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -28,11 +29,20 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized access to event" }, { status: 403 })
     }
 
-    // Get all attendance records for this event
-    const attendanceRecords = await AttendanceRecord.find({
+    // Build query for attendance records
+    const attendanceQuery: any = {
       eventId: new mongoose.Types.ObjectId(params.id),
       areaCode: session.areaCode
-    }).select('nominalRollImages centerName centerId submittedAt submittedBy')
+    }
+
+    // For coordinators, only show images from their center
+    if (session.role === "coordinator" && session.centerId) {
+      attendanceQuery.centerId = session.centerId
+    }
+
+    // Get attendance records for this event
+    const attendanceRecords = await AttendanceRecord.find(attendanceQuery)
+      .select('nominalRollImages centerName centerId submittedAt submittedBy')
       .populate('submittedBy', 'name')
 
     // Collect all nominal roll images from all attendance records
