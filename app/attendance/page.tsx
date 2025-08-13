@@ -546,26 +546,26 @@ export default function AttendancePage() {
         eventName: selectedEventData ? `${selectedEventData.place} - ${selectedEventData.department}` : "",
         eventDate: selectedEventData ? (() => {
           if (!selectedEventData.fromDate) return "";
-          
+
           const fromDate = new Date(selectedEventData.fromDate).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',
             day: 'numeric'
           });
-          
+
           if (selectedEventData.toDate) {
             const toDate = new Date(selectedEventData.toDate).toLocaleDateString('en-US', {
               year: 'numeric',
               month: 'long',
               day: 'numeric'
             });
-            
+
             // Only show "to" if dates are different
             if (toDate !== fromDate) {
               return `${fromDate} to ${toDate}`;
             }
           }
-          
+
           return fromDate;
         })() : "",
         totalSewadars,
@@ -645,9 +645,9 @@ export default function AttendancePage() {
 
         // Count new temp sewadars created (from API response)
         const newTempSewadarsCount = result.tempSewadarInfo ? result.tempSewadarInfo.length : 0;
-        
+
         // Extract new temp sewadars names from API response
-        const newTempSewadarsList = result.tempSewadarInfo ? 
+        const newTempSewadarsList = result.tempSewadarInfo ?
           result.tempSewadarInfo
             .filter((info: string) => info.includes('Created'))
             .map((info: string) => {
@@ -1016,7 +1016,7 @@ export default function AttendancePage() {
                       <li>• <strong>Area Coordinator Access:</strong> As an Area Coordinator, you can manage attendance for all centers in your area</li>
                       <li>• <strong>Select Center:</strong> Choose a center from the dropdown to view available sewadars for that center</li>
                       <li>• <strong>View Sewadars:</strong> After selecting a center, you can see the number of available sewadars</li>
-                      <li>• <strong>Create Events:</strong> You can then create or select events and add attendance for the specific center</li>
+                      <li>• <strong>Add Sewa:</strong> You can then add or select sewa and add attendance for the specific center</li>
                       <li>• <strong>Required Fields:</strong> All mandatory fields must be completed before submitting attendance</li>
                     </ul>
 
@@ -1077,7 +1077,7 @@ export default function AttendancePage() {
                 {selectedEvent === "new" && (
                   <div className="form-section bg-blue-50 border border-blue-200">
                     <h3 className="text-lg font-medium text-blue-900 mb-4">
-                      Create New Event
+                      Add New Sewa
                     </h3>
                     <form onSubmit={handleEventSubmit} className="space-y-4">
                       <div className="form-grid">
@@ -1154,7 +1154,7 @@ export default function AttendancePage() {
                         disabled={loading.events}
                       >
                         <Calendar className="mr-2 h-4 w-4" />
-                        {loading.events ? "Creating..." : "Create Event"}
+                        {loading.events ? "Adding..." : "Add Sewa"}
                       </Button>
                     </form>
 
@@ -1179,7 +1179,7 @@ export default function AttendancePage() {
                     {/* Usage Instructions - Expandable */}
                     {showCreateEventInstructions && (
                       <div className="mt-3 p-4 bg-blue-100 border border-blue-300 rounded-lg">
-                        <h4 className="font-medium text-blue-900 mb-3 text-sm">Create New Event Instructions:</h4>
+                        <h4 className="font-medium text-blue-900 mb-3 text-sm">Add New Sewa Instructions:</h4>
                         <ul className="text-xs text-blue-800 space-y-2">
                           <li>• <strong>Search Place:</strong> Type in the place field to search for existing places</li>
                           <li>• <strong>Add New Place:</strong> If place is not present, type the new place name and click "+Add" option</li>
@@ -1190,7 +1190,7 @@ export default function AttendancePage() {
 
                         <div className="mt-4 p-3 bg-blue-200 rounded-md">
                           <p className="text-xs text-blue-900">
-                            <strong>💡 Pro Tip:</strong> When adding new places or departments, make sure to use proper naming conventions like "BEAS" or "RIVER" for consistency.
+                            <strong>💡 Pro Tip:</strong> When adding new places or departments, make sure to use proper naming conventions like "BEAS" or "LANGAR" for consistency.
                           </p>
                         </div>
                       </div>
@@ -1221,14 +1221,14 @@ export default function AttendancePage() {
                   <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                     <h4 className="font-medium text-blue-900 mb-3 text-sm">Sewa Instructions:</h4>
                     <ul className="text-xs text-blue-800 space-y-2">
-                      <li>• <strong>Search Events:</strong> Type in the dropdown to search for existing sewa events by place, department, or dates</li>
-                      <li>• <strong>Create New Event:</strong> If you don't see the required event with the same dates, click on "Create new event" option shown at the end of the dropdown</li>
-                      <li>• <strong>Event Details:</strong> When creating a new event, provide place, department, from date, and to date</li>
+                      <li>• <strong>Search Sewa:</strong> Type in the dropdown to search for existing sewa events by place, department, or dates</li>
+                      <li>• <strong>Add New Sewa:</strong> If you don't see the required sewa with the same dates, click on "Add New Sewa" option shown at the end of the dropdown</li>
+                      <li>• <strong>Sewa Details:</strong> When adding a new sewa, provide place, department, from date, and to date</li>
                     </ul>
 
                     <div className="mt-4 p-3 bg-blue-100 rounded-md">
                       <p className="text-xs text-blue-900">
-                        <strong>💡 Pro Tip:</strong> Use specific search terms like "Beas Langar" or "Sikanderpur Hospital" to quickly find relevant events.
+                        <strong>💡 Pro Tip:</strong> Use specific search terms like "Beas Langar" or "Sikanderpur Hospital" to quickly find relevant sewa.
                       </p>
                     </div>
                   </div>
@@ -1415,7 +1415,7 @@ export default function AttendancePage() {
                       <h4 className="font-medium text-gray-900">
                         Selected Sewadars ({selectedSewadars.length})
                       </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {getSelectedSewadarDetails().map((sewadar) => (
                           <div
                             key={sewadar._id}
@@ -1546,44 +1546,62 @@ export default function AttendancePage() {
 
                 {showTempSewadarForm && (
                   <CardContent className="space-y-4 pt-0 border-t">
+                    {/* Collapsed temp sewadar cards in grid layout */}
+                    {tempSewadars.some((ts, index) => {
+                      const isComplete = ts.name.trim() && ts.fatherName.trim() && ts.age && ts.gender;
+                      return ts.isCollapsed && isComplete;
+                    }) && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {tempSewadars.map((tempSewadar, index) => {
+                            const isComplete = tempSewadar.name.trim() && tempSewadar.fatherName.trim() && tempSewadar.age && tempSewadar.gender;
+
+                            if (tempSewadar.isCollapsed && isComplete) {
+                              // Collapsed card view
+                              return (
+                                <div key={index} className="bg-green-50 border border-green-200 rounded-lg p-4 cursor-pointer hover:bg-green-100 transition-colors" onClick={() => toggleTempSewadarCollapse(index)}>
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex-1">
+                                      <div className="font-medium text-green-900 text-sm md:text-base">
+                                        {tempSewadar.name} / {tempSewadar.fatherName}
+                                      </div>
+                                      <div className="text-green-700 text-xs md:text-sm mt-1">
+                                        {getNextTempBadgeNumber(tempSewadar.gender, index)}
+                                      </div>
+                                      <div className="text-green-600 text-xs mt-1">
+                                        {tempSewadar.gender} | {tempSewadar.age}Y
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center">
+                                      {tempSewadars.length > 1 && (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            removeTempSewadar(index);
+                                          }}
+                                          className="text-red-600 hover:text-red-700 p-1"
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })}
+                        </div>
+                      )}
+
+                    {/* Expanded temp sewadar forms */}
                     {tempSewadars.map((tempSewadar, index) => {
                       const isComplete = tempSewadar.name.trim() && tempSewadar.fatherName.trim() && tempSewadar.age && tempSewadar.gender;
 
                       if (tempSewadar.isCollapsed && isComplete) {
-                        // Collapsed card view
-                        return (
-                          <div key={index} className="bg-green-50 border border-green-200 rounded-lg p-4 cursor-pointer hover:bg-green-100 transition-colors" onClick={() => toggleTempSewadarCollapse(index)}>
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <div className="font-medium text-green-900 text-sm md:text-base">
-                                  {tempSewadar.name} / {tempSewadar.fatherName}
-                                </div>
-                                <div className="text-green-700 text-xs md:text-sm mt-1">
-                                  {getNextTempBadgeNumber(tempSewadar.gender, index)}
-                                </div>
-                                <div className="text-green-600 text-xs mt-1">
-                                  {tempSewadar.gender} | {tempSewadar.age}Y
-                                </div>
-                              </div>
-                              <div className="flex items-center">
-                                {tempSewadars.length > 1 && (
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      removeTempSewadar(index);
-                                    }}
-                                    className="text-red-600 hover:text-red-700 p-1"
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
+                        return null; // Already rendered in grid above
                       }
 
                       // Expanded form view
@@ -2026,7 +2044,7 @@ export default function AttendancePage() {
                           cursor: zoomLevel > 1 ? 'grab' : 'default'
                         }}
                       >
-                        <div 
+                        <div
                           className="flex items-center justify-center min-h-full"
                           style={{
                             padding: zoomLevel > 1 ? `${50 * zoomLevel}px` : '0'
