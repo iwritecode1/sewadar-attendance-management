@@ -43,7 +43,22 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
+  Eye,
+  Crop as CropIcon,
+  ChevronLeft,
+  ChevronRight,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import ReactCrop, { Crop, PixelCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 
 const validateImageFile = (file: File): boolean => {
   const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -112,6 +127,7 @@ const compressImage = (file: File, maxWidth = 1200, maxHeight = 1200, quality = 
 const handleImageUpload = async (
   files: FileList | null,
   setImages: (images: File[]) => void,
+  currentImages: File[],
   toast: any
 ) => {
   if (!files) return;
@@ -144,7 +160,8 @@ const handleImageUpload = async (
         validFiles.map(file => compressImage(file))
       );
 
-      setImages(compressedFiles);
+      // Append to existing images instead of replacing
+      setImages([...currentImages, ...compressedFiles]);
 
       // Calculate compression savings
       const originalSize = validFiles.reduce((sum, file) => sum + file.size, 0);
@@ -157,7 +174,7 @@ const handleImageUpload = async (
       });
     } catch (error) {
       // Fallback to original files if compression fails
-      setImages(validFiles);
+      setImages([...currentImages, ...validFiles]);
       toast({
         title: "Success",
         description: `${validFiles.length} image(s) uploaded successfully`,
@@ -171,6 +188,47 @@ const getFormattedDate = (daysOffset: number = 0) => {
   const date = new Date();
   date.setDate(date.getDate() + daysOffset);
   return date.toISOString().split('T')[0];
+};
+
+// Crop functionality functions using react-image-crop
+const getCroppedImg = (image: HTMLImageElement, crop: PixelCrop): Promise<File> => {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    throw new Error('No 2d context');
+  }
+
+  const scaleX = image.naturalWidth / image.width;
+  const scaleY = image.naturalHeight / image.height;
+
+  canvas.width = crop.width;
+  canvas.height = crop.height;
+
+  ctx.drawImage(
+    image,
+    crop.x * scaleX,
+    crop.y * scaleY,
+    crop.width * scaleX,
+    crop.height * scaleY,
+    0,
+    0,
+    crop.width,
+    crop.height
+  );
+
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        throw new Error('Canvas is empty');
+      }
+      const file = new File([blob], 'cropped-image.jpg', {
+        type: 'image/jpeg',
+        lastModified: Date.now(),
+      });
+      resolve(file);
+    }, 'image/jpeg', 0.9);
+  });
 };
 
 export default function AttendancePage() {
@@ -259,6 +317,12 @@ export default function AttendancePage() {
   const [showTempSewadarForm, setShowTempSewadarForm] = useState(false);
   const [showNominalRollForm, setShowNominalRollForm] = useState(false);
   const [nominalRollImages, setNominalRollImages] = useState<File[]>([]);
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const [showImagePreview, setShowImagePreview] = useState(false);
+  const [showCropMode, setShowCropMode] = useState(false);
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const [zoomLevel, setZoomLevel] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingAttendance, setExistingAttendance] = useState<any>(null);
 
@@ -267,6 +331,14 @@ export default function AttendancePage() {
     isOpen: false,
     status: "loading" as "loading" | "success" | "error",
     message: "",
+    attendanceData: undefined as {
+      eventName?: string;
+      eventDate?: string;
+      totalSewadars?: number;
+      nominalRollImages?: number;
+      newTempSewadars?: number;
+      existingTempSewadars?: Array<{ name: string; fatherName: string }>;
+    } | undefined,
   });
 
   // Usage instructions state
@@ -459,6 +531,54 @@ export default function AttendancePage() {
       return;
     }
 
+    // Show confirmation overlay first
+    const selectedEventData = events.find(e => e._id === selectedEvent);
+    const selectedCenterData = centers.find((c) => c.code === selectedCenter);
+    const selectedSewadarDetails = getSelectedSewadarDetails();
+    const validTempSewadars = tempSewadars.filter(ts => ts.name.trim() && ts.fatherName.trim());
+    const totalSewadars = selectedSewadars.length + validTempSewadars.length;
+
+    setStatusOverlay({
+      isOpen: true,
+      status: "confirm",
+      message: "Please review the details before submitting",
+      attendanceData: {
+        eventName: selectedEventData ? `${selectedEventData.place} - ${selectedEventData.department}` : "",
+        eventDate: selectedEventData ? (() => {
+          if (!selectedEventData.fromDate) return "";
+          
+          const fromDate = new Date(selectedEventData.fromDate).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          });
+          
+          if (selectedEventData.toDate) {
+            const toDate = new Date(selectedEventData.toDate).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+            
+            // Only show "to" if dates are different
+            if (toDate !== fromDate) {
+              return `${fromDate} to ${toDate}`;
+            }
+          }
+          
+          return fromDate;
+        })() : "",
+        totalSewadars,
+        nominalRollImages: nominalRollImages.length,
+        selectedSewadars: selectedSewadarDetails,
+        tempSewadars: validTempSewadars,
+      },
+    });
+  };
+
+  const handleConfirmSubmission = async () => {
+    if (!user) return;
+
     const processedTempSewadars = tempSewadars
       .filter((ts) => ts.name && ts.fatherName)
       .map((ts, index) => ({
@@ -489,6 +609,7 @@ export default function AttendancePage() {
       isOpen: true,
       status: "loading",
       message: "Please wait while we submit your attendance...",
+      attendanceData: undefined,
     });
 
     try {
@@ -511,18 +632,52 @@ export default function AttendancePage() {
       const result = await response.json();
 
       if (result.success) {
-        // Show success overlay
-        let successMessage = "Your attendance has been submitted successfully!";
+        // Get event details
+        const selectedEventData = events.find(e => e._id === selectedEvent);
 
-        // Add temp sewadar info if available
-        if (result.tempSewadarInfo && result.tempSewadarInfo.length > 0) {
-          successMessage += `\n\nTemporary sewadars added: ${result.tempSewadarInfo.join(", ")}`;
-        }
+        // Get existing temp sewadars (those with names filled but not newly created)
+        const existingTempSewadarsData = tempSewadars
+          .filter(ts => ts.name.trim() && ts.fatherName.trim())
+          .map(ts => ({ name: ts.name, fatherName: ts.fatherName }));
+
+        // Calculate total sewadars (existing selected + all temp sewadars with names)
+        const totalSewadars = selectedSewadars.length + tempSewadars.filter(ts => ts.name.trim()).length;
+
+        // Count new temp sewadars created (from API response)
+        const newTempSewadarsCount = result.tempSewadarInfo ? result.tempSewadarInfo.length : 0;
+        
+        // Extract new temp sewadars names from API response
+        const newTempSewadarsList = result.tempSewadarInfo ? 
+          result.tempSewadarInfo
+            .filter((info: string) => info.includes('Created'))
+            .map((info: string) => {
+              // Extract name and father name from strings like "Name / Father Name) - Created (Badge)"
+              const match = info.match(/^(.+?) \/ (.+?)\) - Created/);
+              return match ? { name: match[1], fatherName: match[2] } : null;
+            })
+            .filter(Boolean) : [];
+
+        // Format event date
+        const eventDate = selectedEventData?.date ? new Date(selectedEventData.date).toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        }) : undefined;
 
         setStatusOverlay({
           isOpen: true,
           status: "success",
-          message: successMessage,
+          message: "Your attendance has been submitted successfully!",
+          attendanceData: {
+            eventName: selectedEventData?.name,
+            eventDate,
+            totalSewadars,
+            nominalRollImages: nominalRollImages.length,
+            newTempSewadars: newTempSewadarsCount,
+            newTempSewadarsList: newTempSewadarsList,
+            existingTempSewadars: existingTempSewadarsData,
+          },
         });
 
         // Reset form
@@ -556,6 +711,7 @@ export default function AttendancePage() {
           isOpen: true,
           status: "error",
           message: result.error || "Failed to submit attendance. Please try again.",
+          attendanceData: undefined,
         });
       }
     } catch (error) {
@@ -565,6 +721,7 @@ export default function AttendancePage() {
         isOpen: true,
         status: "error",
         message: "Network error occurred. Please check your connection and try again.",
+        attendanceData: undefined,
       });
     } finally {
       setIsSubmitting(false);
@@ -656,7 +813,92 @@ export default function AttendancePage() {
       isOpen: false,
       status: "loading",
       message: "",
+      attendanceData: undefined,
     });
+  };
+
+  // Navigation handlers
+  const goToPrevious = () => {
+    if (selectedImageIndex !== null && selectedImageIndex > 0) {
+      setSelectedImageIndex(selectedImageIndex - 1);
+      setShowCropMode(false);
+      setCrop(undefined);
+      setCompletedCrop(undefined);
+      setZoomLevel(1);
+    }
+  };
+
+  const goToNext = () => {
+    if (selectedImageIndex !== null && selectedImageIndex < nominalRollImages.length - 1) {
+      setSelectedImageIndex(selectedImageIndex + 1);
+      setShowCropMode(false);
+      setCrop(undefined);
+      setCompletedCrop(undefined);
+      setZoomLevel(1);
+    }
+  };
+
+  // Zoom handlers
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 0.25, 3));
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
+  };
+
+  const resetZoom = () => {
+    setZoomLevel(1);
+  };
+
+  // Crop handlers
+  const applyCrop = async () => {
+    if (selectedImageIndex === null || !nominalRollImages[selectedImageIndex] || !completedCrop) return;
+
+    if (completedCrop.width < 10 || completedCrop.height < 10) {
+      toast({
+        title: "Invalid Crop Area",
+        description: "Please select a larger area to crop.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const imgElement = document.querySelector('.crop-target-image') as HTMLImageElement;
+      if (!imgElement) {
+        throw new Error('Image element not found');
+      }
+
+      const croppedFile = await getCroppedImg(imgElement, completedCrop);
+
+      const newImages = [...nominalRollImages];
+      newImages[selectedImageIndex] = croppedFile;
+      setNominalRollImages(newImages);
+
+      setShowCropMode(false);
+      setCrop(undefined);
+      setCompletedCrop(undefined);
+
+      toast({
+        title: "Image Cropped",
+        description: "The image has been successfully cropped.",
+        variant: "default",
+      });
+    } catch (error) {
+      toast({
+        title: "Crop Failed",
+        description: "Failed to crop the image. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const cancelCrop = () => {
+    setShowCropMode(false);
+    setCrop(undefined);
+    setCompletedCrop(undefined);
+    setZoomLevel(1);
   };
 
   return (
@@ -1584,6 +1826,7 @@ export default function AttendancePage() {
                             handleImageUpload(
                               e.target.files,
                               setNominalRollImages,
+                              nominalRollImages,
                               toast
                             );
                           }}
@@ -1609,32 +1852,33 @@ export default function AttendancePage() {
                           <h4 className="font-medium text-gray-900 mb-3">
                             Selected Images ({nominalRollImages.length})
                           </h4>
-                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                          <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
                             {nominalRollImages.map((file, index) => (
                               <div
                                 key={index}
-                                className="relative p-3 bg-white rounded-lg border"
+                                className="relative bg-white rounded-lg border overflow-hidden group"
                               >
-                                <div className="flex items-center space-x-2">
-                                  <FileImage className="h-4 w-4 text-gray-400" />
-                                  <span className="text-sm text-gray-600 truncate">
-                                    {file.name}
-                                  </span>
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
+                                <div
+                                  className="aspect-square relative cursor-pointer"
                                   onClick={() => {
-                                    const newImages = nominalRollImages.filter(
-                                      (_, i) => i !== index
-                                    );
-                                    setNominalRollImages(newImages);
+                                    setSelectedImageIndex(index);
+                                    setShowImagePreview(true);
                                   }}
-                                  className="absolute -top-2 -right-2 h-6 w-6 p-0 bg-red-100 hover:bg-red-200 text-red-600 rounded-full"
                                 >
-                                  <X className="h-3 w-3" />
-                                </Button>
+                                  <img
+                                    src={URL.createObjectURL(file)}
+                                    alt={file.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center pointer-events-none">
+                                    <Eye className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                                  </div>
+                                  <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-1 pointer-events-none">
+                                    <span className="text-xs truncate block">
+                                      {file.name}
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -1731,12 +1975,260 @@ export default function AttendancePage() {
 
       </div>
 
+      {/* Image Preview Modal */}
+      <Dialog open={showImagePreview} onOpenChange={setShowImagePreview}>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-y-auto">
+          <DialogHeader className="p-6 pb-4 sticky top-0 bg-white z-20 border-b">
+            <DialogTitle>
+              Image Preview {selectedImageIndex !== null && `(${selectedImageIndex + 1} of ${nominalRollImages.length})`}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedImageIndex !== null && nominalRollImages[selectedImageIndex] && (
+            <div className="flex flex-col">
+              {/* Image Container with Navigation */}
+              <div className="relative bg-gray-100 overflow-hidden px-6 pt-4 pb-4">
+                <div className={`relative flex items-center justify-center ${showCropMode ? 'min-h-[60vh] sm:min-h-[70vh]' : 'min-h-[50vh] sm:min-h-[60vh]'}`}>
+                  {/* Previous Button */}
+                  {!showCropMode && nominalRollImages.length > 1 && selectedImageIndex > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={goToPrevious}
+                      className="absolute left-2 top-1/2 transform -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-lg"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                  )}
+
+                  {/* Image with Crop */}
+                  <div className="relative w-full h-full">
+                    {showCropMode ? (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ReactCrop
+                          crop={crop}
+                          onChange={(_, percentCrop) => setCrop(percentCrop)}
+                          onComplete={(c) => setCompletedCrop(c)}
+                          aspect={undefined}
+                          minWidth={10}
+                          minHeight={10}
+                        >
+                          <img
+                            src={URL.createObjectURL(nominalRollImages[selectedImageIndex])}
+                            alt={nominalRollImages[selectedImageIndex].name}
+                            className="crop-target-image max-w-full max-h-full object-contain"
+                          />
+                        </ReactCrop>
+                      </div>
+                    ) : (
+                      <div
+                        className="w-full h-full overflow-auto"
+                        style={{
+                          cursor: zoomLevel > 1 ? 'grab' : 'default'
+                        }}
+                      >
+                        <div 
+                          className="flex items-center justify-center min-h-full"
+                          style={{
+                            padding: zoomLevel > 1 ? `${50 * zoomLevel}px` : '0'
+                          }}
+                        >
+                          <img
+                            src={URL.createObjectURL(nominalRollImages[selectedImageIndex])}
+                            alt={nominalRollImages[selectedImageIndex].name}
+                            className="crop-target-image transition-all duration-200 object-contain"
+                            style={{
+                              transform: `scale(${zoomLevel})`,
+                              maxWidth: zoomLevel <= 1 ? '100%' : 'none',
+                              maxHeight: zoomLevel <= 1 ? '100%' : 'none'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Zoom Controls - Only show in non-crop mode */}
+                  {!showCropMode && (
+                    <div className="absolute top-2 right-2 flex flex-col gap-1 z-10">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleZoomIn}
+                        disabled={zoomLevel >= 3}
+                        className="h-8 w-8 p-0 bg-white/90 hover:bg-white shadow-lg"
+                      >
+                        <ZoomIn className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleZoomOut}
+                        disabled={zoomLevel <= 0.5}
+                        className="h-8 w-8 p-0 bg-white/90 hover:bg-white shadow-lg"
+                      >
+                        <ZoomOut className="h-3 w-3" />
+                      </Button>
+                      {zoomLevel !== 1 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={resetZoom}
+                          className="h-8 w-8 p-0 bg-white/90 hover:bg-white shadow-lg"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Next Button */}
+                  {!showCropMode && nominalRollImages.length > 1 && selectedImageIndex < nominalRollImages.length - 1 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={goToNext}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-lg"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+
+                {/* Image Dots Indicator */}
+                {!showCropMode && nominalRollImages.length > 1 && (
+                  <div className="flex justify-center space-x-2 mt-4 pb-4">
+                    {nominalRollImages.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          setSelectedImageIndex(index);
+                          setShowCropMode(false);
+                          setCrop(undefined);
+                          setCompletedCrop(undefined);
+                          setZoomLevel(1);
+                        }}
+                        className={`w-2 h-2 rounded-full transition-colors ${index === selectedImageIndex ? 'bg-blue-600' : 'bg-gray-300'
+                          }`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Controls */}
+              <div className="p-6 bg-white border-t sticky bottom-0">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="text-sm text-gray-600">
+                    <p className="font-medium">{nominalRollImages[selectedImageIndex].name}</p>
+                    <p>Size: {(nominalRollImages[selectedImageIndex].size / 1024 / 1024).toFixed(2)} MB</p>
+                  </div>
+
+                  <div className="flex items-center gap-4 w-full sm:w-auto">
+                    {/* Remove button */}
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        const newImages = nominalRollImages.filter((_, i) => i !== selectedImageIndex);
+                        setNominalRollImages(newImages);
+                        if (newImages.length === 0) {
+                          setShowImagePreview(false);
+                          setSelectedImageIndex(null);
+                        } else if (selectedImageIndex >= newImages.length) {
+                          setSelectedImageIndex(newImages.length - 1);
+                        }
+                        toast({
+                          title: "Image Removed",
+                          description: "The image has been removed from your selection.",
+                          variant: "default",
+                        });
+                      }}
+                    >
+                      {/* <X className="h-4 w-4 mr-2" /> */}
+                      Remove
+                    </Button>
+
+                    {/* Action buttons */}
+                    <div className="flex gap-2 ml-auto">
+                      {!showCropMode ? (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setShowCropMode(true);
+                              setCrop({ unit: '%', x: 25, y: 25, width: 50, height: 50 });
+                              setZoomLevel(1);
+                            }}
+                          >
+                            <CropIcon className="h-4 w-4 mr-2" />
+                            Crop
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setShowImagePreview(false);
+                              setSelectedImageIndex(null);
+                              setShowCropMode(false);
+                              setCrop(undefined);
+                              setCompletedCrop(undefined);
+                              setZoomLevel(1);
+                            }}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            Close
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={cancelCrop}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={applyCrop}
+                            disabled={!completedCrop || completedCrop.width < 10 || completedCrop.height < 10}
+                          >
+                            Apply Crop
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setShowImagePreview(false);
+                              setSelectedImageIndex(null);
+                              setShowCropMode(false);
+                              setCrop(undefined);
+                              setCompletedCrop(undefined);
+                              setZoomLevel(1);
+                            }}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            Close
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Status Overlay */}
       <AttendanceStatusOverlay
         isOpen={statusOverlay.isOpen}
         status={statusOverlay.status}
         message={statusOverlay.message}
         onClose={handleCloseStatusOverlay}
+        onConfirm={handleConfirmSubmission}
+        attendanceData={statusOverlay.attendanceData}
       />
     </Layout>
   );
