@@ -135,6 +135,7 @@ interface DataContextType {
   // Actions
   fetchSewadars: (params?: any) => Promise<void>
   fetchEvents: (params?: any) => Promise<void>
+  fetchEventsForAttendance: (params?: any) => Promise<void>
   fetchAttendance: (params?: any) => Promise<void>
   fetchCenters: (params?: any) => Promise<void>
   fetchCoordinators: (params?: any) => Promise<void>
@@ -345,6 +346,68 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       if (!controller.signal.aborted) {
         setLoading((prev) => ({ ...prev, sewadars: false }))
         currentSewadarsController.current = null
+      }
+    }
+  }, [])
+
+  const fetchEventsForAttendance = useCallback(async (params?: any, retryCount = 0) => {
+    // Cancel previous events request if it exists
+    if (currentEventsController.current) {
+      currentEventsController.current.abort()
+    }
+
+    // Create new AbortController for this request
+    const controller = new AbortController()
+    currentEventsController.current = controller
+
+    setLoading((prev) => ({ ...prev, events: true }))
+    try {
+      const response = await apiClient.getEvents({
+        signal: controller.signal,
+        forAttendance: true, // This ensures all events are returned for attendance
+        ...params
+      })
+
+      // Check if request was aborted
+      if (controller.signal.aborted) {
+        return
+      }
+
+      if (response.success && response.data) {
+        setEvents(response.data)
+        setPagination((prev) => ({ ...prev, events: response.pagination }))
+
+        // Extract unique places and departments
+        const uniquePlaces = [...new Set(response.data.map((e: SewaEvent) => e.place))]
+        const uniqueDepartments = [...new Set(response.data.map((e: SewaEvent) => e.department))]
+        setPlaces(uniquePlaces)
+        setDepartments(uniqueDepartments)
+      } else if (params?.includeStats && retryCount < 2) {
+        // If stats request failed and we haven't retried too many times, retry after a delay
+        setTimeout(() => {
+          fetchEventsForAttendance(params, retryCount + 1)
+        }, 1000 * (retryCount + 1))
+        return
+      }
+    } catch (error: any) {
+      // Don't log error if request was aborted
+      if (error.name === 'AbortError' || controller.signal.aborted) {
+        return
+      }
+      console.error("Failed to fetch events for attendance:", error)
+
+      // Retry for stats requests if it's a network/timing issue
+      if (params?.includeStats && retryCount < 2) {
+        setTimeout(() => {
+          fetchEventsForAttendance(params, retryCount + 1)
+        }, 1000 * (retryCount + 1))
+        return
+      }
+    } finally {
+      // Only update loading state if request wasn't aborted
+      if (!controller.signal.aborted) {
+        setLoading((prev) => ({ ...prev, events: false }))
+        currentEventsController.current = null
       }
     }
   }, [])
@@ -996,6 +1059,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         // Fetch functions
         fetchSewadars,
         fetchEvents,
+        fetchEventsForAttendance,
         fetchAttendance,
         fetchCenters,
         fetchCoordinators,

@@ -40,16 +40,12 @@ export default function EventsPage() {
   const [allEventDepartments, setAllEventDepartments] = useState<string[]>([])
   const [allEventPlaces, setAllEventPlaces] = useState<string[]>([])
 
-  // Redirect non-admin users
-  useEffect(() => {
-    if (user && user.role !== "admin") {
-      router.push("/attendance")
-    }
-  }, [user, router])
+  // Allow both admin and coordinator access
+  // Coordinators get read-only access
 
   // Fetch all departments and places on initial load (without filters to get complete list)
   useEffect(() => {
-    if (user?.role === "admin" && allEventDepartments.length === 0 && allEventPlaces.length === 0) {
+    if (user && allEventDepartments.length === 0 && allEventPlaces.length === 0) {
       // Fetch all events without filters to get complete department and place lists
       fetchEvents({ page: 1, limit: 1000, includeStats: false })
         .then(() => {
@@ -81,7 +77,7 @@ export default function EventsPage() {
 
   // Fetch events when filters change
   useEffect(() => {
-    if (user?.role === "admin") {
+    if (user) {
       const params: any = {
         page: currentPage,
         limit: 50,
@@ -176,7 +172,7 @@ export default function EventsPage() {
     return uniqueSewadarIds.size
   }
 
-  if (!user || user.role !== "admin") {
+  if (!user) {
     return null
   }
 
@@ -185,9 +181,14 @@ export default function EventsPage() {
       <div className="space-y-4 md:space-y-6 px-2 md:px-0">
         <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-xl md:text-2xl text-gray-900">Manage Sewa Events</h1>
+            <h1 className="text-xl md:text-2xl text-gray-900">
+              {user.role === "admin" ? "Manage Sewa Events" : "View Sewa Events"}
+            </h1>
             <p className="text-gray-600 mt-1 text-sm md:text-base">
-              Create and manage sewa events for {user.area} Area
+              {user.role === "admin" 
+                ? `Create and manage sewa events for ${user.area} Area`
+                : `View sewa events for ${user.area} Area`
+              }
             </p>
           </div>
 
@@ -200,10 +201,12 @@ export default function EventsPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => setShowCreateForm(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Event
-                </DropdownMenuItem>
+                {user.role === "admin" && (
+                  <DropdownMenuItem onClick={() => setShowCreateForm(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Event
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={refreshData} disabled={loading.events}>
                   <RefreshCw className={`mr-2 h-4 w-4 ${loading.events ? "animate-spin" : ""}`} />
                   Refresh Data
@@ -214,10 +217,12 @@ export default function EventsPage() {
 
           {/* Desktop - Individual Buttons */}
           <div className="hidden md:flex space-x-2">
-            <Button onClick={() => setShowCreateForm(true)} className="text-sm rssb-primary">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Event
-            </Button>
+            {user.role === "admin" && (
+              <Button onClick={() => setShowCreateForm(true)} className="text-sm rssb-primary">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Event
+              </Button>
+            )}
             <Button onClick={refreshData} variant="outline" disabled={loading.events} className="text-sm">
               <RefreshCw className={`mr-2 h-4 w-4 ${loading.events ? "animate-spin" : ""}`} />
               Refresh
@@ -225,8 +230,8 @@ export default function EventsPage() {
           </div>
         </div>
 
-        {/* Create Event Form */}
-        {showCreateForm && (
+        {/* Create Event Form - Admin Only */}
+        {user.role === "admin" && showCreateForm && (
           <CreateEventForm
             onClose={() => setShowCreateForm(false)}
             onSuccess={() => {
@@ -236,16 +241,18 @@ export default function EventsPage() {
           />
         )}
 
-        {/* Edit Event Modal */}
-        <EditEventModal
-          isOpen={!!editingEvent}
-          onClose={() => setEditingEvent(null)}
-          eventId={editingEvent}
-          onSuccess={() => {
-            setEditingEvent(null)
-            refreshData()
-          }}
-        />
+        {/* Edit Event Modal - Admin Only */}
+        {user.role === "admin" && (
+          <EditEventModal
+            isOpen={!!editingEvent}
+            onClose={() => setEditingEvent(null)}
+            eventId={editingEvent}
+            onSuccess={() => {
+              setEditingEvent(null)
+              refreshData()
+            }}
+          />
+        )}
 
         {/* Filters and Search */}
         <Card className="enhanced-card">
@@ -514,24 +521,28 @@ export default function EventsPage() {
                           >
                             <Eye className="h-3 w-3" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0 text-green-600 hover:text-green-800"
-                            onClick={() => setEditingEvent(event._id)}
-                            title="Edit Event"
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0 text-red-600 hover:text-red-800"
-                            onClick={() => handleDeleteEvent(event._id)}
-                            title="Delete"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                          {user.role === "admin" && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-green-600 hover:text-green-800"
+                                onClick={() => setEditingEvent(event._id)}
+                                title="Edit Event"
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-red-600 hover:text-red-800"
+                                onClick={() => handleDeleteEvent(event._id)}
+                                title="Delete"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -590,24 +601,28 @@ export default function EventsPage() {
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-green-600 hover:text-green-800"
-                                onClick={() => setEditingEvent(event._id)}
-                                title="Edit Event"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-                                onClick={() => handleDeleteEvent(event._id)}
-                                title="Delete"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              {user.role === "admin" && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-green-600 hover:text-green-800"
+                                    onClick={() => setEditingEvent(event._id)}
+                                    title="Edit Event"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+                                    onClick={() => handleDeleteEvent(event._id)}
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>

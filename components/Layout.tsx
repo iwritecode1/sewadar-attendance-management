@@ -55,7 +55,7 @@ export default function Layout({ children }: LayoutProps) {
     ...(user.role === "admin" ? [{ name: "Dashboard", href: "/dashboard", icon: Home }] : []),
     { name: "Add Attendance", href: "/attendance", icon: Calendar },
     { name: "Manage Sewadars", href: "/sewadars", icon: Users },
-    ...(user.role === "admin" ? [{ name: "Manage Events", href: "/events", icon: Calendar }] : []),
+    { name: user.role === "admin" ? "Manage Events" : "View Events", href: "/events", icon: Calendar },
     ...(user.role === "admin" ? [{ name: "Manage Coordinators", href: "/coordinators", icon: Settings }] : []),
     ...(user.role === "admin" ? [{ name: "Manage Centers", href: "/centers", icon: Building2 }] : []),
     { name: "Sewadar Lookup", href: "/lookup", icon: Search },
