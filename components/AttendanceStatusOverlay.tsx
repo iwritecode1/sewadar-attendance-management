@@ -176,7 +176,7 @@ export default function AttendanceStatusOverlay({
           ) : status === "success" && attendanceData ? (
             <>
               {/* Scrollable Content */}
-              <div className="flex-1 overflow-y-auto text-left text-gray-700 space-y-4 w-full">
+              {/* <div className="flex-1 overflow-y-auto text-left text-gray-700 space-y-4 w-full">
                 {attendanceData.eventName && (
                   <div className="border-b border-gray-200 pb-3">
                     <span className="font-medium text-gray-900 block">Event:</span>
@@ -229,10 +229,10 @@ export default function AttendanceStatusOverlay({
                     </div>
                   </div>
                 )}
-              </div>
+              </div> */}
 
               {/* Sticky Button at Bottom */}
-              <div className="flex-shrink-0 pt-4 pb-4 border-t bg-white">
+              <div className="flex-shrink-0 pt-4 pb-4 border-t bg-white w-full">
                 <div className="flex justify-center">
                   <Button
                     onClick={onClose}

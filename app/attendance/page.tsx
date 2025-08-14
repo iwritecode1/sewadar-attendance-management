@@ -202,19 +202,27 @@ const getCroppedImg = (image: HTMLImageElement, crop: PixelCrop): Promise<File> 
   const scaleX = image.naturalWidth / image.width;
   const scaleY = image.naturalHeight / image.height;
 
-  canvas.width = crop.width;
-  canvas.height = crop.height;
+  // Use the actual pixel dimensions from the original image for better quality
+  const cropWidth = crop.width * scaleX;
+  const cropHeight = crop.height * scaleY;
+
+  canvas.width = cropWidth;
+  canvas.height = cropHeight;
+
+  // Enable image smoothing for better quality
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
 
   ctx.drawImage(
     image,
     crop.x * scaleX,
     crop.y * scaleY,
-    crop.width * scaleX,
-    crop.height * scaleY,
+    cropWidth,
+    cropHeight,
     0,
     0,
-    crop.width,
-    crop.height
+    cropWidth,
+    cropHeight
   );
 
   return new Promise((resolve) => {
@@ -227,7 +235,7 @@ const getCroppedImg = (image: HTMLImageElement, crop: PixelCrop): Promise<File> 
         lastModified: Date.now(),
       });
       resolve(file);
-    }, 'image/jpeg', 0.9);
+    }, 'image/jpeg', 1.0); // Use maximum quality (1.0) since images are already optimized
   });
 };
 

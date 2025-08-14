@@ -312,10 +312,23 @@ export async function GET(request: NextRequest) {
       query.eventId = new mongoose.Types.ObjectId(eventId)
     }
 
-    // For coordinators, restrict to their center
+    // For coordinators, we need different filtering based on the use case:
+    // 1. When fetching for checkmarks (no centerId specified), show records submitted by this user
+    // 2. When fetching for specific center data (centerId specified), restrict to their center
     if (session.role === "coordinator") {
-      query.centerId = session.centerId
+      if (centerId) {
+        // Specific center requested - restrict to their center only
+        if (centerId === session.centerId) {
+          query.centerId = session.centerId
+        } else {
+          return NextResponse.json({ error: "Unauthorized access to center data" }, { status: 403 })
+        }
+      } else {
+        // No specific center - for checkmarks, show records submitted by this user
+        query.submittedBy = new mongoose.Types.ObjectId(session.id)
+      }
     } else if (centerId) {
+      // Admin with specific center filter
       query.centerId = centerId
     }
 

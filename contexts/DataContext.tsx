@@ -1009,18 +1009,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         // Wait a moment to ensure database operations are complete
         await new Promise(resolve => setTimeout(resolve, 200))
 
-        // Then fetch events with stats (after attendance is loaded)
-        await fetchEvents({ includeStats: true })
+        // Skip automatic events fetching - let individual pages handle their own event fetching
+        // This prevents conflicts between different event fetching strategies (e.g., attendance vs events page)
 
         // Skip general sewadars fetch - let individual pages handle their own sewadar fetching
         // This prevents duplicate API calls on pages like /sewadars that have their own fetch logic
       } catch (error) {
         console.error('Error initializing data:', error)
-        // Fallback: try to fetch events without stats first, then with stats
-        await fetchEvents()
-        setTimeout(() => {
-          fetchEvents({ includeStats: true })
-        }, 1000)
+        // Skip fallback events fetching - let individual pages handle their own event fetching
       }
     }
 
