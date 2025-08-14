@@ -295,7 +295,8 @@ export default function AttendancePage() {
   useEffect(() => {
     if (user) {
       // Load all events for attendance (not filtered by center participation)
-      fetchEventsForAttendance({ limit: 1000 });
+      // Force a fresh load to ensure we get all events, not filtered ones from events page
+      fetchEventsForAttendance({ limit: 1000, page: 1, _t: Date.now() });
     }
   }, [user, fetchEventsForAttendance]);
 

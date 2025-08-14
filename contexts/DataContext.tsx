@@ -360,6 +360,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const controller = new AbortController()
     currentEventsController.current = controller
 
+    // Clear existing events to ensure fresh load for attendance
+    setEvents([])
     setLoading((prev) => ({ ...prev, events: true }))
     try {
       const response = await apiClient.getEvents({

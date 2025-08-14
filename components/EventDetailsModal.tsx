@@ -272,7 +272,7 @@ export default function EventDetailsModal({
               variant="outline"
               size="sm"
               onClick={() => setShowNominalRolls(true)}
-              className="ml-4 mr-4 flex-shrink-0"
+              className="ml-4 mr-12 flex-shrink-0"
             >
               <FileImage className="mr-2 h-4 w-4" />
               View Nominal Rolls
@@ -288,7 +288,7 @@ export default function EventDetailsModal({
           ) : data ? (
             <div className="space-y-3 md:space-y-6 p-1">
               {/* Statistics Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 md:gap-4">
+              <div className={`grid gap-1.5 md:gap-4 ${user?.role === "coordinator" ? "grid-cols-3" : "grid-cols-2 md:grid-cols-4"}`}>
                 <Card>
                   <CardContent className="p-2 md:p-4">
                     <div className="flex items-center space-x-1.5 md:space-x-2">
@@ -301,17 +301,20 @@ export default function EventDetailsModal({
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardContent className="p-2 md:p-4">
-                    <div className="flex items-center space-x-1.5 md:space-x-2">
-                      <Building className="h-3.5 w-3.5 md:h-5 md:w-5 text-green-600 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-base md:text-lg font-semibold truncate">{getFilteredStats()?.totalCenters}</p>
-                        <p className="text-xs md:text-sm text-gray-600 leading-tight">Centers</p>
+                {/* Hide Centers card for coordinators */}
+                {user?.role === "admin" && (
+                  <Card>
+                    <CardContent className="p-2 md:p-4">
+                      <div className="flex items-center space-x-1.5 md:space-x-2">
+                        <Building className="h-3.5 w-3.5 md:h-5 md:w-5 text-green-600 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-base md:text-lg font-semibold truncate">{getFilteredStats()?.totalCenters}</p>
+                          <p className="text-xs md:text-sm text-gray-600 leading-tight">Centers</p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                )}
 
                 <Card>
                   <CardContent className="p-2 md:p-4">
@@ -377,50 +380,54 @@ export default function EventDetailsModal({
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  {/* Mobile Compact Layout */}
-                  <div className="block md:hidden space-y-2">
+                  {/* Responsive Card Layout */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:hidden">
                     {getFilteredSewadars().map((sewadar) => (
-                      <div key={sewadar._id} className="p-2.5 border border-gray-200 rounded-lg bg-white shadow-sm">
-                        {/* Compact Header */}
+                      <div key={sewadar._id} className="p-3 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
+                        {/* Header with badges */}
                         <div className="flex items-start justify-between mb-2">
                           <div className="min-w-0 flex-1">
-                            <h4 className="text-gray-900 text-sm font-medium leading-tight mb-0.5">
+                            <h4 className="text-gray-900 text-sm font-medium leading-tight mb-1 truncate">
                               {sewadar.name}
                             </h4>
-                            <p className="text-xs text-gray-600 leading-tight mb-0.5">
+                            <p className="text-xs text-gray-600 leading-tight mb-1 truncate">
                               {sewadar.fatherHusbandName}
                             </p>
-                            <p className="text-xs text-gray-600 leading-tight">
-                              {sewadar.age}
+                            <p className="text-xs text-gray-500 leading-tight">
+                              Age: {sewadar.age || "N/A"}
                             </p>
                           </div>
-                          <div className="flex items-center space-x-1 flex-shrink-0 ml-2">
+                          <div className="flex flex-col space-y-1 flex-shrink-0 ml-2">
                             <Badge 
                               variant={sewadar.gender === "MALE" ? "default" : "secondary"} 
-                              className="text-xs px-1.5 py-0.5 font-medium h-5"
+                              className="text-xs px-1.5 py-0.5 font-medium h-5 w-8 justify-center"
                             >
                               {sewadar.gender === "MALE" ? "M" : "F"}
                             </Badge>
                             <Badge 
                               variant={sewadar.badgeStatus === "PERMANENT" ? "default" : "outline"} 
-                              className="text-xs px-1.5 py-0.5 font-medium h-5"
+                              className="text-xs px-1.5 py-0.5 font-medium h-5 w-8 justify-center"
                             >
                               {sewadar.badgeStatus === "PERMANENT" ? "P" : sewadar.badgeStatus === "TEMPORARY" ? "T" : "O"}
                             </Badge>
                           </div>
                         </div>
 
-                        {/* Badge Number and Center in one row */}
-                        <div className="flex items-center space-x-2">
-                          <code className="text-xs font-mono bg-gray-100 px-2 py-1 rounded text-center flex-1">
+                        {/* Badge Number */}
+                        <div className="mb-2">
+                          <code className="text-xs font-mono bg-gray-100 px-2 py-1 rounded block text-center w-full">
                             {sewadar.badgeNumber}
                           </code>
-                          <div className="bg-blue-50 rounded px-2 py-1 flex-1">
+                        </div>
+
+                        {/* Center name for admins */}
+                        {user?.role === "admin" && (
+                          <div className="bg-blue-50 rounded px-2 py-1">
                             <div className="text-xs text-blue-900 font-medium text-center truncate">
                               {sewadar.centerName}
                             </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -436,7 +443,10 @@ export default function EventDetailsModal({
                           <th className="text-left p-3 font-medium text-gray-700">Gender</th>
                           <th className="text-left p-3 font-medium text-gray-700">Age</th>
                           <th className="text-left p-3 font-medium text-gray-700">Badge Status</th>
-                          <th className="text-left p-3 font-medium text-gray-700">Center</th>
+                          {/* Hide Center column for coordinators */}
+                          {user?.role === "admin" && (
+                            <th className="text-left p-3 font-medium text-gray-700">Center</th>
+                          )}
                         </tr>
                       </thead>
                       <tbody>
@@ -468,7 +478,10 @@ export default function EventDetailsModal({
                                   {sewadar.badgeStatus}
                                 </Badge>
                               </td>
-                              <td className="p-3 text-gray-600">{sewadar.centerName}</td>
+                              {/* Hide Center cell for coordinators */}
+                              {user?.role === "admin" && (
+                                <td className="p-3 text-gray-600">{sewadar.centerName}</td>
+                              )}
                             </tr>
                           ))}
                       </tbody>

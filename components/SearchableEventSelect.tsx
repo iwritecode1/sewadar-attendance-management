@@ -35,24 +35,25 @@ export default function SearchableEventSelect({
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [focusedEventIndex, setFocusedEventIndex] = useState(-1)
+  const [isKeyboardNavigation, setIsKeyboardNavigation] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Filter events based on search term
   const filteredEvents = events.filter(event => {
     const searchLower = searchTerm.toLowerCase()
-    
+
     // Create the full display format for searching using new date format
     const fullFormat = `${event.place} - ${event.department} (${formatDateRange(event.fromDate, event.toDate)})`.toLowerCase()
-    
+
     // Create alternative formats for flexible searching
     const placeAndDept = `${event.place} ${event.department}`.toLowerCase()
     const placeAndDeptWithDash = `${event.place} - ${event.department}`.toLowerCase()
-    
+
     // Format dates for searching
     const fromDateFormatted = formatDate(event.fromDate).toLowerCase()
     const toDateFormatted = formatDate(event.toDate).toLowerCase()
-    
+
     return (
       // Search in individual fields
       event.place.toLowerCase().includes(searchLower) ||
@@ -80,6 +81,7 @@ export default function SearchableEventSelect({
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false)
         setSearchTerm("")
+        setIsKeyboardNavigation(false)
       }
     }
 
@@ -94,35 +96,41 @@ export default function SearchableEventSelect({
     }
   }, [isOpen])
 
-  // Auto-scroll to focused event item within dropdown only
+  // Auto-scroll to focused event item within dropdown only for keyboard navigation
   useEffect(() => {
-    if (focusedEventIndex >= 0 && isOpen) {
+    if (focusedEventIndex >= 0 && isOpen && isKeyboardNavigation) {
       const focusedElement = document.getElementById(`event-option-${focusedEventIndex}`);
       const dropdown = document.getElementById('event-dropdown');
-      
+
       if (focusedElement && dropdown) {
-        const dropdownScrollTop = dropdown.scrollTop;
-        const dropdownHeight = dropdown.clientHeight;
-        const elementOffsetTop = focusedElement.offsetTop;
-        const elementHeight = focusedElement.offsetHeight;
-        
-        // Check if element is above the visible area
-        if (elementOffsetTop < dropdownScrollTop) {
-          dropdown.scrollTop = elementOffsetTop;
-        }
-        // Check if element is below the visible area
-        else if (elementOffsetTop + elementHeight > dropdownScrollTop + dropdownHeight) {
-          dropdown.scrollTop = elementOffsetTop + elementHeight - dropdownHeight;
+        // Special case: if focusing on the first item (index 0), scroll to top
+        if (focusedEventIndex === 0) {
+          dropdown.scrollTop = 0;
+        } else {
+          const dropdownScrollTop = dropdown.scrollTop;
+          const dropdownHeight = dropdown.clientHeight;
+          const elementOffsetTop = focusedElement.offsetTop;
+          const elementHeight = focusedElement.offsetHeight;
+
+          // Check if element is above the visible area
+          if (elementOffsetTop < dropdownScrollTop) {
+            dropdown.scrollTop = elementOffsetTop;
+          }
+          // Check if element is below the visible area
+          else if (elementOffsetTop + elementHeight > dropdownScrollTop + dropdownHeight) {
+            dropdown.scrollTop = elementOffsetTop + elementHeight - dropdownHeight;
+          }
         }
       }
     }
-  }, [focusedEventIndex, isOpen])
+  }, [focusedEventIndex, isOpen, isKeyboardNavigation])
 
   const handleSelect = (eventValue: string) => {
     onValueChange(eventValue)
     setIsOpen(false)
     setSearchTerm("")
     setFocusedEventIndex(-1)
+    setIsKeyboardNavigation(false)
   }
 
   const formatEventDisplay = (event: SewaEvent) => {
@@ -132,7 +140,7 @@ export default function SearchableEventSelect({
   // Helper function to render event with optional checkmark - mobile responsive
   const renderEventWithCheckmark = (event: SewaEvent, isMobile: boolean = false) => {
     const hasExistingAttendance = hasAttendance && hasAttendance(event._id);
-    
+
     return (
       <div className="flex items-start">
         <div className="w-6 flex justify-start flex-shrink-0 mt-0.5">
@@ -207,20 +215,23 @@ export default function SearchableEventSelect({
                 onChange={(e) => {
                   setSearchTerm(e.target.value?.toUpperCase());
                   setFocusedEventIndex(-1); // Reset focused index when search changes
+                  setIsKeyboardNavigation(false); // Reset keyboard navigation flag
                 }}
                 onKeyDown={(e) => {
                   if (displayEvents.length > 0 || e.key === "Escape") {
                     // Arrow down - move focus down
                     if (e.key === "ArrowDown") {
                       e.preventDefault();
-                      setFocusedEventIndex((prev) => 
-                        // Allow focusing on the "Create New Event" button (index = displayEvents.length)
-                        prev < displayEvents.length ? prev + 1 : prev
+                      setIsKeyboardNavigation(true);
+                      setFocusedEventIndex((prev) =>
+                        // Stop at the last event (displayEvents.length - 1)
+                        prev < displayEvents.length - 1 ? prev + 1 : prev
                       );
                     }
                     // Arrow up - move focus up
                     else if (e.key === "ArrowUp") {
                       e.preventDefault();
+                      setIsKeyboardNavigation(true);
                       setFocusedEventIndex((prev) => (prev > 0 ? prev - 1 : 0));
                     }
                     // Enter - select the focused item
@@ -236,17 +247,14 @@ export default function SearchableEventSelect({
                       e.preventDefault();
                       handleSelect("new");
                     }
-                    // Special case: if focused index is equal to displayEvents.length, it means we're focusing the "Create New Event" button
-                    else if (e.key === "Enter" && focusedEventIndex === displayEvents.length) {
-                      e.preventDefault();
-                      handleSelect("new");
-                    }
+
                     // Escape - close dropdown
                     else if (e.key === "Escape") {
                       e.preventDefault();
                       setIsOpen(false);
                       setSearchTerm("");
                       setFocusedEventIndex(-1);
+                      setIsKeyboardNavigation(false);
                     }
                   }
                 }}
@@ -268,6 +276,18 @@ export default function SearchableEventSelect({
             {/* Event Options - Scrollable */}
             <div id="event-dropdown" className="max-h-64 overflow-y-auto">
               <div className="space-y-1">
+                {/* Create New Event Option - Moved to top */}
+                <div className="border-b pb-2 mb-2">
+                  <button
+                    type="button"
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 rounded-md transition-colors flex items-center text-blue-600"
+                    onClick={() => handleSelect("new")}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    <span className="font-medium">Create New Event</span>
+                  </button>
+                </div>
+
                 {loading ? (
                   <div className="flex items-center justify-center py-4">
                     <RefreshCw className="h-4 w-4 animate-spin mr-2" />
@@ -279,13 +299,15 @@ export default function SearchableEventSelect({
                       key={event._id}
                       id={`event-option-${index}`}
                       type="button"
-                      className={`w-full text-left px-3 py-3 text-sm rounded-md transition-colors ${
-                        focusedEventIndex === index 
-                          ? "bg-blue-50" 
+                      className={`w-full text-left px-3 py-3 text-sm rounded-md transition-colors ${focusedEventIndex === index
+                          ? "bg-blue-50"
                           : "hover:bg-gray-50"
-                      }`}
+                        }`}
                       onClick={() => handleSelect(event._id)}
-                      onMouseEnter={() => setFocusedEventIndex(index)}
+                      onMouseEnter={() => {
+                        setIsKeyboardNavigation(false);
+                        setFocusedEventIndex(index);
+                      }}
                     >
                       {renderEventWithCheckmark(event, true)}
                     </button>
@@ -314,18 +336,6 @@ export default function SearchableEventSelect({
                     )}
                   </>
                 )}
-
-                {/* Create New Event Option */}
-                <div className="border-t pt-2 mt-2">
-                  <button
-                    type="button"
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 rounded-md transition-colors flex items-center text-blue-600"
-                    onClick={() => handleSelect("new")}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    <span className="font-medium">Create New Event</span>
-                  </button>
-                </div>
               </div>
             </div>
           </div>
