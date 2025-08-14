@@ -119,12 +119,31 @@ export async function GET(request: NextRequest) {
     const place = searchParams.get("place")
     const search = searchParams.get("search")
     const includeStats = searchParams.get("includeStats") === "true"
+    const forAttendance = searchParams.get("forAttendance") === "true"
     const page = Number.parseInt(searchParams.get("page") || "1")
     const limit = Number.parseInt(searchParams.get("limit") || "20")
     const skip = (page - 1) * limit
 
     // Build query - users can only see events from their area
     const query: any = { areaCode: session.areaCode }
+
+    // For coordinators, apply center-specific filtering only when NOT fetching for attendance
+    // When forAttendance=true, show all events so they can submit attendance for any event
+    if (session.role === "coordinator" && session.centerId && !forAttendance) {
+      const attendanceRecords = await AttendanceRecord.find({
+        centerId: session.centerId,
+        areaCode: session.areaCode
+      }).select('eventId').lean()
+      
+      const eventIdsForCoordinator = attendanceRecords.map(record => record.eventId.toString())
+      
+      if (eventIdsForCoordinator.length > 0) {
+        query._id = { $in: eventIdsForCoordinator.map(id => new mongoose.Types.ObjectId(id)) }
+      } else {
+        // If coordinator's center hasn't participated in any events, return empty result
+        query._id = { $in: [] }
+      }
+    }
 
     if (fromDate) {
       query.fromDate = { $gte: fromDate }
@@ -168,20 +187,27 @@ export async function GET(request: NextRequest) {
         events.map(async (event) => {
           try {
             // Use a more robust query with proper error handling
-            const attendanceRecords = await AttendanceRecord.find({ 
-              eventId: event._id 
-            }).lean().exec()
+            const attendanceQuery: any = { eventId: event._id }
+            
+            // For coordinators, only count stats from their center when NOT fetching for attendance
+            if (session.role === "coordinator" && session.centerId && !forAttendance) {
+              attendanceQuery.centerId = session.centerId
+            }
+            
+            const attendanceRecords = await AttendanceRecord.find(attendanceQuery).lean().exec()
 
             const totalAttendance = attendanceRecords.reduce(
               (sum, record) => sum + (record.sewadars?.length || 0),
               0,
             )
 
-            const centersParticipated = new Set(
-              attendanceRecords
-                .filter(r => r.centerId)
-                .map((r) => r.centerId)
-            ).size
+            const centersParticipated = (session.role === "coordinator" && session.centerId && !forAttendance)
+              ? (attendanceRecords.length > 0 ? 1 : 0) // For coordinators viewing events, it's either 1 (their center) or 0
+              : new Set(
+                  attendanceRecords
+                    .filter(r => r.centerId)
+                    .map((r) => r.centerId)
+                ).size
 
             return {
               ...event.toObject(),

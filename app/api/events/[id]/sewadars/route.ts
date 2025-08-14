@@ -12,7 +12,8 @@ export async function GET(
   try {
     const session = await getSession()
 
-    if (!isAuthorized(session, "admin")) {
+    // Allow both admin and coordinator access
+    if (!isAuthorized(session, "admin") && !isAuthorized(session, "coordinator")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -37,8 +38,11 @@ export async function GET(
       areaCode: session.areaCode
     }
 
-    // Filter by center if specified
-    if (centerId && centerId !== "all") {
+    // For coordinators, only show data from their center
+    if (session.role === "coordinator" && session.centerId) {
+      attendanceQuery.centerId = session.centerId
+    } else if (centerId && centerId !== "all") {
+      // For admins, allow filtering by center
       attendanceQuery.centerId = centerId
     }
 

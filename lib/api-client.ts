@@ -224,6 +224,7 @@ class ApiClient {
     department?: string
     place?: string
     includeStats?: boolean
+    forAttendance?: boolean
     page?: number
     limit?: number
     signal?: AbortSignal
