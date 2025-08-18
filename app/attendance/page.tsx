@@ -347,7 +347,7 @@ export default function AttendancePage() {
   // Status overlay state
   const [statusOverlay, setStatusOverlay] = useState({
     isOpen: false,
-    status: "loading" as "loading" | "success" | "error",
+    status: "loading" as "loading" | "success" | "error" | "confirm",
     message: "",
     attendanceData: undefined as {
       eventName?: string;
@@ -355,7 +355,10 @@ export default function AttendancePage() {
       totalSewadars?: number;
       nominalRollImages?: number;
       newTempSewadars?: number;
+      newTempSewadarsList?: Array<{ name: string; fatherName: string }>;
       existingTempSewadars?: Array<{ name: string; fatherName: string }>;
+      selectedSewadars?: Array<{ name: string; fatherHusbandName: string; badgeNumber: string }>;
+      tempSewadars?: Array<{ name: string; fatherName: string }>;
     } | undefined,
   });
 
@@ -549,10 +552,11 @@ export default function AttendancePage() {
       return;
     }
 
+
     // Show confirmation overlay first
     const selectedEventData = events.find(e => e._id === selectedEvent);
     const selectedCenterData = centers.find((c) => c.code === selectedCenter);
-    const selectedSewadarDetails = getSelectedSewadarDetails();
+    const selectedSewadarDetails = getSelectedSewadarDetails(); // Declare selectedSewadarDetails here
     const validTempSewadars = tempSewadars.filter(ts => ts.name.trim() && ts.fatherName.trim());
     const totalSewadars = selectedSewadars.length + validTempSewadars.length;
 
@@ -562,33 +566,19 @@ export default function AttendancePage() {
       message: "Please review the details before submitting",
       attendanceData: {
         eventName: selectedEventData ? `${selectedEventData.place} - ${selectedEventData.department}` : "",
-        eventDate: selectedEventData ? (() => {
-          if (!selectedEventData.fromDate) return "";
-
-          const fromDate = new Date(selectedEventData.fromDate).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          });
-
-          if (selectedEventData.toDate) {
-            const toDate = new Date(selectedEventData.toDate).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            });
-
-            // Only show "to" if dates are different
-            if (toDate !== fromDate) {
-              return `${fromDate} to ${toDate}`;
-            }
-          }
-
-          return fromDate;
-        })() : "",
+        eventDate: selectedEventData?.fromDate ? new Date(selectedEventData.fromDate).toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        }) : undefined,
         totalSewadars,
         nominalRollImages: nominalRollImages.length,
-        selectedSewadars: selectedSewadarDetails,
+        selectedSewadars: selectedSewadarDetails.map(sewadar => ({
+          name: sewadar.name,
+          fatherHusbandName: sewadar.fatherHusbandName,
+          badgeNumber: sewadar.badgeNumber,
+        })),
         tempSewadars: validTempSewadars,
       },
     });
@@ -676,7 +666,7 @@ export default function AttendancePage() {
             .filter(Boolean) : [];
 
         // Format event date
-        const eventDate = selectedEventData?.date ? new Date(selectedEventData.date).toLocaleDateString('en-US', {
+        const eventDate = selectedEventData?.fromDate ? new Date(selectedEventData.fromDate).toLocaleDateString('en-US', {
           weekday: 'long',
           year: 'numeric',
           month: 'long',
@@ -686,9 +676,9 @@ export default function AttendancePage() {
         setStatusOverlay({
           isOpen: true,
           status: "success",
-          message: "Your attendance has been submitted successfully!",
+          message: result.message || "Your attendance has been submitted successfully!",
           attendanceData: {
-            eventName: selectedEventData?.name,
+            eventName: selectedEventData ? `${selectedEventData.place} - ${selectedEventData.department}` : "",
             eventDate,
             totalSewadars,
             nominalRollImages: nominalRollImages.length,
@@ -1079,15 +1069,15 @@ export default function AttendancePage() {
 
                   {/* Warning message for existing attendance */}
                   {existingAttendance && (
-                    <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                      <p className="text-red-800 text-sm mb-2">
+                    <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-blue-800 text-sm mb-2">
                         <strong>Note:</strong> You have already added the attendance for this sewa on{" "}
                         <strong>{new Date(existingAttendance.submittedAt).toLocaleDateString()}</strong> with{" "}
                         <strong>{existingAttendance.sewadars?.length || 0} sewadars</strong>.
                       </p>
-                      <p className="text-red-800 text-sm">
-                        Duplicate attendance submissions are not allowed. Please select a different sewa to add attendance.
-                      </p>
+                      {/* <p className="text-blue-800 text-sm">
+                        You can continue to add more sewadars to this event. New sewadars will be appended to the existing list.
+                      </p> */}
                     </div>
                   )}
                 </div>
@@ -1257,7 +1247,6 @@ export default function AttendancePage() {
 
         {selectedEvent &&
           selectedEvent !== "new" &&
-          !existingAttendance &&
           (user?.role === "coordinator" ||
             (user?.role === "admin" && selectedCenter)) && (
             <form onSubmit={handleAttendanceSubmit} className="space-y-6">

@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
 
           if (existingSewadar) {
             // Use existing sewadar for attendance
-            processedTempSewadarIds.push(existingSewadar._id.toString())
+            processedTempSewadarIds.push(existingSewadar._id?.toString() || '')
             existingSewadarMessages.push(`${tempSewadar.name} / ${tempSewadar.fatherName}) - Existing (${existingSewadar.badgeNumber})`)
           } else {
             // Create new temp sewadar
@@ -149,12 +149,13 @@ export async function POST(request: NextRequest) {
               updatedAt: new Date(),
             })
 
-            processedTempSewadarIds.push(newSewadar._id.toString())
+            processedTempSewadarIds.push(newSewadar._id?.toString() || '')
             newSewadarMessages.push(`${tempSewadar.name} / ${tempSewadar.fatherName}) - Created (${tempBadgeNumber})`)
           }
         } catch (error) {
           console.error("Error processing temp sewadar:", error)
-          errorMessages.push(`Failed to process ${tempSewadar.name}: ${error.message}`)
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+          errorMessages.push(`Failed to process ${tempSewadar.name}: ${errorMessage}`)
         }
       }
     }
@@ -178,10 +179,11 @@ export async function POST(request: NextRequest) {
         imageUrls = await uploadMultipleToImageKit(attendanceData.nominalRollImages, "nominal-rolls")
       } catch (error) {
         console.error("ImageKit upload error:", error)
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
         return NextResponse.json(
           {
             error: "Failed to upload images to ImageKit",
-            details: error.message,
+            details: errorMessage,
           },
           { status: 500 },
         )
@@ -202,12 +204,22 @@ export async function POST(request: NextRequest) {
     })
 
     let attendance
+    let uniqueSewadarIds = allSewadarIds // Initialize for use in response
+    
     if (existingAttendance) {
+      // Merge existing sewadars with new ones and remove duplicates
+      const existingSewadarIds = existingAttendance.sewadars || []
+      const mergedSewadarIds = [...existingSewadarIds, ...allSewadarIds]
+      
+      // Remove duplicates using Set and convert back to ObjectIds
+      uniqueSewadarIds = [...new Set(mergedSewadarIds.map(id => id.toString()))]
+        .map(id => new mongoose.Types.ObjectId(id))
+      
       // Update existing attendance record from the same user
       attendance = await AttendanceRecord.findByIdAndUpdate(
         existingAttendance._id,
         {
-          sewadars: allSewadarIds,
+          sewadars: uniqueSewadarIds,
           nominalRollImages: [...(existingAttendance.nominalRollImages || []), ...imageUrls],
           submittedAt: new Date(),
         },
@@ -256,6 +268,11 @@ export async function POST(request: NextRequest) {
         response.tempSewadarInfo = allMessages
 
         let message = existingAttendance ? "Attendance updated successfully." : "Attendance submitted successfully."
+        if (existingAttendance) {
+          const existingCount = existingAttendance.sewadars?.length || 0
+          const newCount = uniqueSewadarIds.length - existingCount
+          message += ` Added ${newCount} new sewadar(s). Total sewadars: ${uniqueSewadarIds.length}.`
+        }
         if (existingSewadarMessages.length > 0) {
           message += ` ${existingSewadarMessages.length} existing sewadar(s) were included.`
         }
@@ -270,7 +287,9 @@ export async function POST(request: NextRequest) {
         response.message = message
       }
     } else if (existingAttendance) {
-      response.message = "Attendance updated successfully."
+      const existingCount = existingAttendance.sewadars?.length || 0
+      const newCount = uniqueSewadarIds.length - existingCount
+      response.message = `Attendance updated successfully. Added ${newCount} new sewadar(s). Total sewadars: ${uniqueSewadarIds.length}.`
     }
 
     return NextResponse.json(response, { status: existingAttendance ? 200 : 201 })

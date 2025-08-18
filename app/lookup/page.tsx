@@ -182,18 +182,18 @@ export default function SewadarLookupPage() {
     const suggestions: SearchSuggestion[] = []
 
     // Add center suggestions - only for center coordinators (admins have center filter now)
-    if (user?.role !== "admin" && user?.centerId) {
-      // Center coordinators only see their own center
-      const userCenter = centers.find(center => center.code === user.centerId)
-      if (userCenter) {
-        suggestions.push({
-          type: "center",
-          value: userCenter.name,
-          label: `Center: ${userCenter.name}`,
-          count: 0,
-        })
-      }
-    }
+    // if (user?.role !== "admin" && user?.centerId) {
+    //   // Center coordinators only see their own center
+    //   const userCenter = centers.find(center => center.code === user.centerId)
+    //   if (userCenter) {
+    //     suggestions.push({
+    //       type: "center",
+    //       value: userCenter.name,
+    //       label: `Center: ${userCenter.name}`,
+    //       count: 0,
+    //     })
+    //   }
+    // }
 
     // Add department suggestions from constants
     DEPARTMENTS.forEach((dept) => {
