@@ -17,6 +17,7 @@ export default function Layout({ children }: LayoutProps) {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const toggleButtonRef = useRef<HTMLButtonElement>(null)
 
   // Prevent body scroll when mobile menu is open
   useEffect(() => {
@@ -36,7 +37,9 @@ export default function Layout({ children }: LayoutProps) {
   // Handle outside click to close menu
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (mobileMenuOpen && menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node
+      const clickedToggle = toggleButtonRef.current && toggleButtonRef.current.contains(target)
+      if (mobileMenuOpen && menuRef.current && !menuRef.current.contains(target) && !clickedToggle) {
         setMobileMenuOpen(false)
       }
     }
@@ -65,7 +68,7 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile header */}
-      <div className="lg:hidden bg-white shadow-sm border-b px-4 py-3 flex items-center justify-between">
+      <div className="lg:hidden fixed top-0 inset-x-0 z-[50] bg-white shadow-sm border-b px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
             <span className="text-white font-bold text-sm">R</span>
@@ -75,7 +78,7 @@ export default function Layout({ children }: LayoutProps) {
             <p className="text-xs text-gray-500">Sewadar Attendance</p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+        <Button ref={toggleButtonRef} variant="ghost" size="sm" onClick={() => setMobileMenuOpen((prev) => !prev)}>
           {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
       </div>
@@ -89,7 +92,7 @@ export default function Layout({ children }: LayoutProps) {
       {mobileMenuOpen && (
         <div
           ref={menuRef}
-          className="lg:hidden fixed top-16 right-4 w-[75%] max-w-sm bg-white rounded-xl shadow-2xl z-50 max-h-[calc(100vh-6rem)] overflow-hidden"
+          className="lg:hidden fixed right-4 top-[calc(4rem+env(safe-area-inset-top))] w-[75%] max-w-sm bg-white rounded-xl shadow-2xl z-50 max-h-[calc(100vh-6rem)] overflow-hidden"
         >
           <div className="flex flex-col h-full">
             {/* Menu items */}
@@ -218,7 +221,7 @@ export default function Layout({ children }: LayoutProps) {
         </div>
 
         {/* Main content with left margin for fixed sidebar */}
-        <div className="flex flex-col flex-1 lg:ml-72 min-h-screen main-content-with-sidebar">
+        <div className="flex flex-col flex-1 lg:ml-72 min-h-screen main-content-with-sidebar pt-[calc(env(safe-area-inset-top)+56px)] lg:pt-0">
           <main className="flex-1">
             <div className="py-6">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">{children}</div>

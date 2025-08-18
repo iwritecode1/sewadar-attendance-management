@@ -21,6 +21,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   themeColor: "#1e40af", // ✅ Move themeColor here
+  viewportFit: "cover",
 };
 
 
@@ -48,20 +49,20 @@ export default function RootLayout({
         {/* iOS PWA Meta Tags */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="RSSB Attendance" />
+        <meta name="apple-mobile-web-app-title" content="SAMS" />
         <meta name="mobile-web-app-capable" content="yes" />
 
         {/* iOS Splash Screens */}
         <link rel="apple-touch-startup-image" href="/icon-512x512.png" />
 
         {/* Additional PWA Meta Tags */}
-        <meta name="application-name" content="RSSB Attendance" />
+        <meta name="application-name" content="SAMS" />
         <meta name="msapplication-starturl" content="/" />
-        <meta name="apple-mobile-web-app-title" content="RSSB Sewadar" />
+        <meta name="apple-mobile-web-app-title" content="SAMS" />
 
         {/* Mobile Web App Capabilities */}
         <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="application-name" content="RSSB Sewadar" />
+        <meta name="application-name" content="SAMS" />
 
         {/* Additional iOS Meta Tags */}
         <meta name="apple-touch-fullscreen" content="yes" />
