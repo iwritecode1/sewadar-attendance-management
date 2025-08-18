@@ -204,7 +204,7 @@ export default function EventsPage() {
                 {user.role === "admin" && (
                   <DropdownMenuItem onClick={() => setShowCreateForm(true)}>
                     <Plus className="mr-2 h-4 w-4" />
-                    Create Event
+                    Add New Sewa
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={refreshData} disabled={loading.events}>
@@ -219,8 +219,8 @@ export default function EventsPage() {
           <div className="hidden md:flex space-x-2">
             {user.role === "admin" && (
               <Button onClick={() => setShowCreateForm(true)} className="text-sm rssb-primary">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Event
+                <Plus className="h-4 w-4" />
+                Add New Sewa
               </Button>
             )}
             <Button onClick={refreshData} variant="outline" disabled={loading.events} className="text-sm">
@@ -766,7 +766,7 @@ function CreateEventForm({ onClose, onSuccess }: { onClose: () => void; onSucces
           <div>
             <CardTitle className="flex items-center text-base md:text-lg">
               <Plus className="mr-2 h-4 w-4 md:h-5 md:w-5" />
-              Create New Sewa Event
+              Add New Sewa Event
             </CardTitle>
             <CardDescription className="text-sm">
               Add a new sewa event for attendance tracking
@@ -828,7 +828,7 @@ function CreateEventForm({ onClose, onSuccess }: { onClose: () => void; onSucces
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting} className="rssb-primary">
-              {isSubmitting ? "Creating..." : "Create Event"}
+              {isSubmitting ? "Creating..." : "Add Sewa"}
             </Button>
           </div>
         </form>
