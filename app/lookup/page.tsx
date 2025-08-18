@@ -1313,7 +1313,7 @@ export default function SewadarLookupPage() {
                             </span>
                           ) : null
                         })()}
-                        {sewadar.contactNo && (
+                        {user?.role !== "admin" && sewadar.contactNo && (
                           <a 
                             href={`tel:${sewadar.contactNo}`}
                             className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded flex items-center justify-center gap-1 hover:bg-orange-200 transition-colors cursor-pointer flex-1"

@@ -227,7 +227,7 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
                 <Input
                   id="name"
                   value={formData.name || ""}
-                  onChange={(e) => handleInputChange("name", e.target.value)}
+                  onChange={(e) => handleInputChange("name", e.target.value?.toUpperCase())}
                   placeholder="Enter full name"
                   className={errors.name ? "border-red-500" : ""}
                 />
@@ -239,7 +239,7 @@ export default function EditSewadarModal({ sewadarId, isOpen, onClose, onSuccess
                 <Input
                   id="fatherHusbandName"
                   value={formData.fatherHusbandName || ""}
-                  onChange={(e) => handleInputChange("fatherHusbandName", e.target.value)}
+                  onChange={(e) => handleInputChange("fatherHusbandName", e.target.value?.toUpperCase())}
                   placeholder="Enter father/husband name"
                   className={errors.fatherHusbandName ? "border-red-500" : ""}
                 />
