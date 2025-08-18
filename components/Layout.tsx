@@ -3,7 +3,7 @@
 import type React from "react"
 import { useAuth } from "@/contexts/AuthContext"
 import { Button } from "@/components/ui/button"
-import { Home, Users, Calendar, Search, Settings, LogOut, Menu, X, Building2, UserCircle } from "lucide-react"
+import { Home, Users, Calendar, Search, Settings, LogOut, Menu, X, Building2, UserCircle, Phone } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState, useEffect, useRef } from "react"
@@ -125,8 +125,17 @@ export default function Layout({ children }: LayoutProps) {
             </div>
 
             {/* Assistance info for mobile */}
-            <div className="flex-shrink-0 border-t border-gray-100 px-6 py-4 bg-gradient-to-r from-blue-50 to-gray-50">
-              <p className="text-sm text-gray-600 text-center font-medium">Need assistance? Call 9467796669</p>
+            <div className="flex-shrink-0 border-t border-gray-100 px-2 py-4 bg-gradient-to-r from-blue-50 to-gray-50">
+              <p className="text-sm text-gray-600 text-center font-medium">Need assistance?</p> 
+              <a
+                href={`tel:9467796669`}
+                className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded flex items-center justify-center gap-1 hover:bg-orange-200 transition-colors cursor-pointer"
+                onClick={(e) => e.stopPropagation()}
+                title={`Call help`}
+              >
+                <Phone className="h-3 w-3" />
+                Click to Call
+              </a>
             </div>
           </div>
         </div>
@@ -213,7 +222,7 @@ export default function Layout({ children }: LayoutProps) {
               </div>
 
               {/* Assistance info - Stick to bottom */}
-              <div className="flex-shrink-0 border-t border-gray-200 p-4 bg-gray-100">
+              <div className="flex-shrink-0 border-t border-gray-200 p-2 bg-gray-100">
                 <p className="text-xs text-gray-600 text-center">Need assistance? Call 9467796669</p>
               </div>
             </div>

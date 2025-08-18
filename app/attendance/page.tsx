@@ -911,9 +911,9 @@ export default function AttendancePage() {
 
   return (
     <Layout>
-      <div className="space-y-4 md:space-y-6 px-2 md:px-0">
+      <div className="space-y-2 md:space-y-4 md:px-0">
         <div>
-          <h1 className="text-xl md:text-2xl text-gray-900">Add Attendance</h1>
+          <h1 className="text-lg md:text-xl text-gray-900">Add Attendance</h1>
           <p className="text-gray-600 mt-1 text-sm md:text-base">
             Submit attendance for sewa events
           </p>
@@ -923,7 +923,7 @@ export default function AttendancePage() {
         {user?.role === "admin" && (
           <Card className="enhanced-card">
             <CardHeader>
-              <CardTitle className="flex items-center text-base md:text-lg">
+              <CardTitle className="flex items-center text-base">
                 <Building2 className="mr-2 h-5 w-5" />
                 Center *
               </CardTitle>
@@ -979,7 +979,7 @@ export default function AttendancePage() {
                     <div className="flex items-center space-x-2">
                       <Building2 className="h-5 w-5 text-blue-600" />
                       <div>
-                        <p className="font-medium text-blue-900">
+                        <p className="text-sm text-blue-900">
                           Selected Center:{" "}
                           {centers.find((c) => c.code === selectedCenter)?.name}
                         </p>
@@ -1045,7 +1045,7 @@ export default function AttendancePage() {
           (user?.role === "admin" && selectedCenter)) && (
             <Card className="enhanced-card">
               <CardHeader>
-                <CardTitle className="flex items-center text-base md:text-lg">
+                <CardTitle className="flex items-center text-base">
                   <Calendar className="mr-2 h-5 w-5" />
                   Sewa *
                 </CardTitle>
@@ -1253,7 +1253,7 @@ export default function AttendancePage() {
               {/* Searchable Sewadar Selection */}
               <Card className="enhanced-card">
                 <CardHeader>
-                  <CardTitle className="flex items-center text-base md:text-lg">
+                  <CardTitle className="flex items-center text-base">
                     <Users className="mr-2 h-5 w-5" />
                     Select Sewadars
                   </CardTitle>
@@ -1511,7 +1511,7 @@ export default function AttendancePage() {
               <Card className="enhanced-card mt-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 py-2 md:py-0">
                   <CardHeader className="pb-2 md:pb-6">
-                    <CardTitle className="flex items-center text-base md:text-lg">
+                    <CardTitle className="flex items-center text-base">
                       <UserPlus className="mr-2 h-4 w-4 md:h-5 md:w-5" />
                       New Temporary Sewadars
                     </CardTitle>
@@ -1782,7 +1782,7 @@ export default function AttendancePage() {
               <Card className="enhanced-card mt-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 py-2 md:py-0">
                   <CardHeader className="pb-2 md:pb-6">
-                    <CardTitle className="flex items-center text-base md:text-lg">
+                    <CardTitle className="flex items-center text-base">
                       <FileImage className="mr-2 h-4 w-4 md:h-5 md:w-5" />
                       Nominal Roll Images
                     </CardTitle>

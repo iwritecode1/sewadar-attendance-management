@@ -454,10 +454,10 @@ export default function SewadarsPage() {
 
   return (
     <Layout>
-      <div className="space-y-4 md:space-y-6 px-2 md:px-0">
+      <div className="space-y-2 md:space-y-4 md:px-0">
         <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-xl md:text-2xl text-gray-900">Manage Sewadars</h1>
+            <h1 className="text-lg md:text-xl text-gray-900">Manage Sewadars</h1>
             <p className="text-gray-600 mt-1 text-sm md:text-base">
               {user?.role === "admin" ? `All Sewadars in ${user.area} Area` : `Sewadars from ${user?.centerName}`}
             </p>
@@ -981,7 +981,7 @@ export default function SewadarsPage() {
         {/* Mobile - Single Combined Card */}
         <div className="block md:hidden">
           <Card className="stat-card">
-            <CardContent className="py-6">
+            <CardContent className="py-2">
               <div className="grid grid-cols-2 gap-6">
                 <div className="text-center space-y-2">
                   <div className="flex items-center justify-center space-x-2">
@@ -1114,7 +1114,7 @@ export default function SewadarsPage() {
                   {sewadars.map((sewadar, index) => (
                     <div
                       key={sewadar._id}
-                      className={`p-4 border rounded-lg cursor-pointer hover:shadow-md transition-shadow ${index % 2 === 0 ? "bg-white hover:bg-gray-50" : "bg-gray-50 hover:bg-gray-100"}`}
+                      className={`p-3 border rounded-lg cursor-pointer hover:shadow-md transition-shadow ${index % 2 === 0 ? "bg-white hover:bg-gray-50" : "bg-gray-50 hover:bg-gray-100"}`}
                       onClick={() => setViewingSewadar(sewadar._id)}
                     >
                       <div className="flex items-start justify-between mb-3">

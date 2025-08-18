@@ -179,10 +179,10 @@ export default function CoordinatorsPage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-3">
         <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between px-2 md:px-0">
           <div>
-            <h1 className="text-xl md:text-2xl text-gray-900">Manage Coordinators</h1>
+            <h1 className="text-lg md:text-xl text-gray-900">Manage Coordinators</h1>
             <p className="text-gray-600 mt-1 text-sm md:text-base">Manage center coordinators in {user.area} Area</p>
           </div>
           <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
@@ -312,7 +312,7 @@ export default function CoordinatorsPage() {
         {/* Mobile - Single Combined Card */}
         <div className="block md:hidden">
           <Card className="stat-card">
-            <CardContent className="py-4 px-4">
+            <CardContent className="py-2 px-0">
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center space-y-2">
                   <div className="flex items-center justify-center space-x-2">

@@ -117,10 +117,10 @@ export default function CentersPage() {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between px-2 md:px-0">
           <div>
-            <h1 className="text-xl md:text-2xl text-gray-900">Manage Centers</h1>
+            <h1 className="text-lg md:text-xl text-gray-900">Manage Centers</h1>
             <p className="text-gray-600 mt-1 text-sm md:text-base">Create and manage centers in {user.area} Area</p>
           </div>
           <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
@@ -204,9 +204,9 @@ export default function CentersPage() {
             <span className="ml-2 text-gray-600">Loading centers...</span>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {centers.map((center) => (
-              <Card key={center._id} className="enhanced-card hover:shadow-lg transition-shadow">
+              <Card key={center._id} className="enhanced-card hover:shadow-lg transition-shadow p-2">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">{center.name}</CardTitle>

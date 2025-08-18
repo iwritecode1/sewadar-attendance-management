@@ -135,7 +135,7 @@ export default function ProfilePage() {
       <div className="space-y-4 md:space-y-6 px-0 md:px-0">
         {/* Header */}
         <div className="px-4 md:px-0">
-          <h1 className="text-xl md:text-2xl text-gray-900">Profile</h1>
+          <h1 className="text-lg md:text-xl text-gray-900">Profile</h1>
           <p className="text-gray-600 mt-1 text-sm md:text-base">Manage your account settings</p>
         </div>
 

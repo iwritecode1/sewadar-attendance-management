@@ -844,14 +844,14 @@ export default function SewadarLookupPage() {
     <Layout>
       <div className="space-y-4 md:space-y-6 px-2 md:px-0">
         <div className="px-2 md:px-0">
-          <h1 className="text-xl md:text-2xl text-gray-900">Sewadar Lookup</h1>
+          <h1 className="text-lg md:text-xl text-gray-900">Sewadar Lookup</h1>
           <p className="text-gray-600 mt-1 text-sm md:text-base">Search and view sewadar attendance records</p>
         </div>
 
         {/* Search & Filter Sewadars */}
         <Card className="enhanced-card">
           <CardHeader className="pb-4">
-            <CardTitle className="flex items-center text-base md:text-lg">
+            <CardTitle className="flex items-center text-base">
               <Search className="mr-2 h-4 w-4 md:h-5 md:w-5" />
               Search & Filter Sewadars
             </CardTitle>

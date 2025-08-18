@@ -178,10 +178,10 @@ export default function EventsPage() {
 
   return (
     <Layout>
-      <div className="space-y-4 md:space-y-6 px-2 md:px-0">
+      <div className="space-y-2 md:space-y-4 px-0 md:px-0">
         <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-xl md:text-2xl text-gray-900">
+            <h1 className="text-lg md:text-xl text-gray-900">
               {user.role === "admin" ? "Manage Sewa Events" : "View Sewa Events"}
             </h1>
             <p className="text-gray-600 mt-1 text-sm md:text-base">
@@ -372,7 +372,7 @@ export default function EventsPage() {
         {/* Mobile - Combined Stats Card */}
         <div className="block md:hidden">
           <Card className="stat-card">
-            <CardContent className="py-6">
+            <CardContent className="py-2">
               <div className="grid grid-cols-2 gap-6">
                 <div className="text-center space-y-2">
                   <div className="flex items-center justify-center space-x-2">
@@ -764,7 +764,7 @@ function CreateEventForm({ onClose, onSuccess }: { onClose: () => void; onSucces
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center text-base md:text-lg">
+            <CardTitle className="flex items-center text-base">
               <Plus className="mr-2 h-4 w-4 md:h-5 md:w-5" />
               Add New Sewa Event
             </CardTitle>

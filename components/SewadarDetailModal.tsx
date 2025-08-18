@@ -194,8 +194,8 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between text-base md:text-lg">
-                    <span>Basic Information</span>
-                    <div className="flex space-x-2">
+                    <span>Basic Info</span>
+                    <div className="flex space-x-1">
                       <Badge variant={sewadar.gender === "MALE" ? "default" : "secondary"}>{sewadar.gender}</Badge>
                       <Badge variant={sewadar.badgeStatus === "PERMANENT" ? "default" : "outline"}>
                         {sewadar.badgeStatus}
@@ -323,7 +323,7 @@ export default function SewadarDetailModal({ sewadarId, isOpen, onClose }: Sewad
                   {/* Desktop Layout - Side by Side */}
                   <div className="hidden md:flex items-center justify-between">
                     <div>
-                      <CardTitle className="flex items-center text-base md:text-lg">
+                      <CardTitle className="flex items-center text-base">
                         <Clock className="mr-2 h-5 w-5" />
                         Attendance History
                       </CardTitle>

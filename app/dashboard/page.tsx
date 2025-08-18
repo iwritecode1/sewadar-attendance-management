@@ -142,7 +142,7 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 lg:px-0">
           <div>
-            <h1 className="text-xl md:text-2xl text-gray-900">Dashboard</h1>
+            <h1 className="text-lg md:text-xl text-gray-900">Dashboard</h1>
             <p className="text-gray-600 mt-1 text-sm md:text-base">Overview & Analytics</p>
           </div>
           <div className="mt-4 sm:mt-0">
@@ -274,7 +274,7 @@ export default function Dashboard() {
           {/* Center Performance Chart */}
           <Card className="chart-container">
             <CardHeader>
-              <CardTitle className="flex items-center text-base md:text-lg">
+              <CardTitle className="flex items-center text-base">
                 <BarChart3 className="mr-2 h-4 w-4 md:h-5 md:w-5 text-blue-600" />
                 <span className="hidden md:inline">Center Performance</span>
                 <span className="md:hidden">Centers</span>
@@ -331,7 +331,7 @@ export default function Dashboard() {
           {/* Department Distribution */}
           <Card className="chart-container">
             <CardHeader>
-              <CardTitle className="flex items-center text-base md:text-lg">
+              <CardTitle className="flex items-center text-base">
                 <PieChart className="mr-2 h-4 w-4 md:h-5 md:w-5 text-green-600" />
                 <span className="hidden md:inline">Department Distribution</span>
                 <span className="md:hidden">Departments</span>
