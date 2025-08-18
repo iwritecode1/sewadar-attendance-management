@@ -592,7 +592,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setLoading((prev) => ({ ...prev, importSewadars: true }))
       try {
         const response = await apiClient.importSewadars(file)
-        
+
         if (response.success) {
           // New optimized import returns jobId for progress tracking
           if (response.jobId) {
@@ -693,7 +693,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const response = await apiClient.createAttendance(data)
         const success = handleApiResponse(response, "Attendance submitted successfully")
         if (success) {
-          await fetchAttendance()
+          await fetchAttendance({ limit: 1000 })
           // Refresh sewadars to include newly created temporary sewadars
           if (data.centerId) {
             // Fetch sewadars for the specific center
@@ -734,7 +734,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const response = await apiClient.updateAttendance(id, data)
         const success = handleApiResponse(response, "Attendance updated successfully")
         if (success) {
-          await fetchAttendance()
+          await fetchAttendance({ limit: 1000 })
         }
         return success
       } catch (error) {
@@ -755,7 +755,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         const response = await apiClient.deleteAttendance(id)
         const success = handleApiResponse(response, "Attendance deleted successfully")
         if (success) {
-          await fetchAttendance()
+          await fetchAttendance({ limit: 1000 })
         }
         return success
       } catch (error) {
@@ -977,7 +977,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const refreshAll = useCallback(async () => {
     await Promise.all([
       fetchEvents(),
-      fetchAttendance(),
+      fetchAttendance({ limit: 1000 }),
       fetchCenters(),
       fetchCoordinators()
     ])
@@ -1004,7 +1004,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
         ])
 
         // Then fetch attendance data
-        await fetchAttendance()
+        await fetchAttendance({ limit: 1000 })
 
         // Wait a moment to ensure database operations are complete
         await new Promise(resolve => setTimeout(resolve, 200))

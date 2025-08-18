@@ -80,7 +80,7 @@ export default function EventsPage() {
     if (user) {
       const params: any = {
         page: currentPage,
-        limit: 50,
+        limit: 20,
         includeStats: true,
       }
 
@@ -111,7 +111,7 @@ export default function EventsPage() {
   const refreshData = () => {
     fetchEvents({
       page: currentPage,
-      limit: 50,
+      limit: 20,
       includeStats: true,
       search: searchTerm || undefined,
       place: selectedPlace !== "all" ? selectedPlace : undefined,
@@ -185,7 +185,7 @@ export default function EventsPage() {
               {user.role === "admin" ? "Manage Sewa Events" : "View Sewa Events"}
             </h1>
             <p className="text-gray-600 mt-1 text-sm md:text-base">
-              {user.role === "admin" 
+              {user.role === "admin"
                 ? `Create and manage sewa events for ${user.area} Area`
                 : `View sewa events for ${user.area} Area`
               }

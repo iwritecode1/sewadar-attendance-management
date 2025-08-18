@@ -145,7 +145,7 @@ export default function ProfilePage() {
             <CardTitle className="flex items-center text-lg md:text-xl">
               <User className="mr-2 h-5 w-5 text-blue-600" />
               <span className="hidden md:inline">User Information</span>
-              <span className="md:hidden">Profile Info</span>
+              <span className="md:hidden">User Info</span>
             </CardTitle>
             <CardDescription>Your account details and role information</CardDescription>
           </CardHeader>

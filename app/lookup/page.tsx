@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
-import { Search, User, Calendar, Download, RefreshCw, FileText, X, Filter, BarChart3, FileSpreadsheet, ChevronDown, ChevronUp } from "lucide-react"
+import { Search, User, Calendar, Download, RefreshCw, FileText, X, Filter, BarChart3, FileSpreadsheet, ChevronDown, ChevronUp, Phone } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import SewadarAttendanceModal from "@/components/SewadarAttendanceModal"
 import * as XLSX from "xlsx"
@@ -61,7 +61,7 @@ interface SearchSuggestion {
 
 export default function SewadarLookupPage() {
   const { user } = useAuth()
-  const { centers, sewadars, attendance, fetchSewadars } = useData()
+  const { centers, sewadars, attendance, fetchSewadars, fetchAttendance } = useData()
   const { toast } = useToast()
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -107,6 +107,19 @@ export default function SewadarLookupPage() {
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
   const paginatedResults = searchResults.slice(startIndex, endIndex)
+
+  // Load attendance data when component mounts
+  useEffect(() => {
+    if (user) {
+      // For coordinators, fetch attendance for their specific center
+      // For admins, fetch all attendance records
+      const params = user.role === "coordinator" && user.centerId
+        ? { centerId: user.centerId, limit: 1000 }
+        : { limit: 1000 }
+
+      fetchAttendance(params)
+    }
+  }, [user, fetchAttendance])
 
   // Reset pagination when search results change
   useEffect(() => {
@@ -428,19 +441,24 @@ export default function SewadarLookupPage() {
     return recentRecords.length === 0
   }
 
-  // Calculate attendance count for a sewadar in a specific center or all centers
-  // This should return the total number of DAYS attended, not just number of events
-  const getSewadarAttendanceCount = (sewadarId: string, centerId?: string) => {
+  // Get the last event attended date for a sewadar
+  const getLastEventAttendedDate = (sewadarId: string, centerId?: string) => {
     const matchingRecords = attendance.filter(record => {
       // Check if this attendance record includes the sewadar
       let hasSewadar = false
 
       // Check sewadars (includes both regular and formerly temporary sewadars)
       if (record.sewadars && Array.isArray(record.sewadars)) {
-        // The sewadars array contains sewadar objects, not just IDs
-        hasSewadar = record.sewadars.some(sewadar =>
-          typeof sewadar === 'string' ? sewadar === sewadarId : sewadar._id === sewadarId
-        )
+        hasSewadar = record.sewadars.some(sewadar => {
+          // Handle both string IDs and populated sewadar objects
+          if (typeof sewadar === 'string') {
+            return sewadar === sewadarId
+          } else if (sewadar && typeof sewadar === 'object') {
+            const id = sewadar._id || sewadar.id
+            return id && id.toString() === sewadarId
+          }
+          return false
+        })
       }
 
       if (!hasSewadar) return false
@@ -453,17 +471,83 @@ export default function SewadarLookupPage() {
       return true
     })
 
-    // Calculate total days instead of just counting records
-    return matchingRecords.reduce((totalDays, record) => {
-      if (!record.eventId?.fromDate || !record.eventId?.toDate) return totalDays
+    if (matchingRecords.length === 0) return null
 
-      const fromDate = new Date(record.eventId.fromDate)
-      const toDate = new Date(record.eventId.toDate)
-      const diffTime = Math.abs(toDate.getTime() - fromDate.getTime())
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1 // +1 to include both start and end dates
+    // Find the most recent event end date
+    let latestDate = null
+    matchingRecords.forEach(record => {
+      const eventEndDate = record.eventId?.toDate
+      if (eventEndDate) {
+        const endDate = new Date(eventEndDate)
+        if (!latestDate || endDate > latestDate) {
+          latestDate = endDate
+        }
+      }
+    })
 
-      return totalDays + diffDays
-    }, 0)
+    return latestDate
+  }
+
+  // Calculate attendance count for a sewadar in a specific center or all centers
+  // This should return the total number of DAYS attended, not just number of events
+  const getSewadarAttendanceCount = (sewadarId: string, centerId?: string) => {
+    const matchingRecords = attendance.filter(record => {
+      // Check if this attendance record includes the sewadar
+      let hasSewadar = false
+
+      // Check sewadars (includes both regular and formerly temporary sewadars)
+      if (record.sewadars && Array.isArray(record.sewadars)) {
+        // The sewadars array contains sewadar objects, not just IDs
+        hasSewadar = record.sewadars.some(sewadar => {
+          // Handle both string IDs and populated sewadar objects
+          if (typeof sewadar === 'string') {
+            return sewadar === sewadarId
+          } else if (sewadar && typeof sewadar === 'object') {
+            // Check both _id and id fields, and convert to string for comparison
+            const id = sewadar._id || sewadar.id
+            return id && id.toString() === sewadarId
+          }
+          return false
+        })
+      }
+
+      if (!hasSewadar) return false
+
+      // If specific center is requested, filter by center code
+      if (centerId && centerId !== "all") {
+        return record.centerId === centerId
+      }
+
+      return true
+    })
+
+    // Count unique events and sum their days (same logic as events API)
+    const uniqueEvents = new Set()
+    const eventDaysMap = new Map()
+
+    matchingRecords.forEach(record => {
+      // Handle both populated and non-populated eventId
+      const eventId = typeof record.eventId === 'string' ? record.eventId : record.eventId?._id
+      const fromDate = record.eventId?.fromDate
+      const toDate = record.eventId?.toDate
+
+      if (eventId && fromDate && toDate) {
+        const eventIdStr = eventId.toString()
+        if (!uniqueEvents.has(eventIdStr)) {
+          uniqueEvents.add(eventIdStr)
+
+          const startDate = new Date(fromDate)
+          const endDate = new Date(toDate)
+          const diffTime = Math.abs(endDate.getTime() - startDate.getTime())
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1 // +1 to include both start and end dates
+
+          eventDaysMap.set(eventIdStr, diffDays)
+        }
+      }
+    })
+
+    // Sum up days from all unique events
+    return Array.from(eventDaysMap.values()).reduce((total, days) => total + days, 0)
   }
 
   // Handle attendance filter
@@ -1189,24 +1273,57 @@ export default function SewadarLookupPage() {
                         </code>
                       </div>
 
-                      {/* Father name and age */}
-                      <div className="text-xs text-gray-600">
-                        <p className="truncate">{sewadar.fatherHusbandName}</p>
-                        {sewadar.age && (
-                          <p className="text-gray-500 mt-1">Age: {sewadar.age}</p>
-                        )}
+                      {/* Father name, age, gender and badge status */}
+                      <div className="flex justify-between items-start">
+                        <div className="text-xs text-gray-600 flex-1 min-w-0">
+                          <p className="truncate">{sewadar.fatherHusbandName}</p>
+                          {sewadar.age && (
+                            <p className="text-gray-500 mt-1">Age: {sewadar.age}</p>
+                          )}
+                        </div>
+                        <div className="ml-3 flex-shrink-0 space-y-1">
+                          <div className="flex justify-end">
+                            <Badge variant={sewadar.gender === "MALE" ? "default" : "secondary"} className="text-xs">
+                              {sewadar.gender === "MALE" ? "M" : "F"}
+                            </Badge>
+                          </div>
+                          <div className="flex justify-end">
+                            <Badge variant={sewadar.badgeStatus === "PERMANENT" ? "default" : "outline"} className="text-xs">
+                              {sewadar.badgeStatus === "PERMANENT" ? "P" : sewadar.badgeStatus === "OPEN" ? "O" : "T"}
+                            </Badge>
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Center and attendance badges */}
-                      <div className="flex items-center gap-2 flex-wrap">
+                      {/* Center, attendance, and last event badges */}
+                      <div className="flex items-stretch gap-2">
                         {user?.role === "admin" && (
-                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded flex-shrink-0">
                             {sewadar.center}
                           </span>
                         )}
-                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded flex-1 text-center">
                           {getSewadarAttendanceCount(sewadar._id)} days
                         </span>
+                        {(() => {
+                          const lastEventDate = getLastEventAttendedDate(sewadar._id)
+                          return lastEventDate ? (
+                            <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded flex-1 text-center">
+                              {formatDate(lastEventDate)}
+                            </span>
+                          ) : null
+                        })()}
+                        {sewadar.contactNo && (
+                          <a 
+                            href={`tel:${sewadar.contactNo}`}
+                            className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded flex items-center justify-center gap-1 hover:bg-orange-200 transition-colors cursor-pointer flex-1"
+                            onClick={(e) => e.stopPropagation()}
+                            title={`Call ${sewadar.contactNo}`}
+                          >
+                            <Phone className="h-3 w-3" />
+                            {sewadar.contactNo}
+                          </a>
+                        )}
                       </div>
                     </div>
                     {selectedSewadar?._id === sewadar._id && (
@@ -1231,6 +1348,8 @@ export default function SewadarLookupPage() {
                         <TableHead className="w-[15%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Center</TableHead>
                       )}
                       <TableHead className="w-[10%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Attendance</TableHead>
+                      <TableHead className="w-[12%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Last Event</TableHead>
+                      <TableHead className="w-[12%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Contact</TableHead>
                       <TableHead className="w-[10%] py-3 px-4 font-semibold text-left bg-gray-50 border-b">Status</TableHead>
                       <TableHead className="w-[10%] py-3 px-4 font-semibold text-center bg-gray-50 border-b">Action</TableHead>
                     </TableRow>
@@ -1245,9 +1364,9 @@ export default function SewadarLookupPage() {
                         <TableCell className="py-3 px-4 text-left border-b border-gray-100">{sewadar.name}</TableCell>
                         <TableCell className="py-3 px-4 text-left border-b border-gray-100">{sewadar.fatherHusbandName}</TableCell>
                         <TableCell className="text-left py-3 px-4 border-b border-gray-100">
-                          <Badge variant={sewadar.gender === "MALE" ? "default" : "outline"} className="text-xs">
+                          <span className="text-sm text-gray-700">
                             {sewadar.gender}
-                          </Badge>
+                          </span>
                         </TableCell>
                         {user?.role === "admin" && (
                           <TableCell className="py-3 px-4 text-left border-b border-gray-100">{sewadar.center}</TableCell>
@@ -1256,6 +1375,33 @@ export default function SewadarLookupPage() {
                           <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             {getSewadarAttendanceCount(sewadar._id)} days
                           </span>
+                        </TableCell>
+                        <TableCell className="text-left py-3 px-4 border-b border-gray-100">
+                          {(() => {
+                            const lastEventDate = getLastEventAttendedDate(sewadar._id)
+                            return lastEventDate ? (
+                              <span className="text-xs text-gray-600">
+                                {formatDate(lastEventDate)}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-400">-</span>
+                            )
+                          })()}
+                        </TableCell>
+                        <TableCell className="text-left py-3 px-4 border-b border-gray-100">
+                          {sewadar.contactNo ? (
+                            <a 
+                              href={`tel:${sewadar.contactNo}`}
+                              className="text-xs text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                              onClick={(e) => e.stopPropagation()}
+                              title={`Call ${sewadar.contactNo}`}
+                            >
+                              <Phone className="h-3 w-3" />
+                              {sewadar.contactNo}
+                            </a>
+                          ) : (
+                            <span className="text-xs text-gray-400">-</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-left py-3 px-4 border-b border-gray-100">
                           <Badge variant={sewadar.badgeStatus === "PERMANENT" ? "default" : "outline"} className="text-xs">
