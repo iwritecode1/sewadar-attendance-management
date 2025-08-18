@@ -50,13 +50,13 @@ export default function LoginForm() {
             <img src="/icon-192x192.png" alt="Logo" className="w-20 h-20" />
             {/* <span className="text-white font-bold text-3xl">R</span> */}
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">RSSB</h1>
-          <p className="text-gray-600 mt-2">Sewadar Attendance Management</p>
+          {/* <h1 className="text-3xl font-bold text-gray-900">RSSB</h1> */}
+          <p className="text-gray-900 text-lg mt-2">Sewadar Attendance <br /> Management System</p>
         </div>
 
         <Card className="enhanced-card shadow-2xl">
           <CardHeader className="text-center pb-6">
-            <CardTitle className="text-2xl text-gray-900">Welcome Back</CardTitle>
+            {/* <CardTitle className="text-2xl text-gray-900">Welcome Back</CardTitle> */}
             <CardDescription className="text-gray-600">Sign in to your account to continue</CardDescription>
           </CardHeader>
           <CardContent>

@@ -154,7 +154,7 @@ export default function Layout({ children }: LayoutProps) {
                     <img src="/icon-192x192.png" alt="Logo" className="w-full h-full object-contain" />
                   </div>
                   <div className="w-48">
-                    <h1 className="text-gray-900">Sewadar Attendance Management</h1>
+                    <h1 className="text-gray-900">Sewadar Attendance Management System</h1>
                     {/* <p className="text-sm text-gray-600">Sewadar Attendance Management</p> */}
                   </div>
                 </div>
