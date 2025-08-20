@@ -126,17 +126,20 @@ export default function Layout({ children }: LayoutProps) {
 
             {/* Assistance info for mobile */}
             <div className="flex-shrink-0 border-t border-gray-100 px-2 py-4 bg-gradient-to-r from-blue-50 to-gray-50">
-              <p className="text-sm text-gray-600 text-center font-medium">Need assistance?</p> 
-              <a
-                href={`tel:9467796669`}
-                className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded flex items-center justify-center gap-1 hover:bg-orange-200 transition-colors cursor-pointer"
-                onClick={(e) => e.stopPropagation()}
-                title={`Call help`}
-              >
-                <Phone className="h-3 w-3" />
-                Click to Call
-              </a>
+              <div className="flex items-center justify-center gap-2">
+                <p className="text-sm text-gray-600 font-medium">Need help?</p>
+                <a
+                  href={`tel:9467796669`}
+                  className="text-xs bg-orange-100 text-orange-800 px-4 py-1 rounded-xl flex items-center gap-1 hover:bg-orange-200 transition-colors cursor-pointer"
+                  onClick={(e) => e.stopPropagation()}
+                  title={`Call help`}
+                >
+                  <Phone className="h-3 w-3" />
+                  Click to Call
+                </a>
+              </div>
             </div>
+
           </div>
         </div>
       )}
@@ -223,14 +226,14 @@ export default function Layout({ children }: LayoutProps) {
 
               {/* Assistance info - Stick to bottom */}
               <div className="flex-shrink-0 border-t border-gray-200 p-2 bg-gray-100">
-                <p className="text-xs text-gray-600 text-center">Need assistance? Call 9467796669</p>
+                <p className="text-xs text-gray-600 text-center">Need help? Call <span className="text-gray-800">9467796669</span></p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Main content with left margin for fixed sidebar */}
-        <div className="flex flex-col flex-1 lg:ml-72 min-h-screen main-content-with-sidebar pt-[calc(env(safe-area-inset-top)+56px)] lg:pt-0">
+        <div className="flex flex-col flex-1 lg:ml-72 min-h-screen main-content-with-sidebar pt-[56px] lg:pt-0">
           <main className="flex-1">
             <div className="py-6">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">{children}</div>

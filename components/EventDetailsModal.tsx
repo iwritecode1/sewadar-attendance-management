@@ -383,7 +383,7 @@ export default function EventDetailsModal({
                   {/* Responsive Card Layout */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:hidden">
                     {getFilteredSewadars().map((sewadar) => (
-                      <div key={sewadar._id} className="p-3 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
+                      <div key={sewadar._id} className="p-2 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
                         {/* Header with badges */}
                         <div className="flex items-start justify-between mb-2">
                           <div className="min-w-0 flex-1">
